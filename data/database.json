@@ -1,0 +1,12 @@
+{
+  "global": {
+    "presence": {
+      "status": "online",
+      "activityType": "Watching",
+      "activityText": "your server"
+    },
+    "supportRoutes": {},
+    "supportLinks": {}
+  },
+  "guilds": {}
+}
