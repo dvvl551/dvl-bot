@@ -180,6 +180,40 @@ function getTempVoiceEntry(guildId, channelId) {
   return config.voice?.temp?.channels?.[channelId] || null;
 }
 
+function normalizeAnnouncementMode(value) {
+  return String(value || 'embed').toLowerCase() === 'plain' ? 'plain' : 'embed';
+}
+
+function createAnnouncementPayload(guildConfig, source, variables, options = {}) {
+  const titleKey = options.titleKey || 'title';
+  const messageKey = options.messageKey || 'message';
+  const modeKey = options.modeKey || 'mode';
+  const footerKey = options.footerKey || 'footer';
+  const colorKey = options.colorKey || 'color';
+  const imageKey = options.imageKey || 'imageUrl';
+  const fallbackTitle = options.fallbackTitle || '';
+  const message = fillTemplate(source?.[messageKey] || '', variables).trim();
+  const title = fillTemplate(source?.[titleKey] || fallbackTitle, variables).trim();
+  const footerRaw = source?.[footerKey];
+  const footer = footerRaw === null ? '' : fillTemplate(footerRaw ?? 'DvL', variables).trim();
+  const imageUrl = fillTemplate(source?.[imageKey] || '', variables).trim();
+  const mode = normalizeAnnouncementMode(source?.[modeKey]);
+  if (mode === 'plain') {
+    const content = [title ? `**${title}**` : '', message, /^https?:\/\//i.test(imageUrl) ? imageUrl : '']
+      .filter(Boolean)
+      .join('\n');
+    return { content: content || 'No content.' };
+  }
+  const embed = new EmbedBuilder()
+    .setColor(ensureHexColor(source?.[colorKey] || guildConfig?.embedColor || '#5865F2'))
+    .setTimestamp();
+  if (title) embed.setTitle(title);
+  if (message) embed.setDescription(message);
+  if (footer) embed.setFooter({ text: footer });
+  if (/^https?:\/\//i.test(imageUrl)) embed.setImage(imageUrl);
+  return { embeds: [embed] };
+}
+
 
 async function getManagedTempVoiceState(interaction, options = {}) {
   const member = interaction.member;
@@ -1109,6 +1143,18 @@ function getSupportFirstImageUrl(message) {
   return getSupportAttachmentUrls(message).find((url) => /\.(png|jpe?g|gif|webp|bmp)(\?.*)?$/i.test(String(url))) || null;
 }
 
+function getRelayFilesFromMessage(message) {
+  return [...message.attachments.values()].slice(0, 10).map((attachment, index) => ({
+    attachment: attachment.url,
+    name: attachment.name || `attachment-${index + 1}`
+  }));
+}
+
+function getRelayImageUrlFromMessage(message) {
+  const attachment = [...message.attachments.values()].find((file) => String(file.contentType || '').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(String(file.name || file.url || '')));
+  return attachment?.url || null;
+}
+
 async function relaySupportDM(message) {
   const globalConfig = client.store.getGlobal();
   let guildId = globalConfig.supportRoutes[message.author.id];
@@ -1140,7 +1186,8 @@ async function relaySupportDM(message) {
     return global;
   });
 
-  const attachmentLines = [...message.attachments.values()].map((attachment) => attachment.url);
+  const relayFiles = getRelayFilesFromMessage(message);
+  const attachmentLines = [...message.attachments.values()].map((attachment) => `• ${attachment.name || 'file'}\n${attachment.url}`);
   const description = [
     message.content || '*No text content*',
     attachmentLines.length ? `\n**Attachments**\n${attachmentLines.join('\n')}` : ''
@@ -1153,9 +1200,11 @@ async function relaySupportDM(message) {
       { name: 'Guild', value: guild.name, inline: true }
     )
     .setThumbnail(message.author.displayAvatarURL());
+  const imageUrl = getRelayImageUrlFromMessage(message);
+  if (imageUrl) embed.setImage(imageUrl);
 
   const content = config.support.pingRoleId ? `<@&${config.support.pingRoleId}>` : null;
-  const sent = await channel.send({ content, embeds: [embed] }).catch(() => null);
+  const sent = await channel.send({ content, embeds: [embed], files: relayFiles }).catch(() => null);
   if (!sent) return false;
 
   client.supportMessageLinks.set(sent.id, { userId: message.author.id, guildId: guild.id });
@@ -1176,13 +1225,18 @@ async function handleSupportStaffReply(message) {
   const user = await client.users.fetch(route.userId).catch(() => null);
   if (!user) return false;
 
-  const attachmentLines = [...message.attachments.values()].map((attachment) => attachment.url);
+  const relayFiles = getRelayFilesFromMessage(message);
+  const attachmentLines = [...message.attachments.values()].map((attachment) => `• ${attachment.name || 'file'}\n${attachment.url}`);
   const description = [
     message.content || '*No text content*',
     attachmentLines.length ? `\n**Attachments**\n${attachmentLines.join('\n')}` : ''
   ].join('\n').slice(0, 3800);
 
-  await user.send({ embeds: [baseEmbed(config, `💬 Staff reply • ${message.guild.name}`, description)] }).catch(() => null);
+  const embed = baseEmbed(config, `💬 Staff reply • ${message.guild.name}`, description);
+  const imageUrl = getRelayImageUrlFromMessage(message);
+  if (imageUrl) embed.setImage(imageUrl);
+
+  await user.send({ embeds: [embed], files: relayFiles }).catch(() => null);
   await message.react('✅').catch(() => null);
   await sendLog(message.guild, 'support', 'Support reply', `${message.author.tag} replied to ${user.tag}.`);
   return true;
@@ -1245,6 +1299,7 @@ async function processGiveaways() {
       const message = channel?.isTextBased?.() ? await channel.messages.fetch(giveaway.messageId).catch(() => null) : null;
       const pool = [...new Set(giveaway.participants || [])];
       const winners = pool.sort(() => Math.random() - 0.5).slice(0, giveaway.winners);
+      giveaway.lastWinnerIds = winners;
 
       if (message) {
         const embed = baseEmbed(guildConfig, '🎉 Giveaway ended', `Prize: **${giveaway.prize}**\nParticipants: **${pool.length}**\n${winners.length ? `Winner(s): ${winners.map((id) => `<@${id}>`).join(', ')}` : 'No winners.'}`)
@@ -1331,13 +1386,15 @@ client.on(Events.GuildMemberAdd, async (member) => {
   if (config.welcome.enabled && config.welcome.channelId) {
     const channel = await member.guild.channels.fetch(config.welcome.channelId).catch(() => null);
     if (channel?.isTextBased?.()) {
-      const text = fillTemplate(config.welcome.message, {
+      const payload = createAnnouncementPayload(config, config.welcome, {
         user: member.toString(),
         userTag: member.user.tag,
         server: member.guild.name,
-        memberCount: member.guild.memberCount
-      });
-      await channel.send({ embeds: [baseEmbed(config, config.welcome.title || '👋 Welcome', text)] }).catch(() => null);
+        memberCount: member.guild.memberCount,
+        boostCount: member.guild.premiumSubscriptionCount || 0,
+        boostTier: member.guild.premiumTier || 0
+      }, { fallbackTitle: '👋 Welcome' });
+      await channel.send(payload).catch(() => null);
     }
   }
 
@@ -1368,14 +1425,15 @@ Boosts: **${newMember.guild.premiumSubscriptionCount || 0}** • Tier: **${newMe
       if (config.boost?.enabled && config.boost?.channelId) {
         const channel = await newMember.guild.channels.fetch(config.boost.channelId).catch(() => null);
         if (channel?.isTextBased?.()) {
-          const text = fillTemplate(config.boost.message, {
+          const payload = createAnnouncementPayload(config, config.boost, {
             user: newMember.toString(),
             userTag: newMember.user.tag,
             server: newMember.guild.name,
+            memberCount: newMember.guild.memberCount,
             boostCount: newMember.guild.premiumSubscriptionCount || 0,
             boostTier: newMember.guild.premiumTier || 0
-          });
-          await channel.send({ embeds: [baseEmbed(config, config.boost.title || '🚀 New boost', text)] }).catch(() => null);
+          }, { fallbackTitle: '🚀 New boost' });
+          await channel.send(payload).catch(() => null);
         }
       }
     } else if (beforeBoost && !afterBoost) {
@@ -1430,9 +1488,16 @@ async function sendLeaveDirectMessage(member) {
     server: member.guild.name,
     memberCount: member.guild.memberCount
   };
-  const title = fillTemplate(leave.dmTitle || '👋 You left {server}', variables);
-  const message = fillTemplate(leave.dmMessage || 'You left **{server}**. You can always come back with a fresh start.', variables);
-  const sent = await member.send({ embeds: [baseEmbed(config, title, message)] }).catch(() => null);
+  const payload = createAnnouncementPayload(config, leave, variables, {
+    modeKey: 'dmMode',
+    titleKey: 'dmTitle',
+    messageKey: 'dmMessage',
+    footerKey: 'dmFooter',
+    colorKey: 'dmColor',
+    imageKey: 'dmImageUrl',
+    fallbackTitle: '👋 You left {server}'
+  });
+  const sent = await member.send(payload).catch(() => null);
   return Boolean(sent);
 }
 
@@ -1442,13 +1507,15 @@ client.on(Events.GuildMemberRemove, async (member) => {
   if (config.leave.enabled && config.leave.channelId) {
     const channel = await member.guild.channels.fetch(config.leave.channelId).catch(() => null);
     if (channel?.isTextBased?.()) {
-      const text = fillTemplate(config.leave.message, {
+      const payload = createAnnouncementPayload(config, config.leave, {
         user: `<@${member.id}>`,
         userTag: member.user.tag,
         server: member.guild.name,
-        memberCount: member.guild.memberCount
-      });
-      await channel.send({ embeds: [baseEmbed(config, config.leave.title || '👋 Member left', text)] }).catch(() => null);
+        memberCount: member.guild.memberCount,
+        boostCount: member.guild.premiumSubscriptionCount || 0,
+        boostTier: member.guild.premiumTier || 0
+      }, { fallbackTitle: '👋 Member left' });
+      await channel.send(payload).catch(() => null);
     }
   }
   await sendLog(member.guild, 'memberLeave', 'Member leave', `${member.user.tag} left the server.`);

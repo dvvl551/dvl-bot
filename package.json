@@ -1,7 +1,7 @@
 {
-  "name": "dvl-bot-v34-big-update",
-  "version": "3.4.0",
-  "description": "DvL Discord bot with cleaner management, global backups, stronger support image relay, easier role tools, and giveaway fixes.",
+  "name": "dvl-bot-v42-one-shot-clean-overhaul",
+  "version": "4.2.0",
+  "description": "DvL Discord bot with a one-shot UX overhaul: deeper module hubs, cleaner setup flow, advanced text controls, richer logs overview, and clearer support/tracking/voice/security guidance.",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
@@ -11,7 +11,7 @@
     "check": "node scripts/check.js"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "axios": "^1.8.4",

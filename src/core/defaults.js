@@ -7,22 +7,38 @@ const DEFAULT_GUILD = {
     enabled: false,
     channelId: null,
     title: '👋 Welcome',
-    message: 'Welcome {user} to **{server}**. You are member **#{memberCount}**.'
+    message: 'Welcome {user} to **{server}**. You are member **#{memberCount}**.',
+    mode: 'embed',
+    footer: 'DvL',
+    color: null,
+    imageUrl: null
   },
   leave: {
     enabled: false,
     channelId: null,
     title: '👋 Member left',
     message: '{userTag} left **{server}**.',
+    mode: 'embed',
+    footer: 'DvL',
+    color: null,
+    imageUrl: null,
     dmEnabled: false,
+    dmMode: 'embed',
     dmTitle: '👋 You left {server}',
-    dmMessage: 'You left **{server}**. You can always come back with a fresh start.'
+    dmMessage: 'You left **{server}**. You can always come back with a fresh start.',
+    dmFooter: 'DvL',
+    dmColor: null,
+    dmImageUrl: null
   },
   boost: {
     enabled: false,
     channelId: null,
     title: '🚀 New boost',
-    message: '{user} just boosted **{server}**. Total boosts: **{boostCount}** • Tier: **{boostTier}**.'
+    message: '{user} just boosted **{server}**. Total boosts: **{boostCount}** • Tier: **{boostTier}**.',
+    mode: 'embed',
+    footer: 'DvL',
+    color: null,
+    imageUrl: null
   },
   logs: {
     enabled: false,

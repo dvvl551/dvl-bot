@@ -1,28 +1,40 @@
-# DvL Bot v23 Polish
+## v42 highlights
 
-Clean rebuild focused on usability without removing the existing command set.
+- deeper module hubs with status, quick setup, advanced options and checks
+- clearer texts hub for welcome / leave / boost with embed/plain guidance
+- richer logs overview with routing, event toggles and one-shot setup flow
+- better support / tracking / voice / security / automation / giveaway / TikTok hub guidance
+- roles hub expanded with status-role and panel shortcuts
 
-## New in v23
+# DvL Bot v42 — One-shot Clean Overhaul
 
-- **Ghost ping is now more reliable**
-  - message snapshots are cached on send/edit
-  - deleted or edited pings are detected more often, even when Discord cache is partial
+This pass makes the welcome / leave / boost text system actually advanced in use, not just nicer in help text. It also keeps boost on the logs side instead of mixing it fully into welcome / leave.
 
-- **Help is cleaner**
-  - `+help` no longer dumps every category row at once
-  - new **Categories** button opens a proper category browser
-  - pages stay compact and easier to use
+## What changed
 
-- **Server trophy / progress board**
-  - `+trophy` shows server progression
-  - `+trophychannel here` posts a persistent board
-  - `+trophyrefresh` refreshes it
-  - `+trophyconfig` shows the current setup
+- **Advanced text controls now really work at runtime**
+  - `embed` or `plain` mode
+  - custom title
+  - custom footer
+  - custom color
+  - custom image
+  - reset / example / test commands
 
-- **Still includes v22 upgrades**
-  - live stats channels with `+statssetup`
-  - voice moderation roles with `+setvoicemuterole` / `+setvoicebanrole`
-  - temp voice / voice tracking improvements
+- **Welcome and leave are grouped together cleanly**
+  - `+texts welcome`
+  - `+texts leave`
+  - `+texts vars`
+
+- **Boost stays on the logs/tracking side**
+  - `+boost` is still available for editing the boost announcement text
+  - but boost is no longer presented like a normal welcome/leave event
+  - help/setup wording was cleaned up to reflect that
+
+- **Real runtime support added**
+  - join messages now respect `mode`, `footer`, `color`, `image`
+  - leave messages now respect `mode`, `footer`, `color`, `image`
+  - leave DMs now respect `dmmode`, `dmfooter`, `dmcolor`, `dmimage`
+  - boost messages now respect `mode`, `footer`, `color`, `image`
 
 ## Start
 
@@ -33,29 +45,22 @@ npm run deploy
 npm start
 ```
 
-## Minimum `.env`
-
-```env
-DISCORD_TOKEN=
-DISCORD_CLIENT_ID=
-DISCORD_GUILD_ID=
-OWNER_IDS=
-DEFAULT_PREFIX=+
-```
-
-## Quick examples
+## Quick commands
 
 ```txt
-+help
-+help categories
-+help moderation 2
++texts
++texts welcome
++texts leave
++texts boost
++texts vars
 
-+statssetup
-+trophychannel here
-+trophyrefresh
++welcome mode embed
++welcome footer Profite bien du serveur
++leave dmmode plain
++boost color #FF73FA
 
-+setvoicemuterole @MutedVC
-+setvoicebanrole @BannedVC
-+ghostping on
-+ghostping #logs
++welcome test
++leave test
++leave testdm
++boost test
 ```
