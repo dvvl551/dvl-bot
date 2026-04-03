@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const {
   ActionRowBuilder,
   ActivityType,
+  AuditLogEvent,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
@@ -1114,7 +1115,23 @@ async function ensureGuildStatsChannels(guild, options = {}) {
     voice: stats.labels?.voice || '🔊・Vocal : {count}'
   };
   const live = getGuildLiveStats(guild);
-  const category = stats.categoryId ? (guild.channels.cache.get(stats.categoryId) || await guild.channels.fetch(stats.categoryId).catch(() => null)) : null;
+  let category = stats.categoryId ? (guild.channels.cache.get(stats.categoryId) || await guild.channels.fetch(stats.categoryId).catch(() => null)) : null;
+  if (!category || category.type !== ChannelType.GuildCategory) {
+    const knownChannelIds = Object.values(stats.channels || {}).filter(Boolean);
+    for (const knownId of knownChannelIds) {
+      const knownChannel = guild.channels.cache.get(knownId) || await guild.channels.fetch(knownId).catch(() => null);
+      const parent = knownChannel?.parent || (knownChannel?.parentId ? (guild.channels.cache.get(knownChannel.parentId) || await guild.channels.fetch(knownChannel.parentId).catch(() => null)) : null);
+      if (parent?.type === ChannelType.GuildCategory) {
+        category = parent;
+        client.store.updateGuild(guild.id, (g) => {
+          g.stats = g.stats || { enabled: false, categoryId: null, channels: {}, labels: {}, lockChannels: true };
+          g.stats.categoryId = parent.id;
+          return g;
+        });
+        break;
+      }
+    }
+  }
   const resolved = {};
   for (const [key, count] of Object.entries(live)) {
     let channelId = stats.channels?.[key] || null;
@@ -1153,16 +1170,16 @@ async function refreshGuildStats(guild, options = {}) {
   if (!guild) return null;
   const config = getGuildConfig(guild.id);
   if (!config.stats?.enabled) return null;
-  const labels = config.stats.labels || {};
-  const live = getGuildLiveStats(guild);
+  const ensured = await ensureGuildStatsChannels(guild, { recreateMissing: options.recreateMissing !== false });
+  const live = ensured?.live || getGuildLiveStats(guild);
+  const labels = ensured?.labels || config.stats.labels || {};
   const targets = {
-    members: { channelId: config.stats.channels?.members, name: buildGuildStatChannelName(labels.members || '👥・Membres : {count}', live.members) },
-    online: { channelId: config.stats.channels?.online, name: buildGuildStatChannelName(labels.online || '🌐・En ligne : {count}', live.online) },
-    voice: { channelId: config.stats.channels?.voice, name: buildGuildStatChannelName(labels.voice || '🔊・Vocal : {count}', live.voice) }
+    members: { channel: ensured?.channels?.members || null, name: buildGuildStatChannelName(labels.members || '👥・Membres : {count}', live.members) },
+    online: { channel: ensured?.channels?.online || null, name: buildGuildStatChannelName(labels.online || '🌐・En ligne : {count}', live.online) },
+    voice: { channel: ensured?.channels?.voice || null, name: buildGuildStatChannelName(labels.voice || '🔊・Vocal : {count}', live.voice) }
   };
   for (const entry of Object.values(targets)) {
-    if (!entry.channelId) continue;
-    const channel = guild.channels.cache.get(entry.channelId) || await guild.channels.fetch(entry.channelId).catch(() => null);
+    const channel = entry.channel;
     if (!channel) continue;
     if (channel.name !== entry.name) await channel.setName(entry.name).catch(() => null);
   }
@@ -1513,13 +1530,40 @@ function getLogTypeColor(type, fallback = '#5865F2') {
   return ensureHexColor(map[type] || fallback || '#5865F2');
 }
 
+
+async function fetchRecentAuditEntry(guild, auditType, targetId = null, maxAgeMs = 20_000) {
+  if (!guild || typeof guild.fetchAuditLogs !== 'function' || typeof auditType === 'undefined') return null;
+  const logs = await guild.fetchAuditLogs({ type: auditType, limit: 6 }).catch(() => null);
+  if (!logs?.entries?.size) return null;
+  const now = Date.now();
+  return logs.entries.find((entry) => {
+    const entryTargetId = entry?.target?.id || entry?.targetId || null;
+    const recentEnough = entry?.createdTimestamp ? (now - entry.createdTimestamp <= maxAgeMs) : true;
+    const sameTarget = !targetId || !entryTargetId || String(entryTargetId) === String(targetId);
+    return recentEnough && sameTarget;
+  }) || null;
+}
+
+function formatAuditExecutor(entry) {
+  return entry?.executor?.id ? `<@${entry.executor.id}>` : 'Unknown';
+}
+
+function getAuditReason(entry) {
+  return entry?.reason ? String(entry.reason).slice(0, 240) : null;
+}
+
 async function buildLogEmbed(guild, config, type, title, description, options = {}) {
+  const footerParts = [options.footerText || `DvL • logs • ${type}`];
+  if (options.channelId) footerParts.push(`channel ${options.channelId}`);
+  if (options.messageId) footerParts.push(`message ${options.messageId}`);
   const embed = new EmbedBuilder()
     .setColor(ensureHexColor(options.color || getLogTypeColor(type, config?.embedColor || '#5865F2')))
     .setTitle(title)
     .setDescription(String(description || '').slice(0, 4096) || 'No details.')
-    .setFooter({ text: options.footerText || `DvL • logs • ${type}` })
+    .setFooter({ text: footerParts.join(' • ').slice(0, 2048) })
     .setTimestamp();
+
+  if (options.url) embed.setURL(String(options.url));
 
   let authorName = options.authorName || options.userTag || null;
   let avatarUrl = options.avatarUrl || null;
@@ -1540,8 +1584,8 @@ async function buildLogEmbed(guild, config, type, title, description, options = 
 
   const fields = Array.isArray(options.fields)
     ? options.fields
-        .filter((field) => field && field.name && field.value)
-        .slice(0, 10)
+        .filter((field) => field && field.name && typeof field.value !== 'undefined' && field.value !== null && String(field.value).trim())
+        .slice(0, 12)
         .map((field) => ({
           name: String(field.name).slice(0, 256),
           value: String(field.value).slice(0, 1024),
@@ -1551,6 +1595,37 @@ async function buildLogEmbed(guild, config, type, title, description, options = 
   if (fields.length) embed.addFields(fields);
   return embed;
 }
+
+
+function buildModerationNoticeEmbed(guildConfig, action, target, moderator, details = {}) {
+  const embed = new EmbedBuilder()
+    .setColor(ensureHexColor(details.color || guildConfig?.embedColor || '#5865F2'))
+    .setTitle(details.title || action)
+    .setDescription(details.description || 'A staff action was applied on you.')
+    .setTimestamp();
+  const avatarUrl = target?.user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || target?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
+  if (target?.user?.tag || target?.tag) embed.setAuthor({ name: target?.user?.tag || target?.tag, iconURL: avatarUrl || undefined });
+  if (avatarUrl) embed.setThumbnail(avatarUrl);
+  const fields = [
+    details.reason ? { name: 'Reason', value: String(details.reason).slice(0, 1024), inline: false } : null,
+    details.duration ? { name: 'Duration', value: String(details.duration).slice(0, 1024), inline: true } : null,
+    moderator ? { name: 'Moderator', value: `<@${moderator.id}>`, inline: true } : null,
+    guildConfig?.support?.entryChannelId ? { name: 'Support', value: `<#${guildConfig.support.entryChannelId}>`, inline: true } : null
+  ].filter(Boolean);
+  if (fields.length) embed.addFields(fields.slice(0, 10));
+  embed.setFooter({ text: details.footerText || `${guildConfig?.name || 'DvL'} • moderation` });
+  return embed;
+}
+
+async function notifyModerationTarget(targetMember, moderatorUser, details = {}) {
+  if (!targetMember?.user || targetMember.user.bot) return false;
+  const guildConfig = targetMember.guild ? getGuildConfig(targetMember.guild.id) : null;
+  const embed = buildModerationNoticeEmbed(guildConfig, details.action || 'Moderation', targetMember, moderatorUser, details);
+  const sent = await targetMember.user.send({ embeds: [embed] }).catch(() => null);
+  return Boolean(sent);
+}
+
+client.notifyModerationTarget = notifyModerationTarget;
 
 async function sendLog(guild, type, title, description, options = {}) {
   if (!guild) return;
@@ -1731,7 +1806,10 @@ async function handleGhostPingDeleteSnapshot(guild, snapshot) {
         { name: 'Message ID', value: `\`${snapshot.messageId}\``, inline: true },
         { name: 'Attachments', value: String((snapshot.attachmentUrls || []).length || 0), inline: true },
         { name: 'Jump', value: snapshot.url || 'Unavailable', inline: false }
-      ]
+      ],
+      channelId: snapshot.channelId || null,
+      messageId: snapshot.messageId || null,
+      url: snapshot.url || null
     });
   }
   client.ghostPingCache.delete(snapshot.messageId);
@@ -1908,7 +1986,12 @@ function buildCtx(source, command) {
     async getChannel(optionName, argIndex = 0) {
       if (!guild) return null;
       if (interaction) return interaction.options.getChannel(optionName) || null;
-      return parseChannelArgument(args[argIndex], guild);
+      const raw = args[argIndex];
+      const parsed = parseChannelArgument(raw, guild);
+      if (parsed) return parsed;
+      const cleaned = String(raw || '').replace(/[<#>]/g, '');
+      if (/^\d{17,20}$/.test(cleaned)) return guild.channels.fetch(cleaned).catch(() => null);
+      return null;
     },
     canActOn(targetMember) {
       if (!guild || !member || !targetMember) return false;
@@ -2584,30 +2667,64 @@ Boosts: **${newMember.guild.premiumSubscriptionCount || 0}** • Tier: **${newMe
     const oldNick = oldMember.nickname || oldMember.user.username;
     const newNick = newMember.nickname || newMember.user.username;
     if (oldNick !== newNick) {
-      await sendLog(newMember.guild, 'memberUpdate', 'Nickname changed', `${newMember.user.tag}
-Before: **${oldNick}**
-After: **${newNick}**`);
+      await sendLog(newMember.guild, 'memberUpdate', '📝 Nickname changed', `${newMember} changed nickname.`, {
+        userId: newMember.user.id,
+        authorName: newMember.user.tag,
+        avatarUrl: newMember.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+        fields: [
+          { name: 'Member', value: `${newMember}`, inline: true },
+          { name: 'Before', value: clipText(oldNick, 120), inline: true },
+          { name: 'After', value: clipText(newNick, 120), inline: true }
+        ]
+      });
     }
 
     const oldTimeout = oldMember.communicationDisabledUntilTimestamp || 0;
     const newTimeout = newMember.communicationDisabledUntilTimestamp || 0;
     if (oldTimeout !== newTimeout) {
       if (newTimeout > Date.now()) {
-        await sendLog(newMember.guild, 'memberUpdate', 'Member timeout', `${newMember.user.tag} was timed out until <t:${Math.floor(newTimeout / 1000)}:f>.`);
+        await sendLog(newMember.guild, 'memberUpdate', '⏳ Member timeout', `${newMember} was timed out.`, {
+          userId: newMember.user.id,
+          authorName: newMember.user.tag,
+          avatarUrl: newMember.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+          fields: [
+            { name: 'Member', value: `${newMember}`, inline: true },
+            { name: 'Until', value: `<t:${Math.floor(newTimeout / 1000)}:f>`, inline: true }
+          ]
+        });
       } else if (oldTimeout) {
-        await sendLog(newMember.guild, 'memberUpdate', 'Timeout removed', `${newMember.user.tag} is no longer timed out.`);
+        await sendLog(newMember.guild, 'memberUpdate', '✅ Timeout removed', `${newMember} is no longer timed out.`, {
+          userId: newMember.user.id,
+          authorName: newMember.user.tag,
+          avatarUrl: newMember.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+          fields: [{ name: 'Member', value: `${newMember}`, inline: true }]
+        });
       }
     }
 
     const addedRoles = newMember.roles.cache.filter((role) => !oldMember.roles.cache.has(role.id) && role.id !== newMember.guild.id);
     const removedRoles = oldMember.roles.cache.filter((role) => !newMember.roles.cache.has(role.id) && role.id !== newMember.guild.id);
     if (addedRoles.size) {
-      await sendLog(newMember.guild, 'memberUpdate', 'Roles added', `${newMember.user.tag}
-${[...addedRoles.values()].map((role) => role.toString()).join(', ')}`);
+      await sendLog(newMember.guild, 'memberUpdate', '➕ Roles added', `${newMember} received role updates.`, {
+        userId: newMember.user.id,
+        authorName: newMember.user.tag,
+        avatarUrl: newMember.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+        fields: [
+          { name: 'Member', value: `${newMember}`, inline: true },
+          { name: 'Added roles', value: `${[...addedRoles.values()].map((role) => role.toString()).join(', ')}`.slice(0, 1024), inline: false }
+        ]
+      });
     }
     if (removedRoles.size) {
-      await sendLog(newMember.guild, 'memberUpdate', 'Roles removed', `${newMember.user.tag}
-${[...removedRoles.values()].map((role) => role.toString()).join(', ')}`);
+      await sendLog(newMember.guild, 'memberUpdate', '➖ Roles removed', `${newMember} lost role updates.`, {
+        userId: newMember.user.id,
+        authorName: newMember.user.tag,
+        avatarUrl: newMember.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+        fields: [
+          { name: 'Member', value: `${newMember}`, inline: true },
+          { name: 'Removed roles', value: `${[...removedRoles.values()].map((role) => role.toString()).join(', ')}`.slice(0, 1024), inline: false }
+        ]
+      });
     }
     await syncVoiceMuteForMember(newMember);
     await enforceVoiceRestrictions(newMember);
@@ -2662,7 +2779,12 @@ client.on(Events.GuildMemberRemove, async (member) => {
   await sendLog(member.guild, 'memberLeave', '🚪 Member leave', `${member.user.tag} left the server.`, {
     userId: member.user.id,
     authorName: member.user.tag,
-    fields: [{ name: 'Joined', value: member.joinedTimestamp ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>` : 'Unknown', inline: true }]
+    avatarUrl: member.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+    fields: [
+      { name: 'Member', value: `<@${member.id}>`, inline: true },
+      { name: 'Joined', value: member.joinedTimestamp ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>` : 'Unknown', inline: true },
+      { name: 'Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true }
+    ]
   });
   await refreshGuildStats(member.guild);
   queueProgressBoardRefresh(member.guild.id);
@@ -2685,28 +2807,56 @@ client.on(Events.InviteCreate, async (invite) => {
   const cache = client.inviteCache.get(invite.guild.id) || new Map();
   cache.set(invite.code, invite.uses || 0);
   client.inviteCache.set(invite.guild.id, cache);
-  await sendLog(invite.guild, 'inviteCreate', 'Invite created', `Code: **${invite.code}**
-Channel: ${invite.channel ? `<#${invite.channel.id}>` : 'unknown'}
-Max uses: **${invite.maxUses || '∞'}**`);
+  await sendLog(invite.guild, 'inviteCreate', '➕ Invite created', `A new invite code was created.`, {
+    fields: [
+      { name: 'Code', value: `\`${invite.code}\``, inline: true },
+      { name: 'Channel', value: invite.channel ? `<#${invite.channel.id}>` : 'unknown', inline: true },
+      { name: 'Max uses', value: String(invite.maxUses || '∞'), inline: true },
+      { name: 'Expires', value: invite.expiresTimestamp ? `<t:${Math.floor(invite.expiresTimestamp / 1000)}:R>` : 'never', inline: true }
+    ]
+  });
 });
 
 client.on(Events.InviteDelete, async (invite) => {
   const cache = client.inviteCache.get(invite.guild.id) || new Map();
   cache.delete(invite.code);
   client.inviteCache.set(invite.guild.id, cache);
-  await sendLog(invite.guild, 'inviteDelete', 'Invite deleted', `Code: **${invite.code}**`);
+  await sendLog(invite.guild, 'inviteDelete', '➖ Invite deleted', `An invite code was deleted.`, {
+    fields: [
+      { name: 'Code', value: `\`${invite.code}\``, inline: true },
+      { name: 'Channel', value: invite.channel ? `<#${invite.channel.id}>` : 'unknown', inline: true }
+    ]
+  });
 });
 
 client.on(Events.ChannelCreate, async (channel) => {
   const guild = channel.guild;
   if (!guild) return;
-  await sendLog(guild, 'channelCreate', 'Channel created', `${channel} • **${channelTypeName(channel.type)}**`);
+  const audit = await fetchRecentAuditEntry(guild, AuditLogEvent.ChannelCreate, channel.id);
+  await sendLog(guild, 'channelCreate', '➕ Channel created', `${channel}`, {
+    fields: [
+      { name: 'Channel', value: `${channel}`, inline: true },
+      { name: 'Type', value: `**${channelTypeName(channel.type)}**`, inline: true },
+      { name: 'Category', value: channel.parentId ? `<#${channel.parentId}>` : 'none', inline: true },
+      audit ? { name: 'By', value: formatAuditExecutor(audit), inline: true } : null,
+      getAuditReason(audit) ? { name: 'Reason', value: getAuditReason(audit), inline: false } : null
+    ].filter(Boolean)
+  });
 });
 
 client.on(Events.ChannelDelete, async (channel) => {
   const guild = channel.guild;
   if (!guild) return;
-  await sendLog(guild, 'channelDelete', 'Channel deleted', `#${channel.name || 'unknown'} • **${channelTypeName(channel.type)}**`);
+  const audit = await fetchRecentAuditEntry(guild, AuditLogEvent.ChannelDelete, channel.id);
+  await sendLog(guild, 'channelDelete', '🗑️ Channel deleted', `#${channel.name || 'unknown'}`, {
+    fields: [
+      { name: 'Name', value: `#${channel.name || 'unknown'}`, inline: true },
+      { name: 'Type', value: `**${channelTypeName(channel.type)}**`, inline: true },
+      { name: 'Category', value: channel.parentId ? `<#${channel.parentId}>` : 'none', inline: true },
+      audit ? { name: 'By', value: formatAuditExecutor(audit), inline: true } : null,
+      getAuditReason(audit) ? { name: 'Reason', value: getAuditReason(audit), inline: false } : null
+    ].filter(Boolean)
+  });
 });
 
 client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
@@ -2717,16 +2867,38 @@ client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
   if (oldChannel.parentId !== newChannel.parentId) changes.push(`Category changed.`);
   if (typeof oldChannel.topic !== 'undefined' && oldChannel.topic !== newChannel.topic) changes.push('Topic updated.');
   if (!changes.length) return;
-  await sendLog(guild, 'channelUpdate', 'Channel updated', `${newChannel}
-${changes.join('\n')}`);
+  await sendLog(guild, 'channelUpdate', '🛠️ Channel updated', `${newChannel}`, {
+    fields: [
+      { name: 'Channel', value: `${newChannel}`, inline: true },
+      { name: 'Type', value: `**${channelTypeName(newChannel.type)}**`, inline: true },
+      { name: 'Changes', value: changes.join('\n').slice(0, 1024), inline: false }
+    ]
+  });
 });
 
 client.on(Events.RoleCreate, async (role) => {
-  await sendLog(role.guild, 'roleCreate', 'Role created', `${role} • Color: **${role.hexColor}**`);
+  const audit = await fetchRecentAuditEntry(role.guild, AuditLogEvent.RoleCreate, role.id);
+  await sendLog(role.guild, 'roleCreate', '➕ Role created', `${role}`, {
+    fields: [
+      { name: 'Role', value: `${role}`, inline: true },
+      { name: 'Color', value: `**${role.hexColor}**`, inline: true },
+      { name: 'Members', value: String(role.members?.size || 0), inline: true },
+      audit ? { name: 'By', value: formatAuditExecutor(audit), inline: true } : null,
+      getAuditReason(audit) ? { name: 'Reason', value: getAuditReason(audit), inline: false } : null
+    ].filter(Boolean)
+  });
 });
 
 client.on(Events.RoleDelete, async (role) => {
-  await sendLog(role.guild, 'roleDelete', 'Role deleted', `**${role.name}**`);
+  const audit = await fetchRecentAuditEntry(role.guild, AuditLogEvent.RoleDelete, role.id);
+  await sendLog(role.guild, 'roleDelete', '🗑️ Role deleted', `**${role.name}**`, {
+    fields: [
+      { name: 'Role name', value: `**${role.name}**`, inline: true },
+      { name: 'Color', value: `**${role.hexColor}**`, inline: true },
+      audit ? { name: 'By', value: formatAuditExecutor(audit), inline: true } : null,
+      getAuditReason(audit) ? { name: 'Reason', value: getAuditReason(audit), inline: false } : null
+    ].filter(Boolean)
+  });
 });
 
 client.on(Events.RoleUpdate, async (oldRole, newRole) => {
@@ -2735,19 +2907,54 @@ client.on(Events.RoleUpdate, async (oldRole, newRole) => {
   if (oldRole.hexColor !== newRole.hexColor) changes.push(`Color: **${oldRole.hexColor}** → **${newRole.hexColor}**`);
   if (oldRole.permissions.bitfield !== newRole.permissions.bitfield) changes.push('Permissions updated.');
   if (!changes.length) return;
-  await sendLog(newRole.guild, 'roleUpdate', 'Role updated', `${newRole}
-${changes.join('\n')}`);
+  await sendLog(newRole.guild, 'roleUpdate', '🛠️ Role updated', `${newRole}`, {
+    fields: [
+      { name: 'Role', value: `${newRole}`, inline: true },
+      { name: 'Color', value: `**${newRole.hexColor}**`, inline: true },
+      { name: 'Changes', value: changes.join('\n').slice(0, 1024), inline: false }
+    ]
+  });
 });
 
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   const guild = newState.guild || oldState.guild;
   if (!guild || newState.member?.user?.bot) return;
   if (!oldState.channelId && newState.channelId) {
-    await sendLog(guild, 'voiceJoin', 'Voice join', `${newState.member.user.tag} joined <#${newState.channelId}>.`);
+    await sendLog(guild, 'voiceJoin', '🔊 Voice join', `${newState.member} joined <#${newState.channelId}>.`, {
+      userId: newState.member.user.id,
+      authorName: newState.member.user.tag,
+      avatarUrl: newState.member.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+      fields: [
+        { name: 'Member', value: `${newState.member}`, inline: true },
+        { name: 'Channel', value: `<#${newState.channelId}>`, inline: true },
+        { name: 'User ID', value: `\`${newState.member.user.id}\``, inline: true }
+      ],
+      channelId: newState.channelId
+    });
   } else if (oldState.channelId && !newState.channelId) {
-    await sendLog(guild, 'voiceLeave', 'Voice leave', `${newState.member.user.tag} left <#${oldState.channelId}>.`);
+    await sendLog(guild, 'voiceLeave', '🔈 Voice leave', `${newState.member} left <#${oldState.channelId}>.`, {
+      userId: newState.member.user.id,
+      authorName: newState.member.user.tag,
+      avatarUrl: newState.member.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+      fields: [
+        { name: 'Member', value: `${newState.member}`, inline: true },
+        { name: 'Channel', value: `<#${oldState.channelId}>`, inline: true },
+        { name: 'User ID', value: `\`${newState.member.user.id}\``, inline: true }
+      ],
+      channelId: oldState.channelId
+    });
   } else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-    await sendLog(guild, 'voiceMove', 'Voice move', `${newState.member.user.tag} moved from <#${oldState.channelId}> to <#${newState.channelId}>.`);
+    await sendLog(guild, 'voiceMove', '🔁 Voice move', `${newState.member} moved voice channels.`, {
+      userId: newState.member.user.id,
+      authorName: newState.member.user.tag,
+      avatarUrl: newState.member.user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
+      fields: [
+        { name: 'Member', value: `${newState.member}`, inline: true },
+        { name: 'From', value: `<#${oldState.channelId}>`, inline: true },
+        { name: 'To', value: `<#${newState.channelId}>`, inline: true }
+      ],
+      channelId: newState.channelId
+    });
   }
 
   const config = getGuildConfig(guild.id);
@@ -2897,7 +3104,10 @@ client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
       { name: 'Channel', value: `<#${after?.channelId || newMessage.channel.id}>`, inline: true },
       { name: 'Attachments', value: String((after?.attachmentUrls || before?.attachmentUrls || []).length || 0), inline: true },
       { name: 'Jump', value: newMessage.url || after?.url || before?.url || 'Unavailable', inline: true }
-    ]
+    ],
+    channelId: after?.channelId || newMessage.channel.id,
+    messageId: newMessage.id,
+    url: newMessage.url || after?.url || before?.url || null
   });
   cacheGhostPingMessage(newMessage);
 });

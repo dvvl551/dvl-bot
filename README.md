@@ -1,32 +1,34 @@
-# DvL Bot v49 — Final Stable Bundle
+# DvL Bot v50 — Polished Final
 
-This build is aimed at actually running the bot on a live server without having to keep updating every few messages.
+This build is the big final clean pass meant to be **deployed and used**, not patched every hour.
 
-## What changed
+## What was polished
 
-- **Help by real use case**
-  - `+help start`
-  - `+help staff`
-  - `+help members`
-  - `+help repair`
-  - these shortcuts are also exposed in the help buttons
+- **Moderation upgraded**
+  - warn, warnings, clearwarnings, timeout, kick, ban, unban, nick
+  - cleaner staff embeds
+  - DM to the target when possible
+  - richer moderation logs with avatar, moderator, reason, duration and DM status
 
-- **Cleaner staff lists**
-  - `+whitelistlist` now uses the same richer view as `+wl list`
-  - `+autorolelist` resolves real roles and shows broken IDs separately
-  - `+backup list` is chunked into readable pages
-  - `+glist` is chunked and easier to scan
-  - `+tiktoklist` is chunked and easier to scan
+- **Logs more consistent**
+  - richer channel / role / invite update logs
+  - nickname change logs now include avatar + before / after
+  - moderation logs are much more detailed
 
-- **Stats stay automatic**
-  - live stats still refresh automatically
-  - missing counters still auto-repair when possible
-  - manual `+stats refresh` remains available, but it is no longer the normal path
+- **Stats / voice quality pass**
+  - stats channel binding now keeps the linked category when possible
+  - stats still auto-refresh and auto-repair missing counters
 
-- **Stable routing kept**
-  - command collisions already fixed in v48 remain fixed
-  - `+stats` stays on the real stats hub
-  - `+welcome` stays on the real welcome hub
+- **New moderation hub**
+  - `+moderation`
+  - `+moderation warn`
+  - `+moderation timeout`
+  - `+moderation ban`
+  - `+moderation kick`
+
+- **Cleaner global embeds**
+  - base embeds now safely support array descriptions
+  - better clipping and more consistent footer behavior
 
 ## Quick deploy
 
@@ -40,18 +42,15 @@ npm start
 
 ```txt
 +setup
-+help start
-+help staff
 +panel
 +logs setup
++moderation
++warn @member reason
++warnings @member
++timeout @member 10m spam
++ban @member reason
 +support panel
-+welcome
-+leave
 +stats
++voice
 +wl list
-+autorolelist
-+backup list
-+glist
-+tiktoklist
-+repair all
 ```

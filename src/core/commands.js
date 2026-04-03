@@ -711,6 +711,61 @@ function buildTikTokWatcherEmbeds(ctx) {
 }
 
 
+function getTargetUserLike(target) {
+  return target?.user || target || null;
+}
+
+function getTargetAvatarUrl(target) {
+  const user = getTargetUserLike(target);
+  return user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
+}
+
+function getTargetTag(target) {
+  const user = getTargetUserLike(target);
+  return user?.tag || user?.username || null;
+}
+
+function getTargetMention(target) {
+  if (!target) return 'Unknown';
+  if (target.id) return `<@${target.id}>`;
+  return String(target);
+}
+
+function getDmStatusLabel(dmSent, unavailableLabel = 'failed / closed') {
+  return dmSent ? 'sent' : unavailableLabel;
+}
+
+function buildMemberActionEmbed(guildConfig, title, description, target, fields = [], options = {}) {
+  const embed = baseEmbed(guildConfig, title, description);
+  const tag = getTargetTag(target);
+  const avatarUrl = getTargetAvatarUrl(target);
+  if (tag) embed.setAuthor({ name: tag, iconURL: avatarUrl || undefined });
+  if (avatarUrl) embed.setThumbnail(avatarUrl);
+  const safeFields = (fields || [])
+    .filter((field) => field && field.name && typeof field.value !== 'undefined' && field.value !== null && String(field.value).trim())
+    .slice(0, 10)
+    .map((field) => ({
+      name: String(field.name).slice(0, 256),
+      value: String(field.value).slice(0, 1024),
+      inline: Boolean(field.inline)
+    }));
+  if (safeFields.length) embed.addFields(...safeFields);
+  if (options.footerText) embed.setFooter({ text: String(options.footerText).slice(0, 2048) });
+  return embed;
+}
+
+async function sendDetailedModerationLog(ctx, title, description, target, fields = [], extra = {}) {
+  if (typeof ctx.client.sendLog !== 'function') return;
+  await ctx.client.sendLog(ctx.guild, 'moderation', title, description, {
+    userId: target?.id || getTargetUserLike(target)?.id || null,
+    authorName: getTargetTag(target),
+    avatarUrl: getTargetAvatarUrl(target),
+    fields,
+    ...extra
+  });
+}
+
+
 function makeMiniProgressBar(percent) {
   const safe = Math.max(0, Math.min(100, Number(percent) || 0));
   const filled = Math.max(0, Math.min(10, Math.round(safe / 10)));
@@ -2639,6 +2694,53 @@ function buildTrackingHubEmbed(guildConfig, prefix = '+') {
     );
 }
 
+function buildModerationHubEmbed(guildConfig, prefix = '+') {
+  const warnings = guildConfig.moderation?.warnings || {};
+  const totalWarnings = Object.values(warnings).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
+  return baseEmbed(guildConfig, '🛡️ Moderation hub', 'Warns, timeouts, kicks and bans with clearer staff replies, DMs and audit logs.')
+    .addFields(
+      {
+        name: 'What is polished',
+        value: [
+          `**Warn flow:** warn + count + clean reason log`,
+          `**Timeout flow:** DM + duration + audit log`,
+          `**Kick / ban flow:** DM when possible + richer staff recap`,
+          `**Warnings stored:** ${formatStatNumber(totalWarnings)}`
+        ].join('\n'),
+        inline: false
+      },
+      {
+        name: 'Most used',
+        value: [
+          `\`${prefix}warn @member reason\``,
+          `\`${prefix}warnings @member\``,
+          `\`${prefix}timeout @member 10m reason\``,
+          `\`${prefix}untimeout @member\``
+        ].join('\n'),
+        inline: true
+      },
+      {
+        name: 'More actions',
+        value: [
+          `\`${prefix}kick @member reason\``,
+          `\`${prefix}ban @member reason\``,
+          `\`${prefix}unban userId\``,
+          `\`${prefix}clearwarnings @member\``
+        ].join('\n'),
+        inline: true
+      },
+      {
+        name: 'Good to know',
+        value: [
+          `• moderation actions try to DM the target when possible`,
+          `• detailed audit logs go to the moderation log route`,
+          `• voice moderation stays under \`${prefix}voice\``
+        ].join('\n').slice(0, 1024),
+        inline: false
+      }
+    );
+}
+
 function buildSystemHubEmbed(guildConfig, prefix = '+') {
   const logs = guildConfig.logs || {};
   const support = guildConfig.support || {};
@@ -3887,6 +3989,42 @@ function createCommands() {
         return ctx.invalidUsage(`Examples: \`${ctx.prefix}security\`, \`${ctx.prefix}security preset balanced\`, \`${ctx.prefix}security ghostping here\`.`);
       }
     }),
+
+    makeSimpleCommand({
+      name: 'moderation',
+      aliases: ['modhub', 'modhelp', 'staffmod'],
+      category: 'Moderation',
+      description: 'Clean moderation hub for warns, timeouts, kicks and bans',
+      usage: 'moderation [view|warn|timeout|ban|kick|status]',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.ModerateMembers],
+      async execute(ctx) {
+        const action = String(ctx.args[0] || 'view').toLowerCase();
+        if (['view', 'config', 'show', 'list', 'status', 'setup', 'home'].includes(action)) return ctx.reply({ embeds: [buildModerationHubEmbed(ctx.guildConfig, ctx.prefix)] });
+        if (action === 'warn') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🛡️ Moderation • Warn', [
+          `Warn a member and keep a stored history.`,
+          `Use: \`${ctx.prefix}warn @member reason\``,
+          `Check: \`${ctx.prefix}warnings @member\``
+        ].join('\n'))] });
+        if (action === 'timeout') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🛡️ Moderation • Timeout', [
+          `Timeout a member with a duration like 10m / 1h / 1d.`,
+          `Use: \`${ctx.prefix}timeout @member 10m spam\``,
+          `Remove: \`${ctx.prefix}untimeout @member\``
+        ].join('\n'))] });
+        if (action === 'ban') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🛡️ Moderation • Ban', [
+          `Ban a member and optionally use a duration in text mode.`,
+          `Use: \`${ctx.prefix}ban @member reason\``,
+          `Temp ban: \`${ctx.prefix}ban @member 7d reason\``,
+          `Unban: \`${ctx.prefix}unban userId\``
+        ].join('\n'))] });
+        if (action === 'kick') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🛡️ Moderation • Kick', [
+          `Kick a member from the server.`,
+          `Use: \`${ctx.prefix}kick @member reason\``
+        ].join('\n'))] });
+        return ctx.invalidUsage(`Examples: \`${ctx.prefix}moderation\`, \`${ctx.prefix}moderation warn\`, \`${ctx.prefix}moderation timeout\`, \`${ctx.prefix}moderation ban\`.`);
+      }
+    }),
+
 
     makeSimpleCommand({
       name: 'automation',
@@ -5699,8 +5837,25 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const target = await ctx.getMember('target', 0);
         if (!target) return ctx.invalidUsage();
         if (!target.voice?.channelId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔊 Voice', `${target} is not in voice.`)] });
+        const voiceChannel = target.voice?.channel;
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '🔊 Voice disconnect',
+              title: '🔊 Voice disconnect',
+              description: `You were disconnected from voice in **${ctx.guild.name}**.`,
+              footerText: 'DvL • voice disconnect'
+            })
+          : false;
         await target.voice.disconnect('Disconnected by DvL').catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔊 Voice disconnect', `Disconnected ${target} from voice.`)] });
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Channel', value: voiceChannel ? `${voiceChannel}` : 'Unknown', inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
+        ];
+        await sendDetailedModerationLog(ctx, '🔊 Voice disconnect', `${target} was disconnected from voice.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔊 Voice disconnect', `${target} was disconnected from voice.`, target, commonFields, { footerText: 'DvL • voice disconnect' })] });
       }
     }),
 
@@ -5796,8 +5951,25 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         if (!canBotManageRoleInGuild(ctx.guild, role)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔇 Voice mute', 'I cannot assign the configured voice mute role. Move it below my highest role.')] });
         await target.roles.add(role, `DvL voice mute • ${reason}`).catch(() => null);
         if (target.voice?.channelId) await target.voice.setMute(true, `DvL voice mute • ${reason}`).catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔇 Voice mute', `${target} was voice muted with ${role}.
-Reason: **${reason}**`)] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '🔇 Voice mute',
+              title: '🔇 Voice mute',
+              description: `You were voice muted in **${ctx.guild.name}**.`,
+              reason,
+              footerText: 'DvL • voice mute'
+            })
+          : false;
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Role', value: `${role}`, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true },
+          { name: 'Reason', value: reason.slice(0, 1024), inline: false }
+        ];
+        await sendDetailedModerationLog(ctx, '🔇 Voice mute', `${target} was voice muted.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔇 Voice mute', `${target} was voice muted.`, target, commonFields, { footerText: 'DvL • voice mute' })] });
       }
     }),
     makeSimpleCommand({
@@ -5813,11 +5985,26 @@ Reason: **${reason}**`)] });
         const target = await ctx.getMember('target', 0);
         if (!target) return ctx.invalidUsage();
         const roleId = ctx.guildConfig.voice?.moderation?.muteRoleId;
-        if (!roleId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔇 Voice unmute', `No voice mute role is configured yet. Use \`${ctx.prefix}setvoicemuterole @Role\`.`)] });
+        if (!roleId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔊 Voice unmute', `No voice mute role is configured yet. Use \`${ctx.prefix}setvoicemuterole @Role\`.`)] });
         const role = await getConfigurableRole(ctx, roleId);
         if (role && target.roles.cache.has(role.id)) await target.roles.remove(role, 'DvL voice unmute').catch(() => null);
         if (target.voice?.channelId) await target.voice.setMute(false, 'DvL voice unmute').catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔊 Voice unmute', `${target} is no longer voice muted.`)] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '🔊 Voice unmute',
+              title: '🔊 Voice unmute',
+              description: `Your voice mute was removed in **${ctx.guild.name}**.`,
+              footerText: 'DvL • voice unmute'
+            })
+          : false;
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
+        ];
+        await sendDetailedModerationLog(ctx, '🔊 Voice unmute', `${target} is no longer voice muted.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔊 Voice unmute', `${target} is no longer voice muted.`, target, commonFields, { footerText: 'DvL • voice unmute' })] });
       }
     }),
     makeSimpleCommand({
@@ -5844,8 +6031,25 @@ Reason: **${reason}**`)] });
         if (!canBotManageRoleInGuild(ctx.guild, role)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⛔ Voice ban', 'I cannot assign the configured voice ban role. Move it below my highest role.')] });
         await target.roles.add(role, `DvL voice ban • ${reason}`).catch(() => null);
         if (target.voice?.channelId) await target.voice.disconnect(`DvL voice ban • ${reason}`).catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⛔ Voice ban', `${target} received ${role} and cannot rejoin voice while the role stays on them.
-Reason: **${reason}**`)] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '⛔ Voice ban',
+              title: '⛔ Voice ban',
+              description: `You can no longer join voice in **${ctx.guild.name}**.`,
+              reason,
+              footerText: 'DvL • voice ban'
+            })
+          : false;
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Role', value: `${role}`, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true },
+          { name: 'Reason', value: reason.slice(0, 1024), inline: false }
+        ];
+        await sendDetailedModerationLog(ctx, '⛔ Voice ban', `${target} received the configured voice ban role.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '⛔ Voice ban', `${target} can no longer join voice.`, target, commonFields, { footerText: 'DvL • voice ban' })] });
       }
     }),
     makeSimpleCommand({
@@ -5861,13 +6065,27 @@ Reason: **${reason}**`)] });
         const target = await ctx.getMember('target', 0);
         if (!target) return ctx.invalidUsage();
         const roleId = ctx.guildConfig.voice?.moderation?.banRoleId;
-        if (!roleId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⛔ Voice unban', `No voice ban role is configured yet. Use \`${ctx.prefix}setvoicebanrole @Role\`.`)] });
+        if (!roleId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✅ Voice unban', `No voice ban role is configured yet. Use \`${ctx.prefix}setvoicebanrole @Role\`.`)] });
         const role = await getConfigurableRole(ctx, roleId);
         if (role && target.roles.cache.has(role.id)) await target.roles.remove(role, 'DvL voice unban').catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✅ Voice unban', `${target} can join voice again.`)] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '✅ Voice unban',
+              title: '✅ Voice unban',
+              description: `You can join voice again in **${ctx.guild.name}**.`,
+              footerText: 'DvL • voice unban'
+            })
+          : false;
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
+        ];
+        await sendDetailedModerationLog(ctx, '✅ Voice unban', `${target} can join voice again.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '✅ Voice unban', `${target} can join voice again.`, target, commonFields, { footerText: 'DvL • voice unban' })] });
       }
     }),
-
     makeSimpleCommand({
       name: 'stats',
       aliases: ['serverstatsview', 'statshub'],
@@ -5927,11 +6145,16 @@ Reason: **${reason}**`)] });
         }
 
         if (action === 'setup') {
-          const categoryName = ctx.args.slice(1).join(' ').trim() || '📊 Statistiques';
           const guild = ctx.guild;
           const live = getLiveGuildStats(guild);
+          const rawCategoryArg = ctx.args.slice(1).join(' ').trim();
+          const pickedChannel = await ctx.getChannel('channel', 1);
+          const candidateCategory = pickedChannel?.type === ChannelType.GuildCategory
+            ? pickedChannel
+            : (String(ctx.args[1] || '').toLowerCase() === 'here' && ctx.channel?.parent?.type === ChannelType.GuildCategory ? ctx.channel.parent : null);
+          const categoryName = (!candidateCategory && rawCategoryArg) ? rawCategoryArg : '📊 Statistiques';
           const existingCategoryId = stats.categoryId;
-          let category = existingCategoryId ? (guild.channels.cache.get(existingCategoryId) || await guild.channels.fetch(existingCategoryId).catch(() => null)) : null;
+          let category = candidateCategory || (existingCategoryId ? (guild.channels.cache.get(existingCategoryId) || await guild.channels.fetch(existingCategoryId).catch(() => null)) : null);
           if (!category || category.type !== ChannelType.GuildCategory) {
             category = await guild.channels.create({
               name: String(categoryName).slice(0, 100),
@@ -5991,6 +6214,8 @@ Reason: **${reason}**`)] });
             guild.stats.channels = guild.stats.channels || {};
             guild.stats.labels = guild.stats.labels || {};
             guild.stats.channels[type] = targetChannel.id;
+            if (!guild.stats.categoryId && targetChannel.parentId) guild.stats.categoryId = targetChannel.parentId;
+            guild.stats.lockChannels = true;
             if (!guild.stats.labels[type]) guild.stats.labels[type] = type === 'members' ? '👥・Membres : {count}' : type === 'online' ? '🌐・En ligne : {count}' : '🔊・Vocal : {count}';
             return guild;
           });
@@ -6052,7 +6277,9 @@ Reason: **${reason}**`)] });
           guild.stats.channels = guild.stats.channels || {};
           guild.stats.labels = guild.stats.labels || {};
           guild.stats.channels[type] = targetChannel.id;
-          if (!guild.stats.labels[type]) guild.stats.labels[type] = type === 'members' ? '👥・Membres : {count}' : type === 'online' ? '🌐・En ligne : {count}' : '🔊・Vocal : {count}';
+          if (!guild.stats.categoryId && targetChannel.parentId) guild.stats.categoryId = targetChannel.parentId;
+            guild.stats.lockChannels = true;
+            if (!guild.stats.labels[type]) guild.stats.labels[type] = type === 'members' ? '👥・Membres : {count}' : type === 'online' ? '🌐・En ligne : {count}' : '🔊・Vocal : {count}';
           return guild;
         });
         if (ctx.client.refreshGuildStats) await ctx.client.refreshGuildStats(ctx.guild);
@@ -6070,11 +6297,16 @@ Reason: **${reason}**`)] });
       userPermissions: [PermissionFlagsBits.ManageChannels],
       slash: { root: 'tracking', sub: 'statssetup', description: 'Create the live stats channels', options: [{ type: 'string', name: 'category', description: 'Optional category name', required: false }] },
       async execute(ctx) {
-        const categoryName = (ctx.interaction ? ctx.interaction.options.getString('category') : ctx.getRest(0)) || '📊 Statistiques';
         const guild = ctx.guild;
         const live = getLiveGuildStats(guild);
+        const rawCategoryArg = (ctx.interaction ? ctx.interaction.options.getString('category') : ctx.getRest(0)) || '';
+        const pickedChannel = await ctx.getChannel('channel', 0);
+        const candidateCategory = pickedChannel?.type === ChannelType.GuildCategory
+          ? pickedChannel
+          : (String(ctx.args[0] || '').toLowerCase() === 'here' && ctx.channel?.parent?.type === ChannelType.GuildCategory ? ctx.channel.parent : null);
+        const categoryName = (!candidateCategory && rawCategoryArg) ? rawCategoryArg : '📊 Statistiques';
         const existingCategoryId = ctx.guildConfig.stats?.categoryId;
-        let category = existingCategoryId ? (guild.channels.cache.get(existingCategoryId) || await guild.channels.fetch(existingCategoryId).catch(() => null)) : null;
+        let category = candidateCategory || (existingCategoryId ? (guild.channels.cache.get(existingCategoryId) || await guild.channels.fetch(existingCategoryId).catch(() => null)) : null);
         if (!category || category.type !== ChannelType.GuildCategory) {
           category = await guild.channels.create({
             name: String(categoryName).slice(0, 100),
@@ -6375,12 +6607,33 @@ Reason: **${reason}**`)] });
         const target = await ctx.getMember('target', 0);
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'No reason.') : ctx.args.slice(1).join(' ') || 'No reason.';
         if (!target) return ctx.invalidUsage();
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⚠️ Warn', 'You cannot moderate that member.')] });
+        let warningCount = 0;
         ctx.store.updateGuild(ctx.guild.id, (guild) => {
           guild.moderation.warnings[target.id] = guild.moderation.warnings[target.id] || [];
           guild.moderation.warnings[target.id].push({ by: ctx.user.id, reason, at: Date.now() });
+          warningCount = guild.moderation.warnings[target.id].length;
           return guild;
         });
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⚠️ Warn', `${target} was warned.\nReason: **${reason}**`)] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '⚠️ Warning',
+              title: '⚠️ Warning',
+              description: `You received a warning in **${ctx.guild.name}**.`,
+              reason,
+              footerText: 'DvL • warning'
+            })
+          : false;
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'Warnings now', value: String(warningCount), inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true },
+          { name: 'Reason', value: reason.slice(0, 1024), inline: false }
+        ];
+        await sendDetailedModerationLog(ctx, '⚠️ Member warned', `${target} received a warning.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '⚠️ Warning sent', `${target} received a warning.`, target, commonFields, { footerText: 'DvL • warning sent' })] });
       }
     }),
     makeSimpleCommand({
@@ -6396,8 +6649,35 @@ Reason: **${reason}**`)] });
         const target = await ctx.getMember('target', 0);
         if (!target) return ctx.invalidUsage();
         const list = ctx.guildConfig.moderation.warnings[target.id] || [];
-        const desc = list.length ? list.map((warn, index) => `**#${index + 1}** • <@${warn.by}> • ${warn.reason} • <t:${Math.floor(warn.at / 1000)}:R>`).join('\n') : 'No warnings.';
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📒 Warnings', `${target}\n\n${desc}`)] });
+        const latest = list[list.length - 1] || null;
+        const recentLines = list.length
+          ? list.slice(-18).reverse().map((warn, index) => `**#${list.length - index}** • <@${warn.by}> • <t:${Math.floor(warn.at / 1000)}:R>
+${clipText(warn.reason, 220)}`)
+          : [];
+        const embeds = [buildMemberActionEmbed(
+          ctx.guildConfig,
+          '📒 Warning history',
+          `${target} warning overview.`,
+          target,
+          [
+            { name: 'Member', value: `${target}`, inline: true },
+            { name: 'User ID', value: `\`${target.id}\``, inline: true },
+            { name: 'Total warnings', value: String(list.length), inline: true },
+            { name: 'Latest reason', value: latest ? clipText(latest.reason, 180) : 'None', inline: false }
+          ],
+          { footerText: 'DvL • warning history' }
+        )];
+        if (recentLines.length) {
+          const chunks = chunkLines(recentLines, 4);
+          chunks.forEach((chunk, index) => {
+            const embed = index === 0 ? embeds[0] : buildMemberActionEmbed(ctx.guildConfig, '📒 Warning history', 'Continuation', target, [], { footerText: 'DvL • warning history' });
+            embed.addFields({ name: chunks.length > 1 ? `Recent warnings • page ${index + 1}/${chunks.length}` : 'Recent warnings', value: chunk.join('\n\n').slice(0, 1024), inline: false });
+            if (index !== 0) embeds.push(embed);
+          });
+        } else {
+          embeds[0].addFields({ name: 'Recent warnings', value: 'No warnings.', inline: false });
+        }
+        await ctx.reply({ embeds });
       }
     }),
     makeSimpleCommand({
@@ -6412,8 +6692,25 @@ Reason: **${reason}**`)] });
       async execute(ctx) {
         const target = await ctx.getMember('target', 0);
         if (!target) return ctx.invalidUsage();
+        const clearedCount = (ctx.guildConfig.moderation.warnings[target.id] || []).length;
         ctx.store.updateGuild(ctx.guild.id, (guild) => { delete guild.moderation.warnings[target.id]; return guild; });
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧽 Warnings cleared', `${target}'s warnings were cleared.`)] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '🧽 Warnings cleared',
+              title: '🧽 Warnings cleared',
+              description: `Your warning history was cleared in **${ctx.guild.name}**.`,
+              footerText: 'DvL • warnings cleared'
+            })
+          : false;
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'Cleared entries', value: String(clearedCount), inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
+        ];
+        await sendDetailedModerationLog(ctx, '🧽 Warnings cleared', `${target} had their warning history cleared.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🧽 Warnings cleared', `${target}'s warning history was cleared.`, target, commonFields, { footerText: 'DvL • warnings cleared' })] });
       }
     }),
     makeSimpleCommand({
@@ -6431,9 +6728,31 @@ Reason: **${reason}**`)] });
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'No reason.') : ctx.args.slice(2).join(' ') || 'No reason.';
         const duration = parseDuration(timeRaw);
         if (!target || !duration) return ctx.invalidUsage('Example: `+timeout @user 10m spam`');
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Timeout', 'You cannot moderate that member.')] });
-        await target.timeout(duration, reason).catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⏳ Timeout', `${target} timed out for **${formatDuration(duration)}**.\nReason: **${reason}**`)] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⏳ Timeout', 'You cannot moderate that member.')] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '⏳ Timeout',
+              title: '⏳ Timeout',
+              description: `You were timed out in **${ctx.guild.name}**.`,
+              reason,
+              duration: formatDuration(duration),
+              footerText: 'DvL • timeout'
+            })
+          : false;
+        const ok = await target.timeout(duration, reason).then(() => true).catch(() => false);
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⏳ Timeout', 'I could not apply the timeout. Check my permissions and role position.')] });
+        const untilTs = Math.floor((Date.now() + duration) / 1000);
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'Duration', value: formatDuration(duration), inline: true },
+          { name: 'Until', value: `<t:${untilTs}:f>`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true },
+          { name: 'Reason', value: reason.slice(0, 1024), inline: false }
+        ];
+        await sendDetailedModerationLog(ctx, '⏳ Member timed out', `${target} was timed out.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '⏳ Timeout applied', `${target} was timed out.`, target, commonFields, { footerText: 'DvL • timeout applied' })] });
       }
     }),
     makeSimpleCommand({
@@ -6448,8 +6767,25 @@ Reason: **${reason}**`)] });
       async execute(ctx) {
         const target = await ctx.getMember('target', 0);
         if (!target) return ctx.invalidUsage();
-        await target.timeout(null).catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✅ Timeout removed', `${target} is no longer timed out.`)] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✅ Timeout removed', 'You cannot moderate that member.')] });
+        const ok = await target.timeout(null).then(() => true).catch(() => false);
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✅ Timeout removed', 'I could not remove the timeout. Check my permissions and role position.')] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '✅ Timeout removed',
+              title: '✅ Timeout removed',
+              description: `Your timeout was removed in **${ctx.guild.name}**.`,
+              footerText: 'DvL • timeout removed'
+            })
+          : false;
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
+        ];
+        await sendDetailedModerationLog(ctx, '✅ Timeout removed', `${target} is no longer timed out.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '✅ Timeout removed', `${target} is no longer timed out.`, target, commonFields, { footerText: 'DvL • timeout removed' })] });
       }
     }),
     makeSimpleCommand({
@@ -6465,9 +6801,27 @@ Reason: **${reason}**`)] });
         const target = await ctx.getMember('target', 0);
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'No reason.') : ctx.args.slice(1).join(' ') || 'No reason.';
         if (!target) return ctx.invalidUsage();
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Kick', 'You cannot moderate that member.')] });
-        await target.kick(reason).catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👢 Kick', `${target.user.tag} was kicked.\nReason: **${reason}**`)] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👢 Kick', 'You cannot moderate that member.')] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '👢 Kick',
+              title: '👢 Kick',
+              description: `You were kicked from **${ctx.guild.name}**.`,
+              reason,
+              footerText: 'DvL • kick'
+            })
+          : false;
+        const commonFields = [
+          { name: 'User', value: `${target.user.tag}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true },
+          { name: 'Reason', value: reason.slice(0, 1024), inline: false }
+        ];
+        const ok = await target.kick(reason).then(() => true).catch(() => false);
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👢 Kick', 'I could not kick that member. Check my permissions and role position.')] });
+        await sendDetailedModerationLog(ctx, '👢 Member kicked', `${target.user.tag} was kicked.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '👢 Member kicked', `${target.user.tag} was kicked.`, target, commonFields, { footerText: 'DvL • member kicked' })] });
       }
     }),
     makeSimpleCommand({
@@ -6485,10 +6839,30 @@ Reason: **${reason}**`)] });
         const maybeTime = ctx.interaction ? null : ctx.args[1];
         const duration = maybeTime ? parseDuration(maybeTime) : null;
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'No reason.') : ctx.args.slice(duration ? 2 : 1).join(' ') || 'No reason.';
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Ban', 'You cannot moderate that member.')] });
-        await target.ban({ reason }).catch(() => null);
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔨 Ban', 'You cannot moderate that member.')] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '🔨 Ban',
+              title: '🔨 Ban',
+              description: `You were banned from **${ctx.guild.name}**.`,
+              reason,
+              duration: duration ? formatDuration(duration) : null,
+              footerText: 'DvL • ban'
+            })
+          : false;
+        const commonFields = [
+          { name: 'User', value: `${target.user.tag}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          duration ? { name: 'Duration', value: formatDuration(duration), inline: true } : null,
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true },
+          { name: 'Reason', value: reason.slice(0, 1024), inline: false }
+        ].filter(Boolean);
+        const ok = await target.ban({ reason }).then(() => true).catch(() => false);
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔨 Ban', 'I could not ban that member. Check my permissions and role position.')] });
         if (duration) ctx.client.tempBans.set(`${ctx.guild.id}:${target.id}`, Date.now() + duration);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔨 Ban', `${target.user.tag} was banned.${duration ? `\nDuration: **${formatDuration(duration)}**` : ''}\nReason: **${reason}**`)] });
+        await sendDetailedModerationLog(ctx, '🔨 Member banned', `${target.user.tag} was banned.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔨 Member banned', `${target.user.tag} was banned.`, target, commonFields, { footerText: 'DvL • member banned' })] });
       }
     }),
     makeSimpleCommand({
@@ -6503,8 +6877,23 @@ Reason: **${reason}**`)] });
       async execute(ctx) {
         const userId = ctx.getText('userid', 0) || ctx.getText('user', 0) || ctx.args[0];
         if (!userId) return ctx.invalidUsage();
-        await ctx.guild.members.unban(userId).catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🕊️ Unban', `Unbanned user ID **${userId}**.`)] });
+        const fetchedUser = await ctx.client.users.fetch(userId).catch(() => null);
+        const ok = await ctx.guild.members.unban(userId).then(() => true).catch(() => false);
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🕊️ Unban', 'I could not unban that user. Check the ID and my permissions.')] });
+        const dmSent = fetchedUser && !fetchedUser.bot
+          ? await fetchedUser.send({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🕊️ Unbanned', `You can join **${ctx.guild.name}** again.`, fetchedUser, [
+              { name: 'Moderator', value: `${ctx.user}`, inline: true }
+            ], { footerText: 'DvL • unbanned' })] }).then(() => true).catch(() => false)
+          : false;
+        const userLike = fetchedUser || { id: userId, tag: fetchedUser?.tag || `User ${userId}`, displayAvatarURL: () => null };
+        const commonFields = [
+          { name: 'User', value: fetchedUser ? `${fetchedUser.tag}` : 'Unknown user', inline: true },
+          { name: 'User ID', value: `\`${userId}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: fetchedUser ? getDmStatusLabel(dmSent) : 'not available', inline: true }
+        ];
+        await sendDetailedModerationLog(ctx, '🕊️ User unbanned', `User ID \`${userId}\` was unbanned.`, userLike, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🕊️ User unbanned', `User ID \`${userId}\` was unbanned.`, userLike, commonFields, { footerText: 'DvL • user unbanned' })] });
       }
     }),
     makeSimpleCommand({
@@ -6520,9 +6909,29 @@ Reason: **${reason}**`)] });
         const target = await ctx.getMember('target', 0);
         const nickname = ctx.interaction ? ctx.interaction.options.getString('nickname') : ctx.args.slice(1).join(' ');
         if (!target || !nickname) return ctx.invalidUsage();
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Nick', 'You cannot moderate that member.')] });
-        await target.setNickname(nickname).catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📝 Nickname', `${target} is now **${nickname}**.`)] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📝 Nickname', 'You cannot moderate that member.')] });
+        const before = target.nickname || target.user.username;
+        const ok = await target.setNickname(nickname).then(() => true).catch(() => false);
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📝 Nickname', 'I could not change that nickname. Check my permissions and role position.')] });
+        const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
+          ? await ctx.client.notifyModerationTarget(target, ctx.user, {
+              action: '📝 Nickname changed',
+              title: '📝 Nickname changed',
+              description: `Your nickname was updated in **${ctx.guild.name}**.`,
+              reason: `Before: ${before} • After: ${nickname}`,
+              footerText: 'DvL • nickname'
+            })
+          : false;
+        const commonFields = [
+          { name: 'Member', value: `${target}`, inline: true },
+          { name: 'User ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Moderator', value: `${ctx.user}`, inline: true },
+          { name: 'DM', value: getDmStatusLabel(dmSent), inline: true },
+          { name: 'Before', value: clipText(before, 120), inline: true },
+          { name: 'After', value: clipText(nickname, 120), inline: true }
+        ];
+        await sendDetailedModerationLog(ctx, '📝 Nickname changed', `${target} had their nickname updated.`, target, commonFields);
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '📝 Nickname updated', `${target} now uses **${nickname}**.`, target, commonFields, { footerText: 'DvL • nickname updated' })] });
       }
     }),
 

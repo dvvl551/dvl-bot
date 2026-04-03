@@ -66,11 +66,14 @@ function formatDuration(inputMs) {
 }
 
 function baseEmbed(guildConfig, title, description) {
+  const resolvedDescription = Array.isArray(description)
+    ? description.filter(Boolean).join('\n')
+    : String(description || '').trim();
   return new EmbedBuilder()
     .setColor(ensureHexColor(guildConfig?.embedColor))
-    .setTitle(title)
-    .setDescription(description)
-    .setFooter({ text: 'DvL' })
+    .setTitle(String(title || 'DvL').slice(0, 256))
+    .setDescription((resolvedDescription || 'No details.').slice(0, 4096))
+    .setFooter({ text: guildConfig?.prefix ? `DvL • ${guildConfig.prefix}` : 'DvL' })
     .setTimestamp();
 }
 

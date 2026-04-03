@@ -1,7 +1,7 @@
 {
-  "name": "dvl-bot-v49-final-stable-bundle",
-  "version": "4.9.0",
-  "description": "DvL Discord bot with a final stable bundle: cleaner help, better staff lists, and auto-repairing live stats.",
+  "name": "dvl-bot-v51-prod-complete",
+  "version": "5.1.0",
+  "description": "DvL Discord bot with polished production moderation, richer logs, stronger stats repair and cleaner staff UX.",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
