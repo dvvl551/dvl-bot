@@ -2781,6 +2781,20 @@ function buildSystemHubEmbed(guildConfig, prefix = '+') {
     );
 }
 
+function buildPrivateLogOverwrites(guild) {
+  if (!guild?.roles?.everyone?.id || !guild?.members?.me?.id) return [];
+  return [
+    {
+      id: guild.roles.everyone.id,
+      deny: [PermissionFlagsBits.ViewChannel]
+    },
+    {
+      id: guild.members.me.id,
+      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.ReadMessageHistory]
+    }
+  ];
+}
+
 async function ensureNamedTextChannel(guild, name, parentId, reason) {
   const safeName = String(name || 'logs').toLowerCase().slice(0, 100);
   let channel = guild.channels.cache.find((entry) => entry?.parentId === parentId && isLogsTextChannel(entry) && entry.name === safeName) || null;
@@ -2789,6 +2803,7 @@ async function ensureNamedTextChannel(guild, name, parentId, reason) {
       name: safeName,
       type: ChannelType.GuildText,
       parent: parentId || null,
+      permissionOverwrites: buildPrivateLogOverwrites(guild),
       reason: reason || 'DvL channel setup'
     }).catch(() => null);
   }
@@ -2825,11 +2840,13 @@ async function setupLogsBundle(ctx, categoryName = '🧾 Logs') {
     category = await guild.channels.create({
       name: String(categoryName || '🧾 Logs').slice(0, 100),
       type: ChannelType.GuildCategory,
+      permissionOverwrites: buildPrivateLogOverwrites(guild),
       reason: `DvL logs setup by ${ctx.user.tag}`
     }).catch(() => null);
   }
 
   if (!category) return null;
+  await category.permissionOverwrites.set(buildPrivateLogOverwrites(guild)).catch(() => null);
 
   const plan = [
     ['default', 'logs'],
@@ -2849,6 +2866,7 @@ async function setupLogsBundle(ctx, categoryName = '🧾 Logs') {
       channel = await ensureNamedTextChannel(guild, fallbackName, category.id, `DvL logs setup by ${ctx.user.tag}`);
     }
     if (channel && channel.parentId !== category.id) await channel.setParent(category.id).catch(() => null);
+    if (channel) await channel.permissionOverwrites.set(buildPrivateLogOverwrites(guild)).catch(() => null);
     created[key] = channel || null;
   }
 
@@ -6251,6 +6269,22 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           ].filter(Boolean).join('\n'))] });
         }
 
+        if (action === 'repair' || action === 'fix') {
+          const ensured = await ctx.client.ensureGuildStatsChannels?.(ctx.guild, { recreateMissing: true });
+          const result = await ctx.client.refreshGuildStats?.(ctx.guild, { recreateMissing: true });
+          if (!ensured || !result) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧰 Stats repair', `Stats are not enabled yet. Use \`${ctx.prefix}stats setup\`.`)] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧰 Stats repair', [
+            `Category: ${ensured.category ? `<#${ensured.category.id}>` : 'not set'}`,
+            `Members: ${ensured.channels?.members ? `<#${ensured.channels.members.id}>` : 'missing'}`,
+            `Online: ${ensured.channels?.online ? `<#${ensured.channels.online.id}>` : 'missing'}`,
+            `Voice: ${ensured.channels?.voice ? `<#${ensured.channels.voice.id}>` : 'missing'}`,
+            '',
+            `Live members: **${formatStatNumber(result.members)}**`,
+            `Live online: **${formatStatNumber(result.online)}**`,
+            `Live voice: **${formatStatNumber(result.voice)}**`
+          ].join('\n'))] });
+        }
+
         return ctx.invalidUsage(`Examples: \`${ctx.prefix}stats view\`, \`${ctx.prefix}stats setup\`, \`${ctx.prefix}stats repair\`, \`${ctx.prefix}stats channel members here\`, \`${ctx.prefix}stats label voice 🔊・Vocal : {count}\`.`);
       }
     }),
@@ -6409,6 +6443,54 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         ].filter(Boolean).join('\n'))] });
       }
     }),
+    makeSimpleCommand({
+      name: 'repair',
+      aliases: ['fix', 'doctor', 'repear'],
+      category: 'System',
+      description: 'Run a repair pass on one area or on the full guild config',
+      usage: 'repair [all|texts|logs|support|stats|security]',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.ManageGuild],
+      async execute(ctx) {
+        const rawScope = String(ctx.args[0] || 'all').toLowerCase();
+        const scopeMap = {
+          all: 'all',
+          full: 'all',
+          texts: 'texts',
+          text: 'texts',
+          logs: 'logs',
+          log: 'logs',
+          support: 'support',
+          stats: 'stats',
+          stat: 'stats',
+          security: 'security',
+          automod: 'security',
+          whitelist: 'security',
+          voice: 'stats',
+          vocal: 'stats'
+        };
+        const scope = scopeMap[rawScope] || 'all';
+        const report = await ctx.client.repairGuildConfiguration?.(ctx.guild, scope);
+        if (!report) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧰 Repair', 'I could not run the repair pass right now.')] });
+        if (scope === 'stats') await ctx.client.refreshGuildStats?.(ctx.guild, { recreateMissing: true }).catch(() => null);
+        const fixed = report.fixed?.length ? report.fixed.map((line) => `• ${line}`).join('\n').slice(0, 1024) : 'Nothing needed to be rebuilt.';
+        const cleared = report.cleared?.length ? report.cleared.map((line) => `• ${line}`).join('\n').slice(0, 1024) : 'Nothing invalid had to be removed.';
+        const notes = report.notes?.length ? report.notes.map((line) => `• ${line}`).join('\n').slice(0, 1024) : 'No extra notes.';
+        return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧰 Repair report', [
+          `**Scope:** ${scope}`,
+          '',
+          `**Fixed**`,
+          fixed,
+          '',
+          `**Cleared**`,
+          cleared,
+          '',
+          `**Notes**`,
+          notes
+        ].join('\n'))] });
+      }
+    }),
+
     makeSimpleCommand({
       name: 'statsrepair',
       aliases: ['repairstats', 'fixstats'],

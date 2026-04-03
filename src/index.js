@@ -1097,8 +1097,10 @@ function getGuildLiveStats(guild) {
   const online = guild?.presences?.cache
     ? guild.presences.cache.filter((presence) => presence?.status && presence.status !== 'offline').size
     : 0;
-  const voice = guild?.voiceStates?.cache
-    ? guild.voiceStates.cache.filter((state) => state?.channelId && !state?.member?.user?.bot).size
+  const voice = guild?.channels?.cache
+    ? guild.channels.cache
+        .filter((channel) => channel && [ChannelType.GuildVoice, ChannelType.GuildStageVoice].includes(channel.type))
+        .reduce((total, channel) => total + channel.members.filter((member) => !member.user?.bot).size, 0)
     : 0;
   return { members, online, voice };
 }
