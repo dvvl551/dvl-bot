@@ -58,6 +58,30 @@ const CATEGORY_META = {
 
 const CATEGORY_ORDER = ['General', 'System', 'Config', 'Welcome', 'Logs', 'Tracking', 'Support', 'Roles', 'Permissions', 'Voice', 'Security', 'Moderation', 'Automation', 'Progress', 'Giveaway', 'TikTok', 'Utility', 'Info', 'Owner', 'Fun'];
 
+
+const CATEGORY_BLURBS = {
+  General: 'Core everyday commands.',
+  System: 'Panels, diagnostics and quick server tools.',
+  Config: 'Base setup and bot settings.',
+  Welcome: 'Welcome, leave and member-facing texts.',
+  Logs: 'Audit logs, routes and log tests.',
+  Tracking: 'Voice counters, invite stats and live numbers.',
+  Support: 'DM relay and staff reply flow.',
+  Roles: 'Auto roles, role panels and status roles.',
+  Permissions: 'Custom access levels for commands.',
+  Voice: 'Temp voice and voice moderation tools.',
+  Security: 'Automod, whitelist and restricted channels.',
+  Moderation: 'Warnings, timeout, kick and ban tools.',
+  Automation: 'Sticky messages, auto react and helpers.',
+  Progress: 'Trophy board and milestone rewards.',
+  Giveaway: 'Giveaway start, edit, reroll and tracking.',
+  TikTok: 'TikTok watchers, alerts and role rewards.',
+  Utility: 'Small practical tools.',
+  Info: 'Server and user info views.',
+  Owner: 'Owner-only maintenance tools.',
+  Fun: 'Light fun commands.'
+};
+
 const CONFIG_HELP_GROUPS = {
   'Core setup / overview': ['setup', 'config', 'setprefix', 'setembedcolor', 'setlanguage'],
   'System / panels / diagnostics': ['system', 'dashboard', 'configpanel', 'modules', 'setupcheck', 'backup'],
@@ -65,7 +89,7 @@ const CONFIG_HELP_GROUPS = {
   'Logs / boost routing': ['logs', 'boost', 'boosttoggle', 'setboostchannel', 'setboosttitle', 'setboostmessage', 'previewboost', 'boostconfig', 'setlogchannel', 'logtoggle', 'logtype', 'logtypes', 'logconfig', 'logtest'],
   'Logs / routing': ['logs', 'setlogchannel', 'logtoggle', 'logtype', 'logtypes', 'logconfig', 'logtest'],
   'Tracking / invites / counters': ['tracking', 'stats', 'statschannel', 'statssetup', 'setstatslabel', 'statsrefresh', 'statsconfig', 'statsoff', 'invites', 'inviteleaderboard'],
-  'Support / relay': ['support', 'reply', 'supporttoggle', 'setsupportchannel', 'setsupportrole'],
+  'Support / relay': ['support', 'reply', 'supporttoggle', 'setsupportchannel', 'setsupportrole', 'support panel', 'support relay', 'support entry', 'support text'],
   'Roles / access / status': ['roles', 'autorole', 'roleall', 'autoroleadd', 'autoroleremove', 'autorolelist', 'reactbutton', 'setstatusrole', 'statusroletoggle', 'statusroleconfig', 'clearstatusrole', 'statusrolecheck'],
   'Voice / temp voice': ['voice', 'createvoc', 'voicepanel', 'move', 'moveall', 'pull', 'voicekick', 'voicemute', 'voiceunmute', 'voiceban', 'voiceunban', 'setvoicemuterole', 'setvoicebanrole', 'voicepermconfig'],
   'Security / restricted channels': ['security', 'automodconfig', 'securitypreset', 'ghostping', 'setantispam', 'setantimention', 'setanticaps', 'setantiemoji', 'setraidage', 'automodignore', 'automodunignore', 'automodignored', 'badwordadd', 'badwordremove', 'badwords', 'wl', 'unwl', 'whitelistlist', 'piconly', 'piconlylist'],
@@ -476,6 +500,214 @@ async function refreshConfiguredStatsChannels(guild, guildConfig) {
     if (channel.name !== entry.name) await channel.setName(entry.name).catch(() => null);
   }
   return { live, targets };
+}
+
+
+async function collectWhitelistOverview(ctx) {
+  const automod = ctx.guildConfig.automod || {};
+  const userIds = Array.from(new Set((automod.whitelistUserIds || []).map(String).filter(Boolean)));
+  const roleIds = Array.from(new Set((automod.whitelistRoleIds || []).map(String).filter(Boolean)));
+  const users = [];
+  const roles = [];
+  const brokenUsers = [];
+  const brokenRoles = [];
+
+  for (const id of userIds) {
+    const member = ctx.guild.members.cache.get(id) || await ctx.guild.members.fetch(id).catch(() => null);
+    const user = member?.user || await ctx.client.users.fetch(id).catch(() => null);
+    if (user) users.push({ id, label: `<@${id}> — \`${user.tag}\`` });
+    else brokenUsers.push(id);
+  }
+
+  for (const id of roleIds) {
+    const role = ctx.guild.roles.cache.get(id) || await ctx.guild.roles.fetch(id).catch(() => null);
+    if (role) roles.push({ id, label: `<@&${id}> — \`${role.name}\`` });
+    else brokenRoles.push(id);
+  }
+
+  return { users, roles, brokenUsers, brokenRoles };
+}
+
+async function cleanWhitelistEntries(ctx) {
+  const overview = await collectWhitelistOverview(ctx);
+  ctx.store.updateGuild(ctx.guild.id, (guild) => {
+    guild.automod.whitelistUserIds = overview.users.map((entry) => entry.id);
+    guild.automod.whitelistRoleIds = overview.roles.map((entry) => entry.id);
+    return guild;
+  });
+  return overview;
+}
+
+async function buildWhitelistEmbeds(ctx) {
+  const overview = await collectWhitelistOverview(ctx);
+  const result = [baseEmbed(ctx.guildConfig, '✅ Automod whitelist', [
+    `**Users:** ${overview.users.length}`,
+    `**Roles:** ${overview.roles.length}`,
+    `**Broken IDs:** ${overview.brokenUsers.length + overview.brokenRoles.length}`,
+    '',
+    `Quick use: \`${ctx.prefix}wl @user\` • \`${ctx.prefix}wl @role\` • \`${ctx.prefix}wl clean\``
+  ].join('\n'))];
+
+  const blocks = [
+    ['Users', overview.users.map((entry, index) => `**${index + 1}.** ${entry.label}`)],
+    ['Roles', overview.roles.map((entry, index) => `**${index + 1}.** ${entry.label}`)],
+    ['Broken user IDs', overview.brokenUsers.map((id, index) => `**${index + 1}.** \`${id}\``)],
+    ['Broken role IDs', overview.brokenRoles.map((id, index) => `**${index + 1}.** \`${id}\``)]
+  ];
+
+  for (const [label, lines] of blocks) {
+    if (!lines.length) continue;
+    const chunks = chunkLines(lines, 8);
+    for (const [index, chunk] of chunks.entries()) {
+      let current = result[result.length - 1];
+      if ((current.data.fields?.length || 0) >= 3) {
+        current = baseEmbed(ctx.guildConfig, '✅ Automod whitelist', 'Continuation');
+        result.push(current);
+      }
+      current.addFields({
+        name: chunks.length > 1 ? `${label} • page ${index + 1}/${chunks.length}` : label,
+        value: chunk.join('\n').slice(0, 1024),
+        inline: false
+      });
+    }
+  }
+
+  if (!result[0].data.fields?.length) {
+    result[0].setDescription([
+      'No user or role is whitelisted yet.',
+      '',
+      `Quick use: \`${ctx.prefix}wl @user\` • \`${ctx.prefix}wl @role\``
+    ].join('\n'));
+  }
+  return result;
+}
+
+function buildSectionedListEmbeds(guildConfig, title, introLines = [], sections = [], options = {}) {
+  const safeChunkSize = Math.max(1, Number(options.chunkSize) || 6);
+  const safeMaxFields = Math.max(1, Number(options.maxFields) || 3);
+  const continuationTitle = options.continuationTitle || title;
+  const introText = Array.isArray(introLines) ? introLines.filter(Boolean).join('\n') : String(introLines || '');
+  const embeds = [baseEmbed(guildConfig, title, introText || (options.emptyText || 'Nothing to show.'))];
+
+  for (const [label, rawLines] of sections) {
+    const lines = (rawLines || []).filter(Boolean);
+    if (!lines.length) continue;
+    const chunks = chunkLines(lines, safeChunkSize);
+    for (const [index, chunk] of chunks.entries()) {
+      let current = embeds[embeds.length - 1];
+      if ((current.data.fields?.length || 0) >= safeMaxFields) {
+        current = baseEmbed(guildConfig, continuationTitle, options.continuationDescription || 'Continuation');
+        embeds.push(current);
+      }
+      current.addFields({
+        name: chunks.length > 1 ? `${label} • page ${index + 1}/${chunks.length}` : label,
+        value: chunk.join('\n').slice(0, 1024),
+        inline: false
+      });
+    }
+  }
+
+  if (!embeds[0].data.fields?.length && options.emptyText) embeds[0].setDescription(options.emptyText);
+  return embeds;
+}
+
+async function buildAutoRoleEmbeds(ctx) {
+  const ids = Array.from(new Set((ctx.guildConfig.roles?.autoRoles || []).map(String).filter(Boolean)));
+  const roles = [];
+  const broken = [];
+  for (const id of ids) {
+    const role = ctx.guild.roles.cache.get(id) || await ctx.guild.roles.fetch(id).catch(() => null);
+    if (role) roles.push(`**${roles.length + 1}.** <@&${id}> — \`${role.name}\``);
+    else broken.push(`**${broken.length + 1}.** \`${id}\``);
+  }
+  return buildSectionedListEmbeds(
+    ctx.guildConfig,
+    '🎭 Auto roles',
+    [
+      `**Valid roles:** ${roles.length}`,
+      `**Broken IDs:** ${broken.length}`,
+      '',
+      `Quick use: \`${ctx.prefix}autoroleadd @role\` • \`${ctx.prefix}autoroleremove @role\``
+    ],
+    [
+      ['Roles', roles],
+      ['Broken IDs', broken]
+    ],
+    {
+      chunkSize: 8,
+      emptyText: ['No auto roles set yet.', '', `Quick use: \`${ctx.prefix}autoroleadd @role\``].join('\n')
+    }
+  );
+}
+
+function buildBackupListEmbeds(ctx, backups) {
+  const lines = backups.map((entry, index) => {
+    const when = new Date(entry.createdAt).toLocaleString('fr-FR', { hour12: false });
+    return [
+      `**${index + 1}.** \`${entry.id}\` • **${entry.name || 'Unnamed'}**`,
+      `↳ ${when} • from **${entry.sourceGuildName || 'Unknown server'}**`,
+      `↳ ${entry.meta?.channels || 0} ch • ${entry.meta?.roles || 0} roles • ${entry.meta?.members || 0} members`
+    ].join('\n');
+  });
+  return buildSectionedListEmbeds(
+    ctx.guildConfig,
+    '💾 Saved backups',
+    [
+      `**Stored:** ${backups.length}/50`,
+      '',
+      `Use \`${ctx.prefix}backup load latest\` or \`${ctx.prefix}backup info <id>\`.`
+    ],
+    [['Backups', lines]],
+    {
+      chunkSize: 4,
+      emptyText: `No backups saved yet. Use \`${ctx.prefix}backup create\` first.`
+    }
+  );
+}
+
+function buildGiveawayListEmbeds(ctx, entries) {
+  const lines = entries.map((g, index) => [
+    `**${index + 1}.** ${getGiveawayStateEmoji(g)} **${g.id}** • ${g.prize}`,
+    `↳ state: **${getGiveawayStateLabel(g)}** • winners: ${g.winners} • participants: ${(g.participants || []).length}`,
+    `↳ message: \`${g.messageId || 'none'}\` • channel: ${g.channelId ? `<#${g.channelId}>` : 'none'}`
+  ].join('\n'));
+  return buildSectionedListEmbeds(
+    ctx.guildConfig,
+    '🎁 Giveaways',
+    [
+      `**Saved giveaways:** ${entries.length}`,
+      '',
+      `Use \`${ctx.prefix}ginfo <id>\` or \`${ctx.prefix}gparticipants <id>\`.`
+    ],
+    [['Giveaways', lines]],
+    {
+      chunkSize: 4,
+      emptyText: 'No giveaways saved.'
+    }
+  );
+}
+
+function buildTikTokWatcherEmbeds(ctx) {
+  const watchers = ctx.guildConfig.tiktok?.watchers || [];
+  const lines = watchers.map((watcher, index) => [
+    `**${index + 1}.** **@${watcher.username}** → ${watcher.channelId ? `<#${watcher.channelId}>` : 'missing channel'}`,
+    `↳ ping: ${watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : 'none'} • live: ${boolEmoji(watcher.announceLive)} • video: ${boolEmoji(watcher.announceVideos)}`,
+    `↳ source: ${watcher.lastSource || 'n/a'}${watcher.lastError ? ` • error: ${watcher.lastError}` : ''}`
+  ].join('\n'));
+  return buildSectionedListEmbeds(
+    ctx.guildConfig,
+    '🎵 TikTok watchers',
+    [
+      `**Watchers:** ${watchers.length}`,
+      '',
+      `Quick use: \`${ctx.prefix}tiktok add username here\` • \`${ctx.prefix}tiktok check\``
+    ],
+    [['Watchers', lines]],
+    {
+      chunkSize: 4,
+      emptyText: 'No TikTok watchers.'
+    }
+  );
 }
 
 
@@ -1895,49 +2127,157 @@ function createModulePreviewMessage(guildConfig, source, variables, options = {}
   }, textValue);
 }
 
+
+function getSupportPromptVariables(guild, support, prefix = '+', fallbackChannel = null) {
+  return {
+    server: guild?.name || 'Server',
+    prefix,
+    supportChannel: support?.entryChannelId ? `<#${support.entryChannelId}>` : (fallbackChannel ? `<#${fallbackChannel.id}>` : '#support')
+  };
+}
+
+function createSupportPromptPayload(guildConfig, guild, prefix = '+', fallbackChannel = null) {
+  const support = guildConfig.support || {};
+  const vars = getSupportPromptVariables(guild, support, prefix, fallbackChannel);
+  const title = fillTemplate(support.promptTitle || '📨 Need help?', vars).trim();
+  const description = fillTemplate(support.promptMessage || 'To contact the staff, go to {supportChannel} and run `{prefix}support your message`.', vars).trim();
+  const footer = fillTemplate(support.promptFooter ?? 'DvL Support', vars).trim();
+  const imageUrl = fillTemplate(support.promptImageUrl || '', vars).trim();
+  return createAnnouncementPreviewPayload(guildConfig, {
+    mode: support.promptMode || 'embed',
+    title,
+    footer,
+    color: support.promptColor,
+    imageUrl
+  }, description);
+}
+
 function buildSupportModuleEmbed(guildConfig, prefix = '+') {
   const support = guildConfig.support || {};
-  return baseEmbed(guildConfig, '📨 Support hub', 'DM relay between members and staff, with a simple setup flow.')
+  return baseEmbed(guildConfig, '📨 Support hub', 'Keep support simple: one relay for staff, one optional public support channel, and one configurable prompt panel.')
     .addFields(
       {
         name: 'Status',
         value: [
           `**Relay:** ${support.enabled ? 'on' : 'off'}`,
-          `**Channel:** ${support.channelId ? `<#${support.channelId}>` : 'not set'}`,
-          `**Ping role:** ${support.pingRoleId ? `<@&${support.pingRoleId}>` : 'none'}`
+          `**Relay channel:** ${support.channelId ? `<#${support.channelId}>` : 'not set'}`,
+          `**Member channel:** ${support.entryChannelId ? `<#${support.entryChannelId}>` : 'not set'}`,
+          `**Restrict to member channel:** ${support.restrictToEntry ? 'on' : 'off'}`,
+          `**Ping role:** ${support.pingRoleId ? `<@&${support.pingRoleId}>` : 'none'}`,
+          `**Prompt style:** ${normalizeAnnouncementMode(support.promptMode)} • ${support.promptTitle ? 'custom title' : 'default title'}`
         ].join('\n'),
         inline: false
       },
       {
-        name: 'Staff setup',
+        name: 'Quick setup',
         value: [
-          `\`${prefix}support on\``,
-          `\`${prefix}support channel #support-logs\``,
+          `\`${prefix}support panel\``,
+          `\`${prefix}support relay #support-logs\``,
+          `\`${prefix}support entry #support\``,
           `\`${prefix}support role @Staff\``,
           `\`${prefix}support test\``
         ].join('\n'),
         inline: true
       },
       {
-        name: 'Member use',
+        name: 'Member flow',
         value: [
-          `\`${prefix}support j'ai besoin d'aide\``,
-          `member gets moved to DM`,
+          `post the prompt in the public support channel`,
+          `members run \`${prefix}support mon message\``,
+          `bot moves the conversation to DM`,
           `staff answer with \`${prefix}reply\``
         ].join('\n'),
         inline: true
       },
       {
-        name: 'Useful checks',
+        name: 'Keep it clean',
         value: [
-          `• relay must be on`,
-          `• relay channel must exist`,
-          `• optional ping role can be turned off`,
-          `• \`${prefix}support channel off\` clears only the channel binding`
+          `• use \`${prefix}support panel\` or \`${prefix}support text config\` to edit the prompt with buttons`,
+          `• \`${prefix}support channel ...\` still works as a legacy alias for the relay channel`,
+          `• \`${prefix}support text send\` posts the public prompt in the current or configured member channel`
         ].join('\n').slice(0, 1024),
         inline: false
       }
     );
+}
+
+function createSupportPanelEmbed(guildConfig, guild, prefix = '+', currentChannel = null) {
+  const support = guildConfig.support || {};
+  const channelMention = currentChannel?.isTextBased?.() ? currentChannel.toString() : 'this channel';
+  const previewTarget = support.entryChannelId ? `<#${support.entryChannelId}>` : (currentChannel?.isTextBased?.() ? channelMention : 'not set');
+  const embed = baseEmbed(guildConfig, '📨 Support panel', `One clean place for the support flow. Use buttons instead of stacking a lot of similar commands.`)
+    .addFields(
+      {
+        name: 'Routing',
+        value: [
+          `**Relay:** ${support.enabled ? 'on' : 'off'}`,
+          `**Relay channel:** ${support.channelId ? `<#${support.channelId}>` : 'not set'}`,
+          `**Member channel:** ${support.entryChannelId ? `<#${support.entryChannelId}>` : 'not set'}`,
+          `**Restrict members:** ${support.restrictToEntry ? 'on' : 'off'}`,
+          `**Ping role:** ${support.pingRoleId ? `<@&${support.pingRoleId}>` : 'none'}`
+        ].join('\n'),
+        inline: false
+      },
+      {
+        name: 'Prompt style',
+        value: [
+          `**Mode:** ${normalizeAnnouncementMode(support.promptMode)}`,
+          `**Title:** ${formatTemplatePreview(support.promptTitle, 'default')}`,
+          `**Message:** ${formatTemplatePreview(support.promptMessage, 'default')}`,
+          `**Footer:** ${formatTemplatePreview(support.promptFooter, 'default')}`,
+          `**Color:** ${support.promptColor || guildConfig.embedColor || '#5865F2'}`,
+          `**Image:** ${formatTemplatePreview(support.promptImageUrl, 'none')}`
+        ].join('\n').slice(0, 1024),
+        inline: false
+      },
+      {
+        name: 'Useful vars',
+        value: '`{prefix}` • `{server}` • `{supportChannel}`',
+        inline: true
+      },
+      {
+        name: 'Preview target',
+        value: `${previewTarget}\nPanel opened from: ${channelMention}`.slice(0, 1024),
+        inline: true
+      },
+      {
+        name: 'Still useful by command',
+        value: [
+          `\`${prefix}support role @Staff\``,
+          `\`${prefix}support relay off\``,
+          `\`${prefix}support entry off\``
+        ].join('\n'),
+        inline: false
+      }
+    )
+    .setFooter({ text: 'DvL • support panel' });
+  return embed;
+}
+
+function createSupportPanelComponents() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('supportpanel:toggle').setLabel('Relay on/off').setEmoji('📨').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('supportpanel:relayhere').setLabel('Relay here').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:entryhere').setLabel('Support here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:restrict').setLabel('Restrict').setEmoji('🚧').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:refresh').setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('supportpanel:mode').setLabel('Embed/plain').setEmoji('🎨').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('supportpanel:edit:title').setLabel('Title').setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:edit:message').setLabel('Message').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:edit:footer').setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:send').setLabel('Send prompt').setEmoji('📤').setStyle(ButtonStyle.Success)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('supportpanel:edit:color').setLabel('Color').setEmoji('🌈').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:edit:image').setLabel('Image').setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:clear:entry').setLabel('Clear entry').setEmoji('🧹').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:clear:relay').setLabel('Clear relay').setEmoji('🧹').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:reset').setLabel('Reset text').setEmoji('♻️').setStyle(ButtonStyle.Danger)
+    )
+  ];
 }
 
 function buildTextsHubEmbed(guildConfig, prefix = '+', focus = 'home') {
@@ -2310,7 +2650,7 @@ function buildSystemHubEmbed(guildConfig, prefix = '+') {
         name: 'Core tools',
         value: [
           `\`${prefix}dashboard\``,
-          `\`${prefix}configpanel\``,
+          `\`${prefix}panel\``,
           `\`${prefix}modules\``,
           `\`${prefix}setupcheck\``,
           `\`${prefix}backup list\``
@@ -2622,11 +2962,82 @@ function getSetupHelpPages() {
   return pages.length ? pages : [[]];
 }
 
+const HELP_SPECIAL_PAGES = {
+  start: 'start',
+  quickstart: 'start',
+  quick: 'start',
+  debut: 'start',
+  staff: 'staff',
+  mod: 'staff',
+  staffs: 'staff',
+  members: 'members',
+  member: 'members',
+  user: 'members',
+  users: 'members',
+  fix: 'repair',
+  repair: 'repair',
+  doctor: 'repair'
+};
+
+function createSpecialHelpEmbed(guildConfig, kind = 'start') {
+  const prefix = guildConfig?.prefix || '+';
+  if (kind === 'start') {
+    return baseEmbed(guildConfig, '🚀 Help • Quick start', [
+      'Launch the bot with the minimum useful setup first.',
+      '',
+      `1. \`${prefix}logs setup\``,
+      `2. \`${prefix}support panel\``,
+      `3. \`${prefix}welcome\` and \`${prefix}leave\``,
+      `4. \`${prefix}stats setup\` if you want counters`,
+      '',
+      'Fast checks:',
+      `• \`${prefix}setup check\``,
+      `• \`${prefix}repair all\``,
+      `• \`${prefix}panel\``
+    ].join('\n'));
+  }
+  if (kind === 'staff') {
+    return baseEmbed(guildConfig, '🛠️ Help • Staff essentials', [
+      `Logs: \`${prefix}logs view\` • \`${prefix}logs panel\``,
+      `Support: \`${prefix}support panel\` • \`${prefix}reply\``,
+      `Roles: \`${prefix}roles view\` • \`${prefix}autorolelist\``,
+      `Security: \`${prefix}security\` • \`${prefix}wl list\``,
+      `Repair: \`${prefix}repair\` • \`${prefix}setup check\``,
+      '',
+      'Good daily checks:',
+      `• \`${prefix}stats\``,
+      `• \`${prefix}backup list\``,
+      `• \`${prefix}glist\``
+    ].join('\n'));
+  }
+  if (kind === 'members') {
+    return baseEmbed(guildConfig, '👥 Help • Member commands', [
+      `Need staff? Use \`${prefix}support your message\`.`,
+      `Need a role button? Check the role panel in the server.`,
+      `Temp voice controls live on the voice panel if enabled.`,
+      '',
+      'Simple public commands:',
+      `• \`${prefix}help\``,
+      `• \`${prefix}invite\``,
+      `• \`${prefix}serverinfo\``,
+      `• \`${prefix}userinfo\``
+    ].join('\n'));
+  }
+  return baseEmbed(guildConfig, '🧰 Help • Repair', [
+    `Run \`${prefix}repair\` for a full report.`,
+    `Target one area: \`${prefix}repair texts\` • \`${prefix}repair logs\` • \`${prefix}repair support\` • \`${prefix}repair stats\` • \`${prefix}repair security\``,
+    '',
+    `Use \`${prefix}setup check\` if you mainly want a readable overview before fixing anything.`
+  ].join('\n'));
+}
+
 function getHelpTargetInfo(client, target = 'Home') {
   const commands = client.commandRegistry.filter((cmd) => !cmd.hidden);
   const rawQuery = String(target || '').trim();
   const forceCommand = /^([+/]|cmd\s+)/i.test(rawQuery);
   const cleanedQuery = rawQuery.replace(/^cmd\s+/i, '').trim();
+  const specialPage = HELP_SPECIAL_PAGES[cleanedQuery.toLowerCase()] || null;
+  if (!forceCommand && specialPage) return { type: 'special', special: specialPage, category: 'Home', totalPages: 1 };
   const categoryName = Object.keys(CATEGORY_META).find((name) => name.toLowerCase() === cleanedQuery.toLowerCase()) || (cleanedQuery ? null : 'Home');
   if (!forceCommand && categoryName) {
     const category = categoryName;
@@ -2666,6 +3077,7 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
   const commands = client.commandRegistry.filter((cmd) => !cmd.hidden);
   const info = getHelpTargetInfo(client, target);
   if (info.type === 'command') return createCommandHelpEmbed(client, guildConfig, info.command);
+  if (info.type === 'special') return createSpecialHelpEmbed(guildConfig, info.special);
 
   const category = info.category || 'Home';
   const safePage = Math.min(Math.max(1, Number(page) || 1), info.totalPages || 1);
@@ -2680,14 +3092,18 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
         'Vue rapide du bot.',
         `Le bouton **Categories** ouvre une navigation propre au lieu d'afficher tout d'un coup.`,
         '',
-        `Examples: \`${prefix}help ban\`, \`${prefix}help logs\`, \`${prefix}help tracking\`, \`${prefix}help support\`, \`${prefix}help setup\`, \`${prefix}dashboard\``,
+        `Examples: \`${prefix}help ban\`, \`${prefix}help logs\`, \`${prefix}help tracking\`, \`${prefix}help support\`, \`${prefix}help setup\`, \`${prefix}panel\``,
+        `Shortcuts: \`${prefix}help start\` • \`${prefix}help staff\` • \`${prefix}help members\` • \`${prefix}help repair\``,
         `Prefix: \`${prefix}\``,
         `Commands: **${commands.length}** • Aliases: **${commands.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}**`
       ].join('\n'))
       .addFields(
         { name: `${CATEGORY_META.Setup?.emoji || '•'} Setup`, value: `**${configCount}** setup command(s)`, inline: true },
         { name: '📂 Browse', value: 'Use the **Categories** button below.', inline: true },
-        { name: '📚 Full list', value: `Use **All** or \`${prefix}help all\`.`, inline: true }
+        { name: '📚 Full list', value: `Use **All** or \`${prefix}help all\`.`, inline: true },
+        { name: '🚀 Start', value: `\`${prefix}help start\``, inline: true },
+        { name: '🛠️ Staff', value: `\`${prefix}help staff\``, inline: true },
+        { name: '🧰 Repair', value: `\`${prefix}help repair\``, inline: true }
       );
     return embed;
   }
@@ -2707,7 +3123,7 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     current.forEach((name) => {
       embed.addFields({
         name: `${CATEGORY_META[name]?.emoji || '•'} ${name}`,
-        value: `**${grouped[name] || 0}** command(s)`,
+        value: [`**${grouped[name] || 0}** command(s)`, CATEGORY_BLURBS[name] || ''].filter(Boolean).join('\n'),
         inline: true
       });
     });
@@ -2791,6 +3207,7 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
   }
   if (category === 'Logs') {
     intro.push(`Use \`${prefix}logs view\` for the clean summary, \`${prefix}logs types\` for every event, or \`${prefix}logs panel\` for buttons.`);
+    intro.push(`The nicest logs are now message/member events: cleaner fields, avatar thumbnail and better jump links when available.`);
     intro.push(`Quick examples: \`${prefix}logs boost here\`, \`${prefix}logs enable join leave boost\`, \`${prefix}logs test boost\`.`);
   }
   if (category === 'Security') {
@@ -2828,6 +3245,12 @@ function createHelpComponents(current = 'Home', page = 1, totalPages = 1) {
       new ButtonBuilder().setCustomId('help:Setup:1').setLabel('🧩 Setup').setStyle(current === 'Setup' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('help:Categories:1').setLabel('📂 Categories').setStyle(current === 'Categories' ? ButtonStyle.Success : ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('help:All:1').setLabel('📚 All').setStyle(current === 'All' ? ButtonStyle.Success : ButtonStyle.Secondary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('help:start:1').setLabel('🚀 Start').setStyle(current === 'start' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:staff:1').setLabel('🛠️ Staff').setStyle(current === 'staff' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:members:1').setLabel('👥 Members').setStyle(current === 'members' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:repair:1').setLabel('🧰 Repair').setStyle(current === 'repair' ? ButtonStyle.Success : ButtonStyle.Secondary)
     )
   ];
 
@@ -3043,7 +3466,7 @@ function createCommands() {
     }),
     makeSimpleCommand({
       name: 'botinfo',
-      aliases: ['about', 'stats'],
+      aliases: ['about'],
       category: 'General',
       description: 'Show bot information',
       usage: 'botinfo',
@@ -3133,7 +3556,7 @@ function createCommands() {
     }),
     makeSimpleCommand({
       name: 'dashboard',
-      aliases: ['panel', 'overview'],
+      aliases: ['overview', 'serveroverview'],
       category: 'System',
       description: 'Open the clean server overview dashboard',
       usage: 'dashboard [home|setup|logs|security|voice|automation|progress]',
@@ -3148,15 +3571,18 @@ function createCommands() {
 
     makeSimpleCommand({
       name: 'configpanel',
-      aliases: ['panelconfig', 'quicksetup', 'setupmenu', 'easysetup'],
+      aliases: ['panel', 'customize', 'panelconfig', 'quicksetup', 'setupmenu', 'easysetup', 'stylepanel'],
       category: 'System',
-      description: 'Open a practical configuration panel with quick buttons for this channel',
-      usage: 'configpanel [home|automation|channels]',
+      description: 'Open the smart control center with pages, presets, themes and deployable staff panel',
+      usage: 'configpanel [home|texts|welcome|leave|leave-dm|boost|logs|support|security|automation|channels|style|repair|deploy]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
       async execute(ctx) {
         const raw = String(ctx.getText('page', 0) || ctx.args[0] || 'home').toLowerCase();
-        const page = ['home', 'automation', 'channels'].includes(raw) ? raw : 'home';
+        if (raw === 'deploy') {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📌 Smart panel', 'Open `+panel` in the staff channel you want, then press **Deploy panel**. That message becomes your pinned control center.')] });
+        }
+        const page = ['home', 'texts', 'welcome', 'leave', 'leave-dm', 'boost', 'logs', 'support', 'security', 'automation', 'channels', 'style', 'repair'].includes(raw) ? raw : 'home';
         await ctx.reply({ embeds: [createConfigPanelEmbed(ctx.guildConfig, ctx.guild, page, ctx.channel)], components: createConfigPanelComponents(page, ctx.channel?.id) });
       }
     }),
@@ -3167,7 +3593,7 @@ function createCommands() {
       aliases: ['setuphub', 'startersetup'],
       category: 'Config',
       description: 'Clean main setup hub with the shortest path for system, logs, texts, support and tracking',
-      usage: 'setup [view|system|check|logs|texts|support|tracking|stats|roles|voice|security|automation|giveaway|tiktok|progress|backup]',
+      usage: 'setup [view|system|check|doctor|logs|texts|support|tracking|stats|roles|voice|security|automation|giveaway|tiktok|progress|backup]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
       slash: { root: 'general', sub: 'setup', description: 'Open the practical setup hub' },
@@ -3176,6 +3602,10 @@ function createCommands() {
         if (['view', 'home', 'guide', 'start'].includes(section)) return ctx.reply({ embeds: [buildSetupHubEmbed(ctx.guildConfig, ctx.prefix)] });
         if (section === 'system') return ctx.reply({ embeds: [buildSystemHubEmbed(ctx.guildConfig, ctx.prefix)] });
         if (section === 'check') return ctx.reply({ embeds: [createSetupCheckEmbed(ctx.guildConfig, ctx.guild)], components: createDashboardComponents('setup') });
+        if (section === 'doctor' || section === 'repair') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧰 Setup • Doctor', [
+          `Use \`${ctx.prefix}repair\` for the full repair report.`,
+          `Fast use: \`${ctx.prefix}repair all\` • \`${ctx.prefix}repair stats\` • \`${ctx.prefix}repair support\``
+        ].join('\n'))] });
         if (section === 'logs') return ctx.reply({ embeds: [createLogsOverviewEmbed(ctx.guildConfig, ctx.prefix)] });
         if (section === 'texts') return ctx.reply({ embeds: [buildTextsHubEmbed(ctx.guildConfig, ctx.prefix)] });
         if (section === 'support') return ctx.reply({ embeds: [buildSupportModuleEmbed(ctx.guildConfig, ctx.prefix)] });
@@ -4387,15 +4817,7 @@ You can now run \`${ctx.prefix}backup load ${entry.id}\` on any server where the
         }
 
         if (['list', 'ls', 'view', 'show'].includes(action)) {
-          if (!backups.length) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Backups', `No backups saved yet. Use \`${ctx.prefix}backup create\` first.`)] });
-          const lines = backups.slice(0, 12).map((entry, index) => {
-            const when = new Date(entry.createdAt).toLocaleString('en-GB', { hour12: false });
-            return `**${index + 1}.** \`${entry.id}\` • **${entry.name || 'Unnamed'}**
-↳ ${when} • from **${entry.sourceGuildName || 'Unknown server'}** • ${entry.meta?.channels || 0} ch • ${entry.meta?.roles || 0} roles`;
-          });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Saved backups', `${lines.join('\n\n')}
-
-Use \`${ctx.prefix}backup load latest\` or \`${ctx.prefix}backup info <id>\`.`)] });
+          return ctx.reply({ embeds: buildBackupListEmbeds(ctx, backups) });
         }
 
         const found = resolveGlobalBackupEntry(backups, rawId || (['latest', 'last'].includes(action) ? 'latest' : ''));
@@ -5451,7 +5873,7 @@ Reason: **${reason}**`)] });
       aliases: ['serverstatsview', 'statshub'],
       category: 'Tracking',
       description: 'Clean hub for live member / online / voice counters',
-      usage: 'stats [view|setup [category]|refresh|off|channel <members|online|voice> <here|#voice|id>|label <members|online|voice> [here|#voice|id] <label>]',
+      usage: 'stats [view|setup [category]|refresh|repair|off|channel <members|online|voice> <here|#voice|id>|label <members|online|voice> [here|#voice|id] <label>]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageChannels],
       async execute(ctx) {
@@ -5459,6 +5881,7 @@ Reason: **${reason}**`)] });
         const stats = ctx.guildConfig.stats || { enabled: false, categoryId: null, channels: {}, labels: {} };
 
         if (['view', 'config', 'show', 'list', 'status'].includes(action)) {
+          const live = getLiveGuildStats(ctx.guild);
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📊 Stats config', [
             `**Status:** ${stats.enabled ? 'on' : 'off'}`,
             `**Category:** ${stats.categoryId ? `<#${stats.categoryId}>` : 'not set'}`,
@@ -5466,21 +5889,31 @@ Reason: **${reason}**`)] });
             `**Online channel:** ${stats.channels?.online ? `<#${stats.channels.online}>` : 'not set'}`,
             `**Voice channel:** ${stats.channels?.voice ? `<#${stats.channels.voice}>` : 'not set'}`,
             '',
+            `**Live members:** ${formatStatNumber(live.members)}`,
+            `**Live online:** ${formatStatNumber(live.online)}`,
+            `**Live voice:** ${formatStatNumber(live.voice)}`,
+            '',
+            `**Auto refresh:** every minute`,
+            `**Auto repair:** missing counters are recreated when the stats category exists`,
+            '',
             `**Members label:** ${stats.labels?.members || 'not set'}`,
             `**Online label:** ${stats.labels?.online || 'not set'}`,
             `**Voice label:** ${stats.labels?.voice || 'not set'}`,
             '',
-            `Quick use: \`${ctx.prefix}stats channel members here\` • \`${ctx.prefix}stats label voice 🔊・Vocal : {count}\` • \`${ctx.prefix}stats refresh\``
+            `Quick use: \`${ctx.prefix}stats setup\` • \`${ctx.prefix}stats channel members here\` • \`${ctx.prefix}stats label voice 🔊・Vocal : {count}\``
           ].join('\n'))] });
         }
 
         if (action === 'refresh') {
+          await ctx.client.ensureGuildStatsChannels?.(ctx.guild, { recreateMissing: true });
           const result = await refreshConfiguredStatsChannels(ctx.guild, ctx.store.getGuild(ctx.guild.id));
           if (!result) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📊 Stats refresh', `Stats are not enabled yet. Use \`${ctx.prefix}stats setup\` or \`${ctx.prefix}statssetup\`.`)] });
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📊 Stats refreshed', [
             `Members: **${formatStatNumber(result.live.members)}**`,
             `Online: **${formatStatNumber(result.live.online)}**`,
-            `Voice: **${formatStatNumber(result.live.voice)}**`
+            `Voice: **${formatStatNumber(result.live.voice)}**`,
+            '',
+            `Stats already refresh automatically every minute. This command is only a manual force refresh.`
           ].join('\n'))] });
         }
 
@@ -5593,7 +6026,7 @@ Reason: **${reason}**`)] });
           ].filter(Boolean).join('\n'))] });
         }
 
-        return ctx.invalidUsage(`Examples: \`${ctx.prefix}stats view\`, \`${ctx.prefix}stats setup\`, \`${ctx.prefix}stats channel members here\`, \`${ctx.prefix}stats label voice 🔊・Vocal : {count}\`.`);
+        return ctx.invalidUsage(`Examples: \`${ctx.prefix}stats view\`, \`${ctx.prefix}stats setup\`, \`${ctx.prefix}stats repair\`, \`${ctx.prefix}stats channel members here\`, \`${ctx.prefix}stats label voice 🔊・Vocal : {count}\`.`);
       }
     }),
 
@@ -5742,6 +6175,27 @@ Reason: **${reason}**`)] });
           '',
           'Tip: you can use an existing voice channel ID to turn it into a live counter.'
         ].filter(Boolean).join('\n'))] });
+      }
+    }),
+    makeSimpleCommand({
+      name: 'statsrepair',
+      aliases: ['repairstats', 'fixstats'],
+      category: 'Tracking',
+      description: 'Recreate missing stats counters and refresh their names',
+      usage: 'statsrepair',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.ManageChannels],
+      slash: { root: 'tracking', sub: 'statsrepair', description: 'Repair missing stats counters' },
+      async execute(ctx) {
+        const ensured = await ctx.client.ensureGuildStatsChannels?.(ctx.guild, { recreateMissing: true });
+        const result = await refreshConfiguredStatsChannels(ctx.guild, ctx.store.getGuild(ctx.guild.id));
+        if (!ensured || !result) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧰 Stats repair', `Stats are not enabled yet. Use \`${ctx.prefix}statssetup\`.`)] });
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧰 Stats repair', [
+          `Category: ${ensured.category ? `<#${ensured.category.id}>` : 'not set'}`,
+          `Members: ${ensured.channels?.members ? `<#${ensured.channels.members.id}>` : 'missing'}`,
+          `Online: ${ensured.channels?.online ? `<#${ensured.channels.online.id}>` : 'missing'}`,
+          `Voice: ${ensured.channels?.voice ? `<#${ensured.channels.voice.id}>` : 'missing'}`
+        ].join('\n'))] });
       }
     }),
     makeSimpleCommand({
@@ -6872,7 +7326,19 @@ Reason: **${reason}**`)] });
       async execute(ctx) {
         const user = ctx.interaction ? ctx.interaction.options.getUser('user') : ctx.message?.mentions.users.first();
         const role = ctx.interaction ? ctx.interaction.options.getRole('role') : ctx.message?.mentions.roles.first();
-        const raw = ctx.args[0];
+        const raw = String(ctx.args[0] || '').trim();
+        if (!user && !role && ['list', 'view', 'show'].includes(raw.toLowerCase())) {
+          return ctx.reply({ embeds: await buildWhitelistEmbeds(ctx) });
+        }
+        if (!user && !role && raw.toLowerCase() === 'clean') {
+          const overview = await cleanWhitelistEntries(ctx);
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧹 Whitelist cleaned', [
+            `**Users kept:** ${overview.users.length}`,
+            `**Roles kept:** ${overview.roles.length}`,
+            `**Broken users removed:** ${overview.brokenUsers.length}`,
+            `**Broken roles removed:** ${overview.brokenRoles.length}`
+          ].join('\n'))] });
+        }
         if (!user && !role && !raw) return ctx.invalidUsage();
         ctx.store.updateGuild(ctx.guild.id, (guild) => {
           if (user) {
@@ -6920,9 +7386,7 @@ Reason: **${reason}**`)] });
       userPermissions: [PermissionFlagsBits.ManageGuild],
       slash: { root: 'security', sub: 'whitelistlist', description: 'Show the automod whitelist' },
       async execute(ctx) {
-        const users = ctx.guildConfig.automod.whitelistUserIds.map((id) => `<@${id}>`);
-        const roles = ctx.guildConfig.automod.whitelistRoleIds.map((id) => `<@&${id}>`);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📋 Whitelist', [`**Users:** ${users.join(', ') || 'None'}`, `**Roles:** ${roles.join(', ') || 'None'}`].join('\n'))] });
+        await ctx.reply({ embeds: await buildWhitelistEmbeds(ctx) });
       }
     }),
 
@@ -6968,8 +7432,7 @@ Reason: **${reason}**`)] });
       userPermissions: [PermissionFlagsBits.ManageRoles],
       slash: { root: 'roles', sub: 'autorolelist', description: 'List auto roles' },
       async execute(ctx) {
-        const roles = ctx.guildConfig.roles.autoRoles.map((id) => `<@&${id}>`);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📋 Auto roles', roles.join(', ') || 'No auto roles set.')] });
+        await ctx.reply({ embeds: await buildAutoRoleEmbeds(ctx) });
       }
     }),
     makeSimpleCommand({
@@ -7229,7 +7692,7 @@ Matched: **${result.matched}**.`)] });
 
     makeSimpleCommand({
       name: 'welcometoggle',
-      aliases: ['welcome', 'jointoggle'],
+      aliases: ['jointoggle'],
       category: 'Welcome',
       description: 'Toggle welcome messages',
       usage: 'welcometoggle on|off',
@@ -8003,8 +8466,8 @@ Matched: **${result.matched}**.`)] });
       name: 'support',
       aliases: ['helpme', 'mp', 'supporthelp'],
       category: 'Support',
-      description: 'Support hub for config or member DMs',
-      usage: 'support [view|on|off|channel <here|#channel|off>|role <@role|off>|test|member|message|status]',
+      description: 'Support hub for config, panel editing and member DMs',
+      usage: 'support [view|panel|on|off|relay <here|#channel|off>|entry <here|#channel|off>|role <@role|off>|restrict <on|off>|text [config|send]|test|member|status]',
       dmAllowed: true,
       slash: { root: 'support', sub: 'support', description: 'Open support via DMs', options: [{ type: 'string', name: 'message', description: 'Optional first message', required: false }] },
       async execute(ctx) {
@@ -8013,6 +8476,14 @@ Matched: **${result.matched}**.`)] });
 
         if (!ctx.guild) {
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support', 'You are already in DMs. Just send your message and staff will see it if support relay is configured.')] });
+        }
+
+        const panelAliases = ['panel', 'menu', 'buttons'];
+        if (panelAliases.includes(sub)) {
+          return ctx.reply({
+            embeds: [createSupportPanelEmbed(ctx.guildConfig, ctx.guild, ctx.prefix, ctx.channel)],
+            components: createSupportPanelComponents()
+          });
         }
 
         if (['view', 'config', 'show', 'list', 'status', 'setup'].includes(sub)) {
@@ -8028,33 +8499,66 @@ Matched: **${result.matched}**.`)] });
           ].join('\n'))] });
         }
 
-        const manageRequested = ['on', 'off', 'channel', 'role', 'test'].includes(sub);
+        const textSub = String(ctx.args[1] || '').toLowerCase();
+        const manageRequested = ['on', 'off', 'channel', 'relay', 'entry', 'role', 'restrict', 'test', 'text'].includes(sub);
         const canManage = ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild);
         if (manageRequested && !canManage) {
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support', 'You need the **Manage Server** permission for support setup actions.')] });
         }
 
         if (sub === 'on' || sub === 'off') {
-          ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null }; guild.support.enabled = sub === 'on'; return guild; });
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+            guild.support.enabled = sub === 'on';
+            return guild;
+          });
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support relay', `Support relay is now **${sub}**.`)] });
         }
 
-        if (sub === 'channel') {
+        if (sub === 'relay' || sub === 'channel') {
           const rawDestination = String(ctx.args[1] || '').toLowerCase();
           const clear = ['off', 'none', 'remove', 'clear'].includes(rawDestination);
           let channel = null;
           if (!clear) {
             if (rawDestination === 'here') channel = ctx.channel;
             else channel = await ctx.getChannel('channel', 1);
-            if (!channel?.isTextBased?.()) return ctx.invalidUsage(`Examples: \`${ctx.prefix}support channel here\`, \`${ctx.prefix}support channel #support-logs\`, \`${ctx.prefix}support channel off\`.`);
+            if (!channel?.isTextBased?.()) return ctx.invalidUsage(`Examples: \`${ctx.prefix}support relay here\`, \`${ctx.prefix}support relay #support-logs\`, \`${ctx.prefix}support relay off\`.`);
           }
           ctx.store.updateGuild(ctx.guild.id, (guild) => {
-            guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null };
+            guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
             guild.support.channelId = clear ? null : channel.id;
             if (!clear) guild.support.enabled = true;
             return guild;
           });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support channel', clear ? 'Support relay channel cleared.' : `Support relay channel set to ${channel}.`)] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support relay', clear ? 'Support relay channel cleared.' : `Support relay channel set to ${channel}.`)] });
+        }
+
+        if (sub === 'entry') {
+          const rawDestination = String(ctx.args[1] || '').toLowerCase();
+          const clear = ['off', 'none', 'remove', 'clear'].includes(rawDestination);
+          let channel = null;
+          if (!clear) {
+            if (rawDestination === 'here') channel = ctx.channel;
+            else channel = await ctx.getChannel('channel', 1);
+            if (!channel?.isTextBased?.()) return ctx.invalidUsage(`Examples: \`${ctx.prefix}support entry here\`, \`${ctx.prefix}support entry #support\`, \`${ctx.prefix}support entry off\`.`);
+          }
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+            guild.support.entryChannelId = clear ? null : channel.id;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support member channel', clear ? 'Support member channel cleared.' : `Members should use ${channel} for \`${ctx.prefix}support\`.`)] });
+        }
+
+        if (sub === 'restrict') {
+          const state = String(ctx.args[1] || '').toLowerCase();
+          if (!['on', 'off'].includes(state)) return ctx.invalidUsage(`Examples: \`${ctx.prefix}support restrict on\`, \`${ctx.prefix}support restrict off\`.`);
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+            guild.support.restrictToEntry = state === 'on';
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support restriction', state === 'on' ? `Members must now use \`${ctx.prefix}support\` in ${support.entryChannelId ? `<#${support.entryChannelId}>` : 'the configured support channel'}.` : 'Members can now use support from any channel again.')] });
         }
 
         if (sub === 'role') {
@@ -8063,19 +8567,37 @@ Matched: **${result.matched}**.`)] });
           const role = clear ? null : await ctx.getRole('role', 1);
           if (!clear && !role) return ctx.invalidUsage(`Examples: \`${ctx.prefix}support role @Staff\`, \`${ctx.prefix}support role off\`.`);
           ctx.store.updateGuild(ctx.guild.id, (guild) => {
-            guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null };
+            guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
             guild.support.pingRoleId = clear ? null : role.id;
             return guild;
           });
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support role', clear ? 'Support ping role cleared.' : `${role} will be pinged for new support DMs.`)] });
         }
 
-        if (sub === 'check') return ctx.reply({ embeds: [createLogsOverviewEmbed(ctx.guildConfig, ctx.prefix)] });
+        if (sub === 'text') {
+          if (!textSub || ['config', 'panel', 'buttons', 'edit'].includes(textSub)) {
+            return ctx.reply({
+              embeds: [createSupportPanelEmbed(ctx.guildConfig, ctx.guild, ctx.prefix, ctx.channel)],
+              components: createSupportPanelComponents()
+            });
+          }
+          if (textSub === 'send') {
+            const targetChannelId = ctx.guildConfig.support?.entryChannelId || ctx.channel?.id;
+            const targetChannel = await ctx.guild.channels.fetch(targetChannelId).catch(() => null);
+            if (!targetChannel?.isTextBased?.()) {
+              return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support prompt', `Set a member channel first with \`${ctx.prefix}support entry #support\`, or run this command in the channel where the prompt should be sent.`)] });
+            }
+            const payload = createSupportPromptPayload(ctx.guildConfig, ctx.guild, ctx.prefix, targetChannel);
+            const sent = await targetChannel.send(payload).catch(() => null);
+            return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support prompt', sent ? `Support prompt sent in ${targetChannel}.` : 'I could not send the support prompt.')] });
+          }
+          return ctx.invalidUsage(`Examples: \`${ctx.prefix}support text config\`, \`${ctx.prefix}support text send\`.`);
+        }
 
         if (sub === 'check') return ctx.reply({ embeds: [buildSupportModuleEmbed(ctx.guildConfig, ctx.prefix)] });
 
         if (sub === 'test') {
-          if (!support.channelId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support test', `No relay channel is set yet. Use \`${ctx.prefix}support channel #support-logs\`.`)] });
+          if (!support.channelId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support test', `No relay channel is set yet. Use \`${ctx.prefix}support relay #support-logs\`.`)] });
           const relayChannel = await ctx.guild.channels.fetch(support.channelId).catch(() => null);
           if (!relayChannel?.isTextBased?.()) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support test', 'The configured relay channel no longer exists or is not text-based.')] });
           const sent = await relayChannel.send({
@@ -8088,11 +8610,15 @@ Matched: **${result.matched}**.`)] });
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support test', sent ? `Test sent in ${relayChannel}.` : 'I could not send the support test message.')] });
         }
 
+        if (support.restrictToEntry && support.entryChannelId && ctx.channel?.id !== support.entryChannelId && !canManage) {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support', `Use \`${ctx.prefix}support\` in <#${support.entryChannelId}>.`)] });
+        }
+
         const textValue = ctx.interaction ? ctx.interaction.options.getString('message') : ctx.getRest(0);
         const files = getCommandFiles(ctx);
         const imageUrl = getCommandImageUrl(ctx);
         if (!ctx.guildConfig.support.enabled || !ctx.guildConfig.support.channelId) {
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support not configured', `A manager must run \`${ctx.prefix}support on\` and \`${ctx.prefix}support channel #channel\` first.`)] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support not configured', `A manager must run \`${ctx.prefix}support on\` and \`${ctx.prefix}support relay #channel\` first.`)] });
         }
         if (ctx.message) await ctx.message.delete().catch(() => null);
         ctx.store.updateGlobal((global) => {
@@ -8113,7 +8639,8 @@ Send your message here and staff replies will come back here.`)] }).catch(() => 
               .addFields(
                 { name: 'User', value: `${ctx.user} • ${ctx.user.tag}`, inline: false },
                 { name: 'User ID', value: ctx.user.id, inline: true },
-                { name: 'Guild', value: ctx.guild.name, inline: true }
+                { name: 'Guild', value: ctx.guild.name, inline: true },
+                { name: 'Started from', value: support.entryChannelId ? `<#${support.entryChannelId}>` : (ctx.channel ? `${ctx.channel}` : 'unknown'), inline: false }
               )
               .setThumbnail(ctx.user.displayAvatarURL());
             if (imageUrl) relayEmbed.setImage(imageUrl);
@@ -8427,13 +8954,7 @@ Attachments: **${files.length}**` : ''}`)] });
       slash: { root: 'giveaway', sub: 'glist', description: 'List saved giveaways' },
       async execute(ctx) {
         const entries = getSortedGiveaways(ctx.guildConfig.giveaways || {});
-        const desc = entries.length
-          ? entries.slice(0, 15).map((g) => `${getGiveawayStateEmoji(g)} **${g.id}** • ${g.prize}
-↳ state: **${getGiveawayStateLabel(g)}** • winners: ${g.winners} • participants: ${(g.participants || []).length} • message: \`${g.messageId || 'none'}\``).join('\n\n')
-          : 'No giveaways saved.';
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎁 Giveaways', `${desc}${entries.length ? `
-
-Use \`${ctx.prefix}ginfo <id>\` or \`${ctx.prefix}gparticipants <id>\`.` : ''}`)] });
+        await ctx.reply({ embeds: buildGiveawayListEmbeds(ctx, entries) });
       }
     }),
 
@@ -8499,10 +9020,7 @@ Use \`${ctx.prefix}ginfo <id>\` or \`${ctx.prefix}gparticipants <id>\`.` : ''}`)
       userPermissions: [PermissionFlagsBits.ManageGuild],
       slash: { root: 'tiktok', sub: 'tiktoklist', description: 'List TikTok watchers' },
       async execute(ctx) {
-        const desc = ctx.guildConfig.tiktok.watchers.length
-          ? ctx.guildConfig.tiktok.watchers.map((watcher) => `• **@${watcher.username}** → <#${watcher.channelId}> • ping: ${watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : 'none'} • live: ${boolEmoji(watcher.announceLive)} • video: ${boolEmoji(watcher.announceVideos)} • source: ${watcher.lastSource || 'n/a'}${watcher.lastError ? ` • error: ${watcher.lastError}` : ''}`).join('\n')
-          : 'No TikTok watchers.';
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watchers', desc)] });
+        await ctx.reply({ embeds: buildTikTokWatcherEmbeds(ctx) });
       }
     }),
     makeSimpleCommand({
@@ -9120,7 +9638,7 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
         },
         {
           name: 'Useful commands',
-          value: '`+autoreact config` • `+autorolelist` • `+stickyconfig` • `+ghostping config` • `+configpanel`',
+          value: '`+autoreact config` • `+autorolelist` • `+stickyconfig` • `+ghostping config` • `+panel`',
           inline: false
         }
       );
@@ -9173,46 +9691,451 @@ function createDashboardComponents(current = 'home') {
   ];
 }
 
+
+const SMART_PANEL_THEMES = {
+  default: { color: '#5865F2', label: 'Default' },
+  emerald: { color: '#10B981', label: 'Emerald' },
+  sunset: { color: '#F97316', label: 'Sunset' },
+  neon: { color: '#A855F7', label: 'Neon' }
+};
+
+const SMART_TEXT_PRESETS = {
+  clean: {
+    mode: 'embed',
+    footer: 'DvL',
+    imageUrl: null,
+    color: null,
+    titleTransform: (fallback) => fallback || null
+  },
+  premium: {
+    mode: 'embed',
+    footer: 'DvL • premium',
+    imageUrl: null,
+    color: '#8B5CF6',
+    titleTransform: (fallback) => fallback ? `✦ ${String(fallback).replace(/^✦\s*/,'')}` : '✦ Announcement'
+  },
+  minimal: {
+    mode: 'plain',
+    footer: null,
+    imageUrl: null,
+    color: null,
+    titleTransform: () => null
+  }
+};
+
+function getSmartPanelState(page = 'home') {
+  const raw = String(page || 'home').toLowerCase();
+  const textPages = ['welcome', 'leave', 'leave-dm', 'boost'];
+  if (textPages.includes(raw)) return { page: 'texts', focus: raw };
+  const pages = ['home', 'texts', 'logs', 'support', 'security', 'automation', 'channels', 'repair', 'style'];
+  return { page: pages.includes(raw) ? raw : 'home', focus: 'welcome' };
+}
+
+function getSmartPanelTextMeta(moduleKey = 'welcome') {
+  const safe = String(moduleKey || 'welcome').toLowerCase();
+  const map = {
+    welcome: {
+      key: 'welcome',
+      label: 'Welcome',
+      command: 'welcome',
+      path: ['welcome'],
+      enabledKey: 'enabled',
+      channelKey: 'channelId',
+      hasChannel: true,
+      modeKey: 'mode',
+      titleKey: 'title',
+      messageKey: 'message',
+      footerKey: 'footer',
+      colorKey: 'color',
+      imageKey: 'imageUrl',
+      fallbackTitle: DEFAULT_GUILD.welcome.title,
+      source: (g) => g.welcome || {}
+    },
+    leave: {
+      key: 'leave',
+      label: 'Leave',
+      command: 'leave',
+      path: ['leave'],
+      enabledKey: 'enabled',
+      channelKey: 'channelId',
+      hasChannel: true,
+      modeKey: 'mode',
+      titleKey: 'title',
+      messageKey: 'message',
+      footerKey: 'footer',
+      colorKey: 'color',
+      imageKey: 'imageUrl',
+      fallbackTitle: DEFAULT_GUILD.leave.title,
+      source: (g) => g.leave || {}
+    },
+    'leave-dm': {
+      key: 'leave-dm',
+      label: 'Leave DM',
+      command: 'leave',
+      path: ['leave'],
+      enabledKey: 'dmEnabled',
+      channelKey: null,
+      hasChannel: false,
+      modeKey: 'dmMode',
+      titleKey: 'dmTitle',
+      messageKey: 'dmMessage',
+      footerKey: 'dmFooter',
+      colorKey: 'dmColor',
+      imageKey: 'dmImageUrl',
+      fallbackTitle: DEFAULT_GUILD.leave.dmTitle,
+      source: (g) => g.leave || {}
+    },
+    boost: {
+      key: 'boost',
+      label: 'Boost',
+      command: 'boost',
+      path: ['boost'],
+      enabledKey: 'enabled',
+      channelKey: 'channelId',
+      hasChannel: true,
+      modeKey: 'mode',
+      titleKey: 'title',
+      messageKey: 'message',
+      footerKey: 'footer',
+      colorKey: 'color',
+      imageKey: 'imageUrl',
+      fallbackTitle: DEFAULT_GUILD.boost.title,
+      source: (g) => g.boost || {}
+    }
+  };
+  return map[safe] || map.welcome;
+}
+
+const getPanelTextMeta = getSmartPanelTextMeta;
+
+function getPanelTextSource(guildConfig, moduleKey = 'welcome') {
+  const meta = getSmartPanelTextMeta(moduleKey);
+  return meta.source(guildConfig || {});
+}
+
+function ensureGuildPath(guild, path = []) {
+  let cursor = guild;
+  for (const key of path) {
+    if (!cursor[key] || typeof cursor[key] !== 'object') cursor[key] = {};
+    cursor = cursor[key];
+  }
+  return cursor;
+}
+
+function updatePanelTextModule(guild, moduleKey, mutator) {
+  const meta = getSmartPanelTextMeta(moduleKey);
+  const target = ensureGuildPath(guild, meta.path);
+  mutator(target, meta);
+  return guild;
+}
+
+function resetPanelTextModule(guild, moduleKey) {
+  const meta = getSmartPanelTextMeta(moduleKey);
+  const defaults = meta.key === 'welcome'
+    ? DEFAULT_GUILD.welcome
+    : meta.key === 'leave'
+      ? DEFAULT_GUILD.leave
+      : meta.key === 'leave-dm'
+        ? DEFAULT_GUILD.leave
+        : DEFAULT_GUILD.boost;
+  return updatePanelTextModule(guild, moduleKey, (target) => {
+    if (meta.key === 'leave-dm') {
+      target.dmEnabled = defaults.dmEnabled;
+      target.dmMode = defaults.dmMode;
+      target.dmTitle = defaults.dmTitle;
+      target.dmMessage = defaults.dmMessage;
+      target.dmFooter = defaults.dmFooter;
+      target.dmColor = defaults.dmColor;
+      target.dmImageUrl = defaults.dmImageUrl;
+      return;
+    }
+    target.enabled = defaults.enabled;
+    if (meta.channelKey) target[meta.channelKey] = defaults[meta.channelKey];
+    target[meta.modeKey] = defaults[meta.modeKey];
+    target[meta.titleKey] = defaults[meta.titleKey];
+    target[meta.messageKey] = defaults[meta.messageKey];
+    target[meta.footerKey] = defaults[meta.footerKey];
+    target[meta.colorKey] = defaults[meta.colorKey];
+    target[meta.imageKey] = defaults[meta.imageKey];
+  });
+}
+
+function buildSmartPanelTextState(guildConfig, moduleKey = 'welcome') {
+  const meta = getSmartPanelTextMeta(moduleKey);
+  const source = getPanelTextSource(guildConfig, moduleKey);
+  const lines = [
+    `**Status:** ${source?.[meta.enabledKey] ? 'on' : 'off'}`,
+    meta.hasChannel ? `**Channel:** ${source?.[meta.channelKey] ? `<#${source[meta.channelKey]}>` : 'not set'}` : '**Channel:** DM only',
+    `**Message:** ${formatTemplatePreview(source?.[meta.messageKey], 'not set')}`,
+    ...buildAnnouncementStyleLines(guildConfig, source, {
+      modeKey: meta.modeKey,
+      titleKey: meta.titleKey,
+      footerKey: meta.footerKey,
+      colorKey: meta.colorKey,
+      imageKey: meta.imageKey
+    })
+  ];
+  return lines;
+}
+
+function buildPanelTextPreviewPayload(guildConfig, moduleKey, guild, member) {
+  const meta = getSmartPanelTextMeta(moduleKey);
+  const source = getPanelTextSource(guildConfig, moduleKey);
+  const vars = getTextTemplateVars(guild, member);
+  return createModulePreviewMessage(guildConfig, source, vars, {
+    modeKey: meta.modeKey,
+    titleKey: meta.titleKey,
+    messageKey: meta.messageKey,
+    footerKey: meta.footerKey,
+    colorKey: meta.colorKey,
+    imageKey: meta.imageKey,
+    fallbackTitle: meta.fallbackTitle
+  });
+}
+
+function getSmartPanelQuickIssues(guildConfig = {}) {
+  const issues = [];
+  if (guildConfig.welcome?.enabled && !guildConfig.welcome?.channelId) issues.push('welcome is enabled without a channel');
+  if (guildConfig.leave?.enabled && !guildConfig.leave?.channelId) issues.push('leave is enabled without a channel');
+  if (guildConfig.boost?.enabled && !guildConfig.boost?.channelId) issues.push('boost is enabled without a channel');
+  if (guildConfig.logs?.enabled && !(guildConfig.logs?.channels?.default || guildConfig.logs?.channelId)) issues.push('logs are enabled without a default route');
+  if (guildConfig.support?.enabled && !guildConfig.support?.channelId) issues.push('support relay is enabled without a relay channel');
+  if (guildConfig.support?.restrictToEntry && !guildConfig.support?.entryChannelId) issues.push('support restriction is on without a member channel');
+  if (guildConfig.stats?.enabled && !Object.values(guildConfig.stats?.channels || {}).some(Boolean)) issues.push('stats are enabled without counters');
+  return issues;
+}
+
+function applySmartPanelThemePreset(guild, presetKey = 'default') {
+  const preset = SMART_PANEL_THEMES[presetKey] || SMART_PANEL_THEMES.default;
+  guild.embedColor = preset.color;
+  guild.panel = guild.panel || {};
+  guild.panel.theme = presetKey in SMART_PANEL_THEMES ? presetKey : 'default';
+  return guild;
+}
+
+function applySmartTextPreset(guild, moduleKey = 'welcome', presetKey = 'clean') {
+  const preset = SMART_TEXT_PRESETS[presetKey] || SMART_TEXT_PRESETS.clean;
+  const meta = getSmartPanelTextMeta(moduleKey);
+  const defaultSource = meta.key === 'welcome'
+    ? DEFAULT_GUILD.welcome
+    : meta.key === 'leave'
+      ? DEFAULT_GUILD.leave
+      : meta.key === 'leave-dm'
+        ? DEFAULT_GUILD.leave
+        : DEFAULT_GUILD.boost;
+  return updatePanelTextModule(guild, moduleKey, (target) => {
+    const currentTitle = target[meta.titleKey] || defaultSource[meta.titleKey] || meta.fallbackTitle;
+    target[meta.enabledKey] = true;
+    target[meta.modeKey] = preset.mode;
+    target[meta.titleKey] = preset.titleTransform(currentTitle);
+    target[meta.footerKey] = preset.footer;
+    target[meta.colorKey] = preset.color;
+    target[meta.imageKey] = preset.imageUrl;
+  });
+}
+
+function formatSmartThemeLines(guildConfig = {}) {
+  const current = guildConfig.panel?.theme || Object.keys(SMART_PANEL_THEMES).find((key) => SMART_PANEL_THEMES[key].color === guildConfig.embedColor) || 'default';
+  return Object.entries(SMART_PANEL_THEMES).map(([key, value]) => `${key === current ? '• **' + value.label + '**' : '• ' + value.label} — ${code(value.color)}`);
+}
+
 function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = null) {
+  const state = getSmartPanelState(page);
+  const safePage = state.page;
+  const focus = state.focus || 'welcome';
   const g = guildConfig || {};
-  const pages = ['home', 'automation', 'channels'];
-  const safePage = pages.includes(page) ? page : 'home';
   const targetChannel = channel && channel.id ? channel : null;
   const channelMention = targetChannel ? `${targetChannel}` : 'this channel';
   const ghostChannelId = g.automod?.ghostPing?.channelId || null;
   const autoEntry = targetChannel ? normalizeAutoReactEntry(g.autoReact?.channels?.[targetChannel.id] || {}) : null;
   const stats = g.stats || { channels: {}, labels: {} };
+  const logs = g.logs || { enabled: false, channels: {}, typeChannels: {}, types: {} };
+  const support = g.support || {};
+  const whitelistUsers = Array.isArray(g.automod?.whitelistUserIds) ? g.automod.whitelistUserIds.length : 0;
+  const whitelistRoles = Array.isArray(g.automod?.whitelistRoleIds) ? g.automod.whitelistRoleIds.length : 0;
+  const enabledFilters = ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => g.automod?.[key]?.enabled).length;
 
-  const embed = baseEmbed(g, '⚙️ DvL Config Panel', `Quick setup panel for ${channelMention}. Use the buttons below for the most common actions.`);
+  const embed = baseEmbed(g, '🎛️ DvL Smart Panel', `Quick buttons for ${channelMention}. Keep one main panel instead of hunting through duplicate config commands.`);
 
   if (safePage === 'home') {
+    const issues = getSmartPanelQuickIssues(g);
     embed.addFields(
       {
         name: 'Current state',
         value: [
+          `**Texts:** welcome ${g.welcome?.enabled ? 'on' : 'off'} • leave ${g.leave?.enabled ? 'on' : 'off'} • boost ${g.boost?.enabled ? 'on' : 'off'}`,
+          `**Logs:** ${logs.enabled ? 'on' : 'off'}${logs.channels?.default ? ` • <#${logs.channels.default}>` : ''}`,
+          `**Support:** ${support.enabled ? 'on' : 'off'}${support.channelId ? ` • relay <#${support.channelId}>` : ''}`,
           `**Ghost ping:** ${g.automod?.ghostPing?.enabled ? 'on' : 'off'}${ghostChannelId ? ` • <#${ghostChannelId}>` : ''}`,
-          `**Logs:** ${g.logs?.enabled ? 'on' : 'off'}${g.logs?.channelId ? ` • <#${g.logs.channelId}>` : ''}`,
-          `**Trophy board:** ${g.progress?.enabled ? 'on' : 'off'}${g.progress?.channelId ? ` • <#${g.progress.channelId}>` : ''}`,
+          `**Auto-react:** ${targetChannel ? (autoEntry.enabled && autoEntry.emojis.length ? 'on' : 'off') : 'open in a text channel'}`,
           `**Stats:** ${g.stats?.enabled ? 'on' : 'off'}`,
+          `**Theme:** ${SMART_PANEL_THEMES[g.panel?.theme || 'default']?.label || 'Custom'} • ${code(g.embedColor || '#5865F2')}`,
           `**Current channel:** ${channelMention}`
         ].join('\n'),
         inline: false
       },
       {
-        name: 'What the quick buttons do',
+        name: 'Persistent control center',
         value: [
-          '• ghost ping on/off',
-          '• set ghost ping channel here',
-          '• test the ghost ping alerts',
-          '• set logs here',
-          '• set trophy board here'
+          g.panel?.deployedChannelId ? `**Panel channel:** <#${g.panel.deployedChannelId}>` : '**Panel channel:** not deployed',
+          g.panel?.deployedMessageId ? `**Message id:** \`${g.panel.deployedMessageId}\`` : '**Message id:** none',
+          'Use **Deploy panel** once, then keep that message pinned for staff.'
+        ].join('\n'),
+        inline: false
+      },
+      {
+        name: 'Detected issues',
+        value: issues.length ? issues.slice(0, 6).map((line) => `• ${line}`).join('\n') : 'No obvious issue detected.',
+        inline: false
+      },
+      {
+        name: 'Best pages to use first',
+        value: [
+          '• **Texts** for welcome / leave / boost style',
+          '• **Logs** for default log routing',
+          '• **Support** for the public support prompt + relay',
+          '• **Style** for the global visual theme',
+          '• **Repair** when something feels bugged'
         ].join('\n'),
         inline: false
       }
     );
-  }
-
-  if (safePage === 'automation') {
+  } else if (safePage === 'texts') {
+    const meta = getSmartPanelTextMeta(focus);
+    const source = meta.source(g);
+    embed
+      .setDescription(`Style and test **${meta.label}** directly from buttons. This is the fast version of \`${g.prefix || '+'}${meta.command} ...\`.`)
+      .addFields(
+        {
+          name: `${meta.label} state`,
+          value: buildSmartPanelTextState(g, focus).join('\n').slice(0, 1024),
+          inline: false
+        },
+        {
+          name: 'Buttons in this page',
+          value: [
+            '• on/off',
+            meta.hasChannel ? '• bind the current channel' : '• toggle DM sending',
+            '• embed/plain mode',
+            '• edit title, message, footer, color, image',
+            '• test and reset'
+          ].join('\n'),
+          inline: true
+        },
+        {
+          name: 'Useful commands',
+          value: [
+            `\`${g.prefix || '+'}texts vars\``,
+            `\`${g.prefix || '+'}${meta.command} example\``,
+            `\`${g.prefix || '+'}${meta.command} test\`` + (focus === 'leave-dm' ? 'dm' : ''),
+            meta.hasChannel ? `\`${g.prefix || '+'}${meta.command} channel #channel\`` : `\`${g.prefix || '+'}leave dm on\``
+          ].join('\n'),
+          inline: true
+        },
+        {
+          name: 'Smart presets',
+          value: '• clean\n• premium\n• minimal',
+          inline: true
+        }
+      );
+    if (source?.[meta.imageKey] && /^https?:\/\//i.test(String(source[meta.imageKey]))) {
+      embed.setThumbnail(String(source[meta.imageKey]));
+    }
+  } else if (safePage === 'logs') {
+    const familyRoutes = Object.entries(logs.channels || {}).filter(([key, value]) => key !== 'default' && value).length;
+    const specificRoutes = Object.values(logs.typeChannels || {}).filter(Boolean).length;
+    const enabledTypes = Object.entries(logs.types || {}).filter(([, enabled]) => enabled !== false).length;
+    embed
+      .setDescription(`Logs routing shortcuts for ${channelMention}. Use the full logs panel when you want per-family or per-type routing.`)
+      .addFields(
+        {
+          name: 'Overview',
+          value: [
+            `**Master:** ${logs.enabled ? 'on' : 'off'}`,
+            `**Default route:** ${logs.channels?.default ? `<#${logs.channels.default}>` : 'not set'}`,
+            `**Family routes:** ${familyRoutes}`,
+            `**Specific type routes:** ${specificRoutes}`,
+            `**Enabled events:** ${enabledTypes}`
+          ].join('\n'),
+          inline: false
+        },
+        {
+          name: 'Fast actions',
+          value: [
+            '• enable / disable logs',
+            '• bind this channel as the default route',
+            '• jump into the full logs button panel',
+            '• keep ghost ping in the same channel if you want'
+          ].join('\n'),
+          inline: false
+        }
+      );
+  } else if (safePage === 'support') {
+    embed
+      .setDescription(`Keep support simple: one public entry channel, one relay, one clean prompt.`)
+      .addFields(
+        {
+          name: 'Routing',
+          value: [
+            `**Relay:** ${support.enabled ? 'on' : 'off'}`,
+            `**Relay channel:** ${support.channelId ? `<#${support.channelId}>` : 'not set'}`,
+            `**Member channel:** ${support.entryChannelId ? `<#${support.entryChannelId}>` : 'not set'}`,
+            `**Restrict to member channel:** ${support.restrictToEntry ? 'on' : 'off'}`,
+            `**Ping role:** ${support.pingRoleId ? `<@&${support.pingRoleId}>` : 'none'}`
+          ].join('\n'),
+          inline: false
+        },
+        {
+          name: 'Prompt style',
+          value: [
+            `**Mode:** ${String(support.promptMode || 'embed').toLowerCase() === 'plain' ? 'plain' : 'embed'}`,
+            `**Title:** ${formatTemplatePreview(support.promptTitle, 'default')}`,
+            `**Message:** ${formatTemplatePreview(support.promptMessage, 'default')}`,
+            `**Footer:** ${formatTemplatePreview(support.promptFooter, 'default')}`
+          ].join('\n'),
+          inline: false
+        },
+        {
+          name: 'Use this page for',
+          value: [
+            '• relay on/off',
+            '• bind relay here',
+            '• bind support entry here',
+            '• restrict support to one channel',
+            '• open the full support text editor'
+          ].join('\n'),
+          inline: false
+        }
+      );
+  } else if (safePage === 'security') {
+    embed
+      .setDescription(`Fast security view for ghost ping, whitelist and the main filters.`)
+      .addFields(
+        {
+          name: 'Security state',
+          value: [
+            `**Main filters enabled:** ${enabledFilters}`,
+            `**Ghost ping:** ${g.automod?.ghostPing?.enabled ? 'on' : 'off'}${ghostChannelId ? ` • <#${ghostChannelId}>` : ''}`,
+            `**Whitelist users:** ${whitelistUsers}`,
+            `**Whitelist roles:** ${whitelistRoles}`,
+            `**Pic-only channels:** ${Array.isArray(g.automod?.picOnlyChannels) ? g.automod.picOnlyChannels.length : 0}`,
+            `**Ignored channels:** ${Array.isArray(g.automod?.ignoredChannels) ? g.automod.ignoredChannels.length : 0}`
+          ].join('\n'),
+          inline: false
+        },
+        {
+          name: 'Fast actions',
+          value: [
+            '• toggle ghost ping',
+            '• bind ghost ping here',
+            '• run a ghost ping test',
+            '• open the security hub',
+            '• inspect the whitelist cleanly'
+          ].join('\n'),
+          inline: false
+        }
+      );
+  } else if (safePage === 'automation') {
     embed
       .setDescription(`Automation tools for ${channelMention}.`)
       .addFields(
@@ -9238,9 +10161,7 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
           inline: false
         }
       );
-  }
-
-  if (safePage === 'channels') {
+  } else if (safePage === 'channels') {
     embed
       .setDescription(`Channel tools for ${channelMention}. This is mainly for logs, stats and quick bindings.`)
       .addFields(
@@ -9257,58 +10178,197 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
         {
           name: 'Labels',
           value: [
-            `**Members:** ${stats.labels?.members || '👥・Membres : {count}'}`,
-            `**Online:** ${stats.labels?.online || '🌐・En ligne : {count}'}`,
-            `**Voice:** ${stats.labels?.voice || '🔊・Vocal : {count}'}`
+            `**Members:** ${clipText(stats.labels?.members || '👥・Membres : {count}', 80)}`,
+            `**Online:** ${clipText(stats.labels?.online || '🌐・En ligne : {count}', 80)}`,
+            `**Voice:** ${clipText(stats.labels?.voice || '🔊・Vocal : {count}', 80)}`
+          ].join('\n'),
+          inline: false
+        }
+      );
+  } else if (safePage === 'style') {
+    const currentTheme = g.panel?.theme || 'default';
+    embed
+      .setDescription('Global visual theme for embeds, smart panel and most premium status messages.')
+      .addFields(
+        {
+          name: 'Current theme',
+          value: [
+            `**Preset:** ${SMART_PANEL_THEMES[currentTheme]?.label || 'Custom'}`,
+            `**Embed color:** ${code(g.embedColor || '#5865F2')}`,
+            'Use a preset, then fine-tune module colors only when needed.'
+          ].join('\n'),
+          inline: false
+        },
+        {
+          name: 'Available presets',
+          value: formatSmartThemeLines(g).join('\n').slice(0, 1024),
+          inline: false
+        }
+      );
+  } else if (safePage === 'repair') {
+    embed
+      .setDescription('When something feels off, use this page instead of guessing which old config command to run.')
+      .addFields(
+        {
+          name: 'What gets checked',
+          value: [
+            '• text objects and modes',
+            '• log routes and invalid channel IDs',
+            '• support channels / roles / prompt config',
+            '• whitelist IDs and security lists',
+            '• stats category and missing counters'
+          ].join('\n'),
+          inline: false
+        },
+        {
+          name: 'Best use',
+          value: [
+            '• after deleting channels / roles',
+            '• after importing an old backup',
+            '• when stats stop updating',
+            '• when support relay points nowhere',
+            '• when logs feel half-configured'
           ].join('\n'),
           inline: false
         }
       );
   }
 
-  return embed.setFooter({ text: `DvL • config panel • page: ${safePage}` });
+  return embed.setFooter({ text: `DvL • smart panel • page: ${safePage}${safePage === 'texts' ? ` • module: ${focus}` : ''}` });
 }
 
 function createConfigPanelComponents(current = 'home', channelId = null) {
-  const pages = ['home', 'automation', 'channels'];
-  const safePage = pages.includes(current) ? current : 'home';
+  const state = getSmartPanelState(current);
+  const safePage = state.page;
+  const focus = state.focus || 'welcome';
   const cid = channelId || '0';
 
-  const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('cfgpanel:page:home').setLabel('Home').setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId('cfgpanel:page:automation').setLabel('Automation').setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('cfgpanel:page:channels').setLabel('Channels').setEmoji('🧩').setStyle(safePage === 'channels' ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`cfgpanel:refresh:${safePage}`).setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
-  );
+  const rows = [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:page:home').setLabel('Home').setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel('Texts').setEmoji('📝').setStyle(safePage === 'texts' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:logs').setLabel('Logs').setEmoji('🧾').setStyle(safePage === 'logs' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:support').setLabel('Support').setEmoji('📨').setStyle(safePage === 'support' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel('Security').setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:page:automation').setLabel('Automation').setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:channels').setLabel('Channels').setEmoji('🧩').setStyle(safePage === 'channels' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:repair').setLabel('Repair').setEmoji('🧰').setStyle(safePage === 'repair' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:style').setLabel('Style').setEmoji('🎨').setStyle(safePage === 'style' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:refresh:${safePage}`).setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+    )
+  ];
 
-  let row2;
   if (safePage === 'home') {
-    row2 = new ActionRowBuilder().addComponents(
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel('Open texts').setEmoji('📝').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:support').setLabel('Open support').setEmoji('📨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel('Open security').setEmoji('🚨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:style').setLabel('Open style').setEmoji('🎨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:deploy').setLabel('Deploy panel').setEmoji('📌').setStyle(ButtonStyle.Success)
+    ));
+  } else if (safePage === 'texts') {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:textview:welcome').setLabel('Welcome').setStyle(focus === 'welcome' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:leave').setLabel('Leave').setStyle(focus === 'leave' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:leave-dm').setLabel('Leave DM').setStyle(focus === 'leave-dm' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:boost').setLabel('Boost').setStyle(focus === 'boost' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textvars').setLabel('Vars').setEmoji('🧩').setStyle(ButtonStyle.Secondary)
+    ));
+    if (focus === 'leave-dm') {
+      rows.push(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`cfgpanel:texttoggle:${focus}`).setLabel('DM on/off').setEmoji('📨').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textmode:${focus}`).setLabel('Embed/plain').setEmoji('🎨').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:title`).setLabel('Title').setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:message`).setLabel('Message').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:footer`).setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary)
+      ));
+    } else {
+      rows.push(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`cfgpanel:texttoggle:${focus}`).setLabel('On/off').setEmoji('✅').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`cfgpanel:texthere:${focus}`).setLabel('Channel here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textmode:${focus}`).setLabel('Embed/plain').setEmoji('🎨').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:title`).setLabel('Title').setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:message`).setLabel('Message').setEmoji('💬').setStyle(ButtonStyle.Secondary)
+      ));
+    }
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:footer`).setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:color`).setLabel('Color').setEmoji('🌈').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:image`).setLabel('Image').setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:texttest:${focus}`).setLabel('Test').setEmoji('🧪').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`cfgpanel:textreset:${focus}`).setLabel('Reset').setEmoji('♻️').setStyle(ButtonStyle.Danger)
+    ));
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:clean`).setLabel('Preset clean').setEmoji('✨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:premium`).setLabel('Preset premium').setEmoji('💎').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:minimal`).setLabel('Preset minimal').setEmoji('🪶').setStyle(ButtonStyle.Secondary)
+    ));
+  } else if (safePage === 'logs') {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:logtoggle').setLabel('Logs on/off').setEmoji('🧾').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:logshere').setLabel('Default here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:openlogs').setLabel('Full logs panel').setEmoji('📋').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:ghosthere').setLabel('Ghost here').setEmoji('👻').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:refresh:logs').setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+    ));
+  } else if (safePage === 'support') {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:supporttoggle').setLabel('Relay on/off').setEmoji('📨').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:supportrelayhere').setLabel('Relay here').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:supportentryhere').setLabel('Support here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:supportrestrict').setLabel('Restrict').setEmoji('🚧').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:supportsend').setLabel('Send prompt').setEmoji('📤').setStyle(ButtonStyle.Success)
+    ));
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:supportopen').setLabel('Open full panel').setEmoji('🎛️').setStyle(ButtonStyle.Secondary)
+    ));
+  } else if (safePage === 'security') {
+    rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('cfgpanel:ghosttoggle').setLabel('Ghost on/off').setEmoji('👻').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('cfgpanel:ghosthere').setLabel('Ghost here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:ghosttest').setLabel('Ghost test').setEmoji('🧪').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:logshere').setLabel('Logs here').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:trophyhere').setLabel('Trophy here').setEmoji('🏆').setStyle(ButtonStyle.Secondary)
-    );
+      new ButtonBuilder().setCustomId('cfgpanel:securityopen').setLabel('Security hub').setEmoji('🚨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:whitelistview').setLabel('Whitelist').setEmoji('✅').setStyle(ButtonStyle.Secondary)
+    ));
   } else if (safePage === 'automation') {
-    row2 = new ActionRowBuilder().addComponents(
+    rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`cfgpanel:artoggle:${cid}`).setLabel('Auto-react on/off').setEmoji('✨').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`cfgpanel:arhype:${cid}`).setLabel('Preset hype').setEmoji('🔥').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`cfgpanel:aroff:${cid}`).setLabel('Auto-react off').setEmoji('🛑').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`cfgpanel:stickyoff:${cid}`).setLabel('Sticky off').setEmoji('📌').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:ghosttoggle').setLabel('Ghost on/off').setEmoji('👻').setStyle(ButtonStyle.Secondary)
-    );
-  } else {
-    row2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:refresh:automation').setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+    ));
+  } else if (safePage === 'channels') {
+    rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`cfgpanel:statsmembers:${cid}`).setLabel('Bind members').setEmoji('👥').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`cfgpanel:statsonline:${cid}`).setLabel('Bind online').setEmoji('🌐').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`cfgpanel:statsvoice:${cid}`).setLabel('Bind voice').setEmoji('🔊').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:logshere').setLabel('Logs here').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:ghosthere').setLabel('Ghost here').setEmoji('👻').setStyle(ButtonStyle.Secondary)
-    );
+      new ButtonBuilder().setCustomId('cfgpanel:refresh:channels').setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+    ));
+  } else if (safePage === 'style') {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:theme:default').setLabel('Default').setEmoji('🟦').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:theme:emerald').setLabel('Emerald').setEmoji('🟩').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:theme:sunset').setLabel('Sunset').setEmoji('🟧').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:theme:neon').setLabel('Neon').setEmoji('🟪').setStyle(ButtonStyle.Secondary)
+    ));
+  } else if (safePage === 'repair') {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:repair:all').setLabel('Repair all').setEmoji('🧰').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:repair:texts').setLabel('Texts').setEmoji('📝').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:repair:logs').setLabel('Logs').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:repair:support').setLabel('Support').setEmoji('📨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:repair:stats').setLabel('Stats').setEmoji('📊').setStyle(ButtonStyle.Secondary)
+    ));
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('cfgpanel:repair:security').setLabel('Security').setEmoji('🚨').setStyle(ButtonStyle.Secondary)
+    ));
   }
 
-  return [row1, row2];
+  return rows;
 }
 
 module.exports = {
@@ -9326,5 +10386,8 @@ module.exports = {
   createDashboardComponents,
   createConfigPanelEmbed,
   createConfigPanelComponents,
+  createSupportPanelEmbed,
+  createSupportPanelComponents,
+  createSupportPromptPayload,
   getHelpTargetInfo
 };

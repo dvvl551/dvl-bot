@@ -1,66 +1,57 @@
-## v42 highlights
+# DvL Bot v49 — Final Stable Bundle
 
-- deeper module hubs with status, quick setup, advanced options and checks
-- clearer texts hub for welcome / leave / boost with embed/plain guidance
-- richer logs overview with routing, event toggles and one-shot setup flow
-- better support / tracking / voice / security / automation / giveaway / TikTok hub guidance
-- roles hub expanded with status-role and panel shortcuts
-
-# DvL Bot v42 — One-shot Clean Overhaul
-
-This pass makes the welcome / leave / boost text system actually advanced in use, not just nicer in help text. It also keeps boost on the logs side instead of mixing it fully into welcome / leave.
+This build is aimed at actually running the bot on a live server without having to keep updating every few messages.
 
 ## What changed
 
-- **Advanced text controls now really work at runtime**
-  - `embed` or `plain` mode
-  - custom title
-  - custom footer
-  - custom color
-  - custom image
-  - reset / example / test commands
+- **Help by real use case**
+  - `+help start`
+  - `+help staff`
+  - `+help members`
+  - `+help repair`
+  - these shortcuts are also exposed in the help buttons
 
-- **Welcome and leave are grouped together cleanly**
-  - `+texts welcome`
-  - `+texts leave`
-  - `+texts vars`
+- **Cleaner staff lists**
+  - `+whitelistlist` now uses the same richer view as `+wl list`
+  - `+autorolelist` resolves real roles and shows broken IDs separately
+  - `+backup list` is chunked into readable pages
+  - `+glist` is chunked and easier to scan
+  - `+tiktoklist` is chunked and easier to scan
 
-- **Boost stays on the logs/tracking side**
-  - `+boost` is still available for editing the boost announcement text
-  - but boost is no longer presented like a normal welcome/leave event
-  - help/setup wording was cleaned up to reflect that
+- **Stats stay automatic**
+  - live stats still refresh automatically
+  - missing counters still auto-repair when possible
+  - manual `+stats refresh` remains available, but it is no longer the normal path
 
-- **Real runtime support added**
-  - join messages now respect `mode`, `footer`, `color`, `image`
-  - leave messages now respect `mode`, `footer`, `color`, `image`
-  - leave DMs now respect `dmmode`, `dmfooter`, `dmcolor`, `dmimage`
-  - boost messages now respect `mode`, `footer`, `color`, `image`
+- **Stable routing kept**
+  - command collisions already fixed in v48 remain fixed
+  - `+stats` stays on the real stats hub
+  - `+welcome` stays on the real welcome hub
 
-## Start
+## Quick deploy
 
 ```bash
 npm install
-cp .env.example .env
-npm run deploy
+npm run check
 npm start
 ```
 
-## Quick commands
+## Practical commands
 
 ```txt
-+texts
-+texts welcome
-+texts leave
-+texts boost
-+texts vars
-
-+welcome mode embed
-+welcome footer Profite bien du serveur
-+leave dmmode plain
-+boost color #FF73FA
-
-+welcome test
-+leave test
-+leave testdm
-+boost test
++setup
++help start
++help staff
++panel
++logs setup
++support panel
++welcome
++leave
++stats
++wl list
++autorolelist
++backup list
++glist
++tiktoklist
++repair all
 ```

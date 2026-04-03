@@ -21,7 +21,7 @@ const {
 } = require('discord.js');
 
 const { Store } = require('./core/store');
-const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, getHelpTargetInfo } = require('./core/commands');
+const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, getHelpTargetInfo } = require('./core/commands');
 const {
   ACTIVITY_TYPES,
   baseEmbed,
@@ -35,11 +35,25 @@ const {
   parseUserArgument
 } = require('./core/utils');
 const { checkTikTokWatchers } = require('./core/tiktok');
+const { DEFAULT_GUILD } = require('./core/defaults');
 
 const TOKEN = process.env.DISCORD_TOKEN || process.env.TOKEN;
 const OWNER_IDS = new Set(String(process.env.OWNER_IDS || '').split(',').map((v) => v.trim()).filter(Boolean));
 const DEFAULT_PREFIX = process.env.DEFAULT_PREFIX || '+';
 const AUTO_DEPLOY_COMMANDS = /^(1|true|yes|on)$/i.test(String(process.env.AUTO_DEPLOY_COMMANDS || 'false'));
+
+const SMART_PANEL_THEME_PRESETS = {
+  default: '#5865F2',
+  emerald: '#10B981',
+  sunset: '#F97316',
+  neon: '#A855F7'
+};
+
+const SMART_TEXT_PRESETS = {
+  clean: { mode: 'embed', footer: 'DvL', color: null, image: null, title: null },
+  premium: { mode: 'embed', footer: 'DvL • premium', color: '#8B5CF6', image: null, titlePrefix: '✦ ' },
+  minimal: { mode: 'plain', footer: null, color: null, image: null, title: null }
+};
 
 if (!TOKEN) {
   console.error('Missing DISCORD_TOKEN in .env');
@@ -215,6 +229,761 @@ function createAnnouncementPayload(guildConfig, source, variables, options = {})
 }
 
 
+function getPanelTextMeta(moduleKey = 'welcome') {
+  const safe = ['welcome', 'leave', 'leave-dm', 'boost'].includes(moduleKey) ? moduleKey : 'welcome';
+  const map = {
+    welcome: {
+      key: 'welcome',
+      label: 'Welcome',
+      fallbackTitle: '👋 Welcome',
+      rootKey: 'welcome',
+      enabledKey: 'enabled',
+      channelKey: 'channelId',
+      titleKey: 'title',
+      messageKey: 'message',
+      modeKey: 'mode',
+      footerKey: 'footer',
+      colorKey: 'color',
+      imageKey: 'imageUrl',
+      hasChannel: true
+    },
+    leave: {
+      key: 'leave',
+      label: 'Leave',
+      fallbackTitle: '👋 Member left',
+      rootKey: 'leave',
+      enabledKey: 'enabled',
+      channelKey: 'channelId',
+      titleKey: 'title',
+      messageKey: 'message',
+      modeKey: 'mode',
+      footerKey: 'footer',
+      colorKey: 'color',
+      imageKey: 'imageUrl',
+      hasChannel: true
+    },
+    'leave-dm': {
+      key: 'leave-dm',
+      label: 'Leave DM',
+      fallbackTitle: '👋 You left {server}',
+      rootKey: 'leave',
+      enabledKey: 'dmEnabled',
+      channelKey: null,
+      titleKey: 'dmTitle',
+      messageKey: 'dmMessage',
+      modeKey: 'dmMode',
+      footerKey: 'dmFooter',
+      colorKey: 'dmColor',
+      imageKey: 'dmImageUrl',
+      hasChannel: false
+    },
+    boost: {
+      key: 'boost',
+      label: 'Boost',
+      fallbackTitle: '🚀 New boost',
+      rootKey: 'boost',
+      enabledKey: 'enabled',
+      channelKey: 'channelId',
+      titleKey: 'title',
+      messageKey: 'message',
+      modeKey: 'mode',
+      footerKey: 'footer',
+      colorKey: 'color',
+      imageKey: 'imageUrl',
+      hasChannel: true
+    }
+  };
+  return map[safe];
+}
+
+function getPanelTextVariables(guild, user) {
+  return {
+    user: user ? `<@${user.id}>` : '<@0>',
+    userTag: user?.tag || 'Unknown#0000',
+    server: guild?.name || 'Server',
+    memberCount: guild?.memberCount || 0,
+    boostCount: guild?.premiumSubscriptionCount || 0,
+    boostTier: guild?.premiumTier || 0
+  };
+}
+
+function getPanelTextSource(guildConfig, moduleKey) {
+  const meta = getPanelTextMeta(moduleKey);
+  return guildConfig?.[meta.rootKey] || {};
+}
+
+function updatePanelTextModule(guild, moduleKey, mutator) {
+  const meta = getPanelTextMeta(moduleKey);
+  guild[meta.rootKey] = guild[meta.rootKey] || {};
+  mutator(guild[meta.rootKey], meta);
+  return guild;
+}
+
+function resetPanelTextModule(guild, moduleKey) {
+  const meta = getPanelTextMeta(moduleKey);
+  const defaults = DEFAULT_GUILD[meta.rootKey] || {};
+  guild[meta.rootKey] = guild[meta.rootKey] || {};
+  if (moduleKey === 'leave-dm') {
+    guild.leave.dmEnabled = defaults.dmEnabled;
+    guild.leave.dmMode = defaults.dmMode;
+    guild.leave.dmTitle = defaults.dmTitle;
+    guild.leave.dmMessage = defaults.dmMessage;
+    guild.leave.dmFooter = defaults.dmFooter;
+    guild.leave.dmColor = defaults.dmColor;
+    guild.leave.dmImageUrl = defaults.dmImageUrl;
+    return guild;
+  }
+  guild[meta.rootKey].enabled = defaults.enabled;
+  guild[meta.rootKey].channelId = defaults.channelId;
+  guild[meta.rootKey].title = defaults.title;
+  guild[meta.rootKey].message = defaults.message;
+  guild[meta.rootKey].mode = defaults.mode;
+  guild[meta.rootKey].footer = defaults.footer;
+  guild[meta.rootKey].color = defaults.color;
+  guild[meta.rootKey].imageUrl = defaults.imageUrl;
+  return guild;
+}
+
+function buildPanelTextPreviewPayload(guildConfig, moduleKey, guild, user) {
+  const meta = getPanelTextMeta(moduleKey);
+  const source = getPanelTextSource(guildConfig, moduleKey);
+  const variables = getPanelTextVariables(guild, user);
+  return createAnnouncementPayload(guildConfig, source, variables, {
+    titleKey: meta.titleKey,
+    messageKey: meta.messageKey,
+    modeKey: meta.modeKey,
+    footerKey: meta.footerKey,
+    colorKey: meta.colorKey,
+    imageKey: meta.imageKey,
+    fallbackTitle: meta.fallbackTitle
+  });
+}
+
+
+function updateSupportPrompt(guild, mutator) {
+  guild.support = guild.support || {};
+  mutator(guild.support);
+  return guild;
+}
+
+function resetSupportPrompt(guild) {
+  guild.support = guild.support || {};
+  const defaults = DEFAULT_GUILD.support || {};
+  guild.support.promptMode = defaults.promptMode;
+  guild.support.promptTitle = defaults.promptTitle;
+  guild.support.promptMessage = defaults.promptMessage;
+  guild.support.promptFooter = defaults.promptFooter;
+  guild.support.promptColor = defaults.promptColor;
+  guild.support.promptImageUrl = defaults.promptImageUrl;
+  return guild;
+}
+
+async function handleSupportPanelInteraction(interaction) {
+  if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+  const config = getGuildConfig(interaction.guild.id);
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return interaction.reply({ embeds: [baseEmbed(config, 'Support panel', 'You need Manage Server to use this panel.')], ephemeral: true }).catch(() => null);
+  }
+
+  const parts = interaction.customId.split(':');
+  const action = parts[1] || 'refresh';
+  const field = parts[2] || null;
+  const currentChannel = interaction.channel;
+  const refreshPanel = async () => {
+    const fresh = getGuildConfig(interaction.guild.id);
+    return interaction.message.edit({ embeds: [createSupportPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() }).catch(() => null);
+  };
+  const sendEphemeral = (title, description) => interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), title, description)], ephemeral: true }).catch(() => null);
+
+  if (action === 'refresh') {
+    return interaction.update({ embeds: [createSupportPanelEmbed(config, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() });
+  }
+
+  if (action === 'toggle') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support.enabled = !guild.support.enabled;
+      if (guild.support.enabled && !guild.support.channelId && currentChannel?.isTextBased?.()) guild.support.channelId = currentChannel.id;
+      enabled = guild.support.enabled;
+      return guild;
+    });
+    await sendEphemeral('📨 Support relay', `Support relay is now **${enabled ? 'enabled' : 'disabled'}**.`);
+    return refreshPanel();
+  }
+
+  if (action === 'relayhere') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📨 Support panel', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support.enabled = true;
+      guild.support.channelId = currentChannel.id;
+      return guild;
+    });
+    await sendEphemeral('📨 Support relay', `Relay channel set to ${currentChannel}.`);
+    return refreshPanel();
+  }
+
+  if (action === 'entryhere') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📨 Support panel', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support.entryChannelId = currentChannel.id;
+      return guild;
+    });
+    await sendEphemeral('📍 Support member channel', `Members should now use ${currentChannel} for support.`);
+    return refreshPanel();
+  }
+
+  if (action === 'restrict') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support.restrictToEntry = !guild.support.restrictToEntry;
+      enabled = guild.support.restrictToEntry;
+      return guild;
+    });
+    const fresh = getGuildConfig(interaction.guild.id);
+    await sendEphemeral('🚧 Support restriction', enabled ? `Members must now use support in ${fresh.support?.entryChannelId ? `<#${fresh.support.entryChannelId}>` : 'the configured support channel'}.` : 'Members can now use support from any channel again.');
+    return refreshPanel();
+  }
+
+  if (action === 'mode') {
+    let nextMode = 'embed';
+    client.store.updateGuild(interaction.guild.id, (guild) => updateSupportPrompt(guild, (support) => {
+      nextMode = String(support.promptMode || 'embed').toLowerCase() === 'plain' ? 'embed' : 'plain';
+      support.promptMode = nextMode;
+    }));
+    await sendEphemeral('🎨 Support prompt', `Prompt now uses **${nextMode}** mode.`);
+    return refreshPanel();
+  }
+
+  if (action === 'reset') {
+    client.store.updateGuild(interaction.guild.id, (guild) => resetSupportPrompt(guild));
+    await sendEphemeral('♻️ Support prompt', 'Support prompt style was reset to default values.');
+    return refreshPanel();
+  }
+
+  if (action === 'clear') {
+    if (!field || !['entry', 'relay'].includes(field)) return interaction.reply({ content: 'Invalid support panel action.', ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      if (field === 'entry') guild.support.entryChannelId = null;
+      if (field === 'relay') guild.support.channelId = null;
+      return guild;
+    });
+    await sendEphemeral('🧹 Support panel', field === 'entry' ? 'Support member channel cleared.' : 'Support relay channel cleared.');
+    return refreshPanel();
+  }
+
+  if (action === 'send') {
+    const fresh = getGuildConfig(interaction.guild.id);
+    const targetId = currentChannel?.isTextBased?.() ? currentChannel.id : fresh.support?.entryChannelId;
+    const targetChannel = targetId ? await interaction.guild.channels.fetch(targetId).catch(() => null) : null;
+    if (!targetChannel?.isTextBased?.()) {
+      return interaction.reply({ embeds: [baseEmbed(fresh, '📨 Support prompt', 'Open this panel inside the public support channel, or set a member channel first.')], ephemeral: true }).catch(() => null);
+    }
+    const payload = createSupportPromptPayload(fresh, interaction.guild, client.meta.defaultPrefix || '+', targetChannel);
+    const sent = await targetChannel.send(payload).catch(() => null);
+    await sendEphemeral('📤 Support prompt', sent ? `Support prompt sent in ${targetChannel}.` : 'I could not send the support prompt.');
+    return refreshPanel();
+  }
+
+  if (action === 'edit') {
+    const safeField = ['title', 'message', 'footer', 'color', 'image'].includes(field) ? field : 'message';
+    const source = config.support || {};
+    const keyMap = { title: 'promptTitle', message: 'promptMessage', footer: 'promptFooter', color: 'promptColor', image: 'promptImageUrl' };
+    const labelMap = {
+      title: 'Support prompt title',
+      message: 'Support prompt message',
+      footer: 'Support prompt footer',
+      color: 'Support prompt color (#RRGGBB)',
+      image: 'Support prompt image URL'
+    };
+    const value = String(source?.[keyMap[safeField]] || '').slice(0, 4000);
+    const modal = new ModalBuilder().setCustomId(`supportpanelmodal:${safeField}`).setTitle(`Edit ${labelMap[safeField]}`.slice(0, 45));
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('value')
+          .setLabel(labelMap[safeField])
+          .setStyle(safeField === 'message' ? TextInputStyle.Paragraph : TextInputStyle.Short)
+          .setRequired(false)
+          .setMaxLength(safeField === 'message' ? 2000 : 400)
+          .setValue(value)
+      )
+    );
+    return interaction.showModal(modal);
+  }
+
+  return interaction.reply({ content: 'Invalid support panel action.', ephemeral: true }).catch(() => null);
+}
+
+async function handleConfigPanelInteraction(interaction) {
+  if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+  const config = getGuildConfig(interaction.guild.id);
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return interaction.reply({ embeds: [baseEmbed(config, 'Smart panel', 'You need Manage Server to use this panel.')], ephemeral: true }).catch(() => null);
+  }
+
+  const parts = interaction.customId.split(':');
+  const action = parts[1];
+  const arg = parts[2] || null;
+  const extra = parts[3] || null;
+  const currentChannel = interaction.channel;
+  const refreshPanel = async (page) => {
+    const fresh = getGuildConfig(interaction.guild.id);
+    return interaction.message.edit({ embeds: [createConfigPanelEmbed(fresh, interaction.guild, page, currentChannel)], components: createConfigPanelComponents(page, currentChannel?.id) }).catch(() => null);
+  };
+  const sendEphemeral = (title, description) => interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), title, description)], ephemeral: true }).catch(() => null);
+
+  if (action === 'page' || action === 'refresh') {
+    const page = arg || 'home';
+    return interaction.update({ embeds: [createConfigPanelEmbed(config, interaction.guild, page, currentChannel)], components: createConfigPanelComponents(page, currentChannel?.id) });
+  }
+
+  if (action === 'openlogs') {
+    return interaction.update({ embeds: [createLogsPanelEmbed(config, 1)], components: createLogsPanelComponents(config, 1) });
+  }
+
+  if (action === 'supportopen') {
+    return interaction.update({ embeds: [createSupportPanelEmbed(config, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() });
+  }
+
+  if (action === 'securityopen') {
+    return interaction.reply({ embeds: [baseEmbed(config, '🚨 Security hub', [
+      `Use \`${client.meta.defaultPrefix || '+'}security\` for the full security hub.`,
+      `Fast path: \`${client.meta.defaultPrefix || '+'}security ghostping here\` • \`${client.meta.defaultPrefix || '+'}whitelistlist\``
+    ].join('\n'))], ephemeral: true }).catch(() => null);
+  }
+
+  if (action === 'whitelistview') {
+    const users = Array.from(new Set(config.automod?.whitelistUserIds || [])).map((id) => `<@${id}>`);
+    const roles = Array.from(new Set(config.automod?.whitelistRoleIds || [])).map((id) => `<@&${id}>`);
+    return interaction.reply({ embeds: [baseEmbed(config, '✅ Whitelist', [
+      `**Users:** ${users.length ? users.join(', ') : 'none'}`,
+      `**Roles:** ${roles.length ? roles.join(', ') : 'none'}`
+    ].join('\n').slice(0, 4000))], ephemeral: true }).catch(() => null);
+  }
+
+  if (action === 'repair') {
+    const scope = ['all', 'texts', 'logs', 'support', 'stats', 'security'].includes(arg) ? arg : 'all';
+    const report = await client.repairGuildConfiguration(interaction.guild, scope);
+    await sendEphemeral('🧰 Repair', [
+      `**Scope:** ${report.scope}`,
+      `**Fixed:** ${report.fixed.length}`,
+      `**Cleared:** ${report.cleared.length}`,
+      `**Notes:** ${report.notes.length}`,
+      report.fixed.length ? '' : null,
+      ...report.fixed.slice(0, 6).map((line) => `• ${line}`),
+      ...report.cleared.slice(0, 6).map((line) => `• ${line}`),
+      ...report.notes.slice(0, 6).map((line) => `• ${line}`)
+    ].filter(Boolean).join('\n'));
+    return refreshPanel('repair');
+  }
+
+  if (action === 'textvars') {
+    return interaction.reply({
+      embeds: [baseEmbed(config, '🧩 Text variables', [
+        '`{user}` → member mention',
+        '`{userTag}` → full username',
+        '`{server}` → server name',
+        '`{memberCount}` → member count',
+        '`{boostCount}` → boost count',
+        '`{boostTier}` → boost tier'
+      ].join('\n'))],
+      ephemeral: true
+    }).catch(() => null);
+  }
+
+  if (action === 'textview') {
+    const page = arg || 'welcome';
+    return interaction.update({ embeds: [createConfigPanelEmbed(config, interaction.guild, page, currentChannel)], components: createConfigPanelComponents(page, currentChannel?.id) });
+  }
+
+  if (action === 'texttoggle' || action === 'texthere' || action === 'textmode' || action === 'texttest' || action === 'textreset' || action === 'textedit') {
+    const moduleKey = arg || 'welcome';
+    const meta = getPanelTextMeta(moduleKey);
+
+    if (action === 'texttest') {
+      const payload = buildPanelTextPreviewPayload(config, moduleKey, interaction.guild, interaction.user);
+      return interaction.reply({ ...payload, ephemeral: true }).catch(() => null);
+    }
+
+    if (action === 'textedit') {
+      const source = getPanelTextSource(config, moduleKey);
+      const field = extra || 'message';
+      const keyMap = {
+        title: meta.titleKey,
+        message: meta.messageKey,
+        footer: meta.footerKey,
+        color: meta.colorKey,
+        image: meta.imageKey
+      };
+      const targetKey = keyMap[field] || meta.messageKey;
+      const value = String(source?.[targetKey] || '').slice(0, 4000);
+      const labelMap = {
+        title: `${meta.label} title`,
+        message: `${meta.label} message`,
+        footer: `${meta.label} footer`,
+        color: `${meta.label} color (#RRGGBB)`,
+        image: `${meta.label} image URL`
+      };
+      const modal = new ModalBuilder().setCustomId(`cfgpanelmodal:${moduleKey}:${field}`).setTitle(`Edit ${labelMap[field] || field}`.slice(0, 45));
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('value')
+            .setLabel(labelMap[field] || field)
+            .setStyle(field === 'message' ? TextInputStyle.Paragraph : TextInputStyle.Short)
+            .setRequired(false)
+            .setMaxLength(field === 'message' ? 2000 : 400)
+            .setValue(value)
+        )
+      );
+      return interaction.showModal(modal);
+    }
+
+    if (action === 'textreset') {
+      client.store.updateGuild(interaction.guild.id, (guild) => resetPanelTextModule(guild, moduleKey));
+      await sendEphemeral('♻️ Text reset', `${meta.label} style was reset to the default values.`);
+      return refreshPanel(moduleKey);
+    }
+
+    if (action === 'texthere') {
+      if (!meta.hasChannel) return interaction.reply({ embeds: [baseEmbed(config, '📝 Text panel', 'This module sends in DMs, not in a server channel.')], ephemeral: true }).catch(() => null);
+      if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📝 Text panel', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+      client.store.updateGuild(interaction.guild.id, (guild) => updatePanelTextModule(guild, moduleKey, (target) => {
+        target[meta.enabledKey] = true;
+        target[meta.channelKey] = currentChannel.id;
+      }));
+      await sendEphemeral('📍 Channel bound', `${meta.label} will now send in ${currentChannel}.`);
+      return refreshPanel(moduleKey);
+    }
+
+    if (action === 'texttoggle') {
+      let nextEnabled = false;
+      client.store.updateGuild(interaction.guild.id, (guild) => updatePanelTextModule(guild, moduleKey, (target) => {
+        nextEnabled = !target[meta.enabledKey];
+        target[meta.enabledKey] = nextEnabled;
+        if (nextEnabled && meta.hasChannel && !target[meta.channelKey] && currentChannel?.isTextBased?.()) target[meta.channelKey] = currentChannel.id;
+      }));
+      await sendEphemeral('✅ Text module', `${meta.label} is now **${nextEnabled ? 'enabled' : 'disabled'}**.`);
+      return refreshPanel(moduleKey);
+    }
+
+    if (action === 'textmode') {
+      let nextMode = 'embed';
+      client.store.updateGuild(interaction.guild.id, (guild) => updatePanelTextModule(guild, moduleKey, (target) => {
+        nextMode = String(target[meta.modeKey] || 'embed').toLowerCase() === 'plain' ? 'embed' : 'plain';
+        target[meta.modeKey] = nextMode;
+      }));
+      await sendEphemeral('🎨 Text mode', `${meta.label} now uses **${nextMode}** mode.`);
+      return refreshPanel(moduleKey);
+    }
+  }
+
+
+  if (action === 'textpreset') {
+    const moduleKey = arg || 'welcome';
+    const presetKey = ['clean', 'premium', 'minimal'].includes(extra) ? extra : 'clean';
+    const metaMap = {
+      welcome: { root: 'welcome', enabledKey: 'enabled', modeKey: 'mode', titleKey: 'title', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl', channelKey: 'channelId' },
+      leave: { root: 'leave', enabledKey: 'enabled', modeKey: 'mode', titleKey: 'title', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl', channelKey: 'channelId' },
+      'leave-dm': { root: 'leave', enabledKey: 'dmEnabled', modeKey: 'dmMode', titleKey: 'dmTitle', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl', channelKey: null },
+      boost: { root: 'boost', enabledKey: 'enabled', modeKey: 'mode', titleKey: 'title', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl', channelKey: 'channelId' }
+    };
+    const meta = metaMap[moduleKey] || metaMap.welcome;
+    const preset = SMART_TEXT_PRESETS[presetKey] || SMART_TEXT_PRESETS.clean;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild[meta.root] = guild[meta.root] || JSON.parse(JSON.stringify(DEFAULT_GUILD[meta.root] || {}));
+      const target = guild[meta.root];
+      target[meta.enabledKey] = true;
+      if (meta.channelKey && !target[meta.channelKey] && currentChannel?.isTextBased?.()) target[meta.channelKey] = currentChannel.id;
+      target[meta.modeKey] = preset.mode;
+      const fallbackTitle = DEFAULT_GUILD[meta.root]?.[meta.titleKey] || target[meta.titleKey] || null;
+      target[meta.titleKey] = preset.title !== undefined ? preset.title : (preset.titlePrefix ? `${preset.titlePrefix}${String(target[meta.titleKey] || fallbackTitle || '').replace(/^✦\s*/, '')}`.trim() : (target[meta.titleKey] || fallbackTitle || null));
+      target[meta.footerKey] = preset.footer;
+      target[meta.colorKey] = preset.color;
+      target[meta.imageKey] = preset.image;
+      return guild;
+    });
+    await sendEphemeral('✨ Text preset', `Preset **${presetKey}** applied to **${moduleKey}**.`);
+    return refreshPanel(moduleKey);
+  }
+
+  if (action === 'theme') {
+    const presetKey = arg in SMART_PANEL_THEME_PRESETS ? arg : 'default';
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.embedColor = SMART_PANEL_THEME_PRESETS[presetKey] || SMART_PANEL_THEME_PRESETS.default;
+      guild.panel = guild.panel || {};
+      guild.panel.theme = presetKey;
+      return guild;
+    });
+    await sendEphemeral('🎨 Theme', `Theme **${presetKey}** applied.`);
+    return refreshPanel('style');
+  }
+
+  if (action === 'deploy') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📌 Smart panel', 'Open the panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    const sent = await currentChannel.send({ embeds: [createConfigPanelEmbed(getGuildConfig(interaction.guild.id), interaction.guild, 'home', currentChannel)], components: createConfigPanelComponents('home', currentChannel.id) }).catch(() => null);
+    if (!sent) return interaction.reply({ embeds: [baseEmbed(config, '📌 Smart panel', 'I could not deploy the panel in this channel.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.panel = guild.panel || {};
+      guild.panel.deployedChannelId = currentChannel.id;
+      guild.panel.deployedMessageId = sent.id;
+      guild.panel.lastDeployedAt = Date.now();
+      return guild;
+    });
+    return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), '📌 Smart panel', `Control center deployed in ${currentChannel}. Pin that message for staff.`)], ephemeral: true }).catch(() => null);
+  }
+
+  if (action === 'supporttoggle') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support.enabled = !guild.support.enabled;
+      if (guild.support.enabled && !guild.support.channelId && currentChannel?.isTextBased?.()) guild.support.channelId = currentChannel.id;
+      enabled = guild.support.enabled;
+      return guild;
+    });
+    await sendEphemeral('📨 Support relay', `Support relay is now **${enabled ? 'enabled' : 'disabled'}**.`);
+    return refreshPanel('support');
+  }
+
+  if (action === 'supportrelayhere') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📨 Support', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support.enabled = true;
+      guild.support.channelId = currentChannel.id;
+      return guild;
+    });
+    await sendEphemeral('📨 Support relay', `Relay channel set to ${currentChannel}.`);
+    return refreshPanel('support');
+  }
+
+  if (action === 'supportentryhere') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📨 Support', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support.entryChannelId = currentChannel.id;
+      return guild;
+    });
+    await sendEphemeral('📍 Support entry', `Members should use ${currentChannel} for \`${client.meta.defaultPrefix || '+'}support\`.`);
+    return refreshPanel('support');
+  }
+
+  if (action === 'supportrestrict') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support.restrictToEntry = !guild.support.restrictToEntry;
+      enabled = guild.support.restrictToEntry;
+      return guild;
+    });
+    await sendEphemeral('🚧 Support restriction', enabled ? 'Members are now restricted to the configured support channel.' : 'Members can now use support from any channel again.');
+    return refreshPanel('support');
+  }
+
+  if (action === 'supportsend') {
+    const fresh = getGuildConfig(interaction.guild.id);
+    const targetId = fresh.support?.entryChannelId || currentChannel?.id;
+    const targetChannel = targetId ? (interaction.guild.channels.cache.get(targetId) || await interaction.guild.channels.fetch(targetId).catch(() => null)) : null;
+    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(fresh, '📨 Support prompt', 'Set a valid support member channel first.')], ephemeral: true }).catch(() => null);
+    const payload = createSupportPromptPayload(fresh, interaction.guild, client.meta.defaultPrefix || '+', targetChannel);
+    const sent = await targetChannel.send(payload).catch(() => null);
+    await sendEphemeral('📤 Support prompt', sent ? `Support prompt sent in ${targetChannel}.` : 'I could not send the support prompt.');
+    return refreshPanel('support');
+  }
+
+  if (action === 'logtoggle') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.logs = guild.logs || { enabled: false, channelId: null, channels: {}, types: {} };
+      guild.logs.enabled = !guild.logs.enabled;
+      enabled = guild.logs.enabled;
+      if (enabled && !guild.logs.channels?.default && currentChannel?.isTextBased?.()) {
+        guild.logs.channels = guild.logs.channels || {};
+        guild.logs.channels.default = currentChannel.id;
+        guild.logs.channelId = currentChannel.id;
+      }
+      return guild;
+    });
+    await sendEphemeral('🧾 Logs', `Logs are now **${enabled ? 'enabled' : 'disabled'}**.`);
+    return refreshPanel('logs');
+  }
+
+  if (action === 'ghosttoggle') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.automod = guild.automod || {};
+      guild.automod.ghostPing = guild.automod.ghostPing || { enabled: false, channelId: null };
+      guild.automod.ghostPing.enabled = !guild.automod.ghostPing.enabled;
+      if (!guild.automod.ghostPing.channelId && currentChannel?.isTextBased?.()) guild.automod.ghostPing.channelId = currentChannel.id;
+      enabled = guild.automod.ghostPing.enabled;
+      return guild;
+    });
+    await sendEphemeral('👻 Ghost ping', `Ghost ping is now **${enabled ? 'enabled' : 'disabled'}**.${enabled && currentChannel?.isTextBased?.() ? `\nChannel: ${currentChannel}` : ''}`);
+    return refreshPanel('security');
+  }
+
+  if (action === 'ghosthere') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '👻 Ghost ping', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.automod = guild.automod || {};
+      guild.automod.ghostPing = guild.automod.ghostPing || { enabled: false, channelId: null };
+      guild.automod.ghostPing.enabled = true;
+      guild.automod.ghostPing.channelId = currentChannel.id;
+      return guild;
+    });
+    await sendEphemeral('👻 Ghost ping', `Joining members will be pinged in ${currentChannel}, then the message will delete after 2 seconds.`);
+    return refreshPanel('security');
+  }
+
+  if (action === 'ghosttest') {
+    const fresh = getGuildConfig(interaction.guild.id);
+    const testChannelId = fresh.automod?.ghostPing?.channelId || currentChannel?.id;
+    const testChannel = testChannelId ? (interaction.guild.channels.cache.get(testChannelId) || await interaction.guild.channels.fetch(testChannelId).catch(() => null)) : null;
+    if (!testChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(fresh, '👻 Ghost ping test', 'No valid ghost ping channel is configured yet. Use **Ghost here** first.')], ephemeral: true }).catch(() => null);
+    const me = interaction.guild.members.me || await interaction.guild.members.fetchMe().catch(() => null);
+    const perms = testChannel.permissionsFor(me);
+    const canSend = perms?.has(PermissionFlagsBits.SendMessages);
+    let sent = false;
+    try {
+      if (canSend) {
+        const probe = await testChannel.send({ content: `<@${interaction.user.id}>`, allowedMentions: { users: [interaction.user.id], roles: [], parse: [], repliedUser: false } });
+        if (probe) setTimeout(() => probe.delete().catch(() => null), 2_000).unref?.();
+        sent = true;
+      }
+    } catch (error) {
+      sent = false;
+    }
+    await sendEphemeral('👻 Ghost ping test', sent ? `Test ping sent in ${testChannel}. It will delete after 2 seconds.` : `I could not send a test ping in ${testChannel}. Check **Send Messages**.`);
+    return refreshPanel('home');
+  }
+
+  if (action === 'logshere') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '🧾 Logs', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.logs = guild.logs || { enabled: false, channelId: null, channels: {}, types: {} };
+      guild.logs.enabled = true;
+      guild.logs.channelId = currentChannel.id;
+      guild.logs.channels = guild.logs.channels || {};
+      guild.logs.channels.default = currentChannel.id;
+      return guild;
+    });
+    await sendEphemeral('🧾 Logs', `Default logs channel set to ${currentChannel}.`);
+    return refreshPanel('logs');
+  }
+
+  if (action === 'trophyhere') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '🏆 Trophy board', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.progress = guild.progress || { enabled: false, channelId: null, messageId: null, lastUpdatedAt: null };
+      guild.progress.enabled = true;
+      guild.progress.channelId = currentChannel.id;
+      guild.progress.lastUpdatedAt = Date.now();
+      return guild;
+    });
+    await refreshProgressBoard(interaction.guild, { createIfMissing: true });
+    await sendEphemeral('🏆 Trophy board', `Progress board is now linked to ${currentChannel}.`);
+    return refreshPanel('home');
+  }
+
+  if (action === 'artoggle' || action === 'arhype' || action === 'aroff') {
+    const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
+    const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
+    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '⚡ Auto-react', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    let note = '';
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.autoReact = guild.autoReact || { channels: {} };
+      guild.autoReact.channels = guild.autoReact.channels || {};
+      const current = guild.autoReact.channels[targetChannel.id] || {};
+      const existingEmojis = Array.isArray(current.emojis) ? current.emojis.filter(Boolean) : [];
+      if (action === 'aroff') {
+        guild.autoReact.channels[targetChannel.id] = { ...current, enabled: false };
+        note = `Auto-react disabled in ${targetChannel}.`;
+      } else if (action === 'arhype') {
+        guild.autoReact.channels[targetChannel.id] = {
+          ...current,
+          enabled: true,
+          emojis: ['🔥', '😂', '💥', '⚡'],
+          mode: 'rotate',
+          maxReactions: 2,
+          chance: 100,
+          cooldownSeconds: 10,
+          allowBots: false,
+          ignoreCommands: true,
+          triggerWords: []
+        };
+        note = `Preset **hype** applied in ${targetChannel}.`;
+      } else {
+        const nextEnabled = !(current.enabled !== false && existingEmojis.length > 0);
+        guild.autoReact.channels[targetChannel.id] = {
+          ...current,
+          enabled: nextEnabled,
+          emojis: existingEmojis.length ? existingEmojis : ['🔥', '😂'],
+          mode: current.mode || 'rotate',
+          maxReactions: Math.max(1, Number(current.maxReactions) || 1),
+          chance: Math.max(1, Number(current.chance) || 100),
+          cooldownSeconds: Math.max(0, Number(current.cooldownSeconds) || 10),
+          allowBots: Boolean(current.allowBots),
+          ignoreCommands: current.ignoreCommands !== false,
+          triggerWords: Array.isArray(current.triggerWords) ? current.triggerWords : []
+        };
+        note = `Auto-react is now **${nextEnabled ? 'enabled' : 'disabled'}** in ${targetChannel}.`;
+      }
+      return guild;
+    });
+    await sendEphemeral('⚡ Auto-react', note);
+    return refreshPanel('automation');
+  }
+
+  if (action === 'stickyoff') {
+    const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
+    const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
+    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📌 Sticky', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.sticky = guild.sticky || {};
+      delete guild.sticky[targetChannel.id];
+      return guild;
+    });
+    await sendEphemeral('📌 Sticky', `Sticky message disabled in ${targetChannel}.`);
+    return refreshPanel('automation');
+  }
+
+  if (action === 'statsmembers' || action === 'statsonline' || action === 'statsvoice') {
+    const type = action === 'statsmembers' ? 'members' : action === 'statsonline' ? 'online' : 'voice';
+    const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
+    const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
+    if (!targetChannel || ![ChannelType.GuildVoice, ChannelType.GuildStageVoice].includes(targetChannel.type)) {
+      return interaction.reply({ embeds: [baseEmbed(config, '📊 Stats bind', 'Open this panel inside a **voice channel** if you want to bind it as a counter.')], ephemeral: true }).catch(() => null);
+    }
+    const defaultLabels = {
+      members: '👥・Membres : {count}',
+      online: '🌐・En ligne : {count}',
+      voice: '🔊・Vocal : {count}'
+    };
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.stats = guild.stats || { enabled: false, categoryId: null, channels: {}, labels: {}, lockChannels: true };
+      guild.stats.enabled = true;
+      guild.stats.channels = guild.stats.channels || {};
+      guild.stats.labels = guild.stats.labels || {};
+      guild.stats.channels[type] = targetChannel.id;
+      if (!guild.stats.labels[type]) guild.stats.labels[type] = defaultLabels[type];
+      guild.stats.lockChannels = true;
+      return guild;
+    });
+    await refreshGuildStats(interaction.guild);
+    await sendEphemeral('📊 Stats bind', `Bound **${type}** counter to ${targetChannel}.`);
+    return refreshPanel('channels');
+  }
+
+  return interaction.reply({ embeds: [baseEmbed(config, 'Smart panel', 'Unknown action.')] , ephemeral: true }).catch(() => null);
+}
+
+
 async function getManagedTempVoiceState(interaction, options = {}) {
   const member = interaction.member;
   const guild = interaction.guild;
@@ -333,7 +1102,54 @@ function getGuildLiveStats(guild) {
   return { members, online, voice };
 }
 
-async function refreshGuildStats(guild) {
+async function ensureGuildStatsChannels(guild, options = {}) {
+  if (!guild) return null;
+  const config = getGuildConfig(guild.id);
+  const stats = config.stats || {};
+  if (!stats.enabled) return null;
+  const recreateMissing = options.recreateMissing !== false;
+  const labels = {
+    members: stats.labels?.members || '👥・Membres : {count}',
+    online: stats.labels?.online || '🌐・En ligne : {count}',
+    voice: stats.labels?.voice || '🔊・Vocal : {count}'
+  };
+  const live = getGuildLiveStats(guild);
+  const category = stats.categoryId ? (guild.channels.cache.get(stats.categoryId) || await guild.channels.fetch(stats.categoryId).catch(() => null)) : null;
+  const resolved = {};
+  for (const [key, count] of Object.entries(live)) {
+    let channelId = stats.channels?.[key] || null;
+    let channel = channelId ? (guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null)) : null;
+    if (!channel && recreateMissing && category?.type === ChannelType.GuildCategory) {
+      channel = await guild.channels.create({
+        name: buildGuildStatChannelName(labels[key], count),
+        type: ChannelType.GuildVoice,
+        parent: category.id,
+        permissionOverwrites: [{
+          id: guild.roles.everyone.id,
+          allow: [PermissionFlagsBits.ViewChannel],
+          deny: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
+        }],
+        reason: 'DvL stats auto-repair'
+      }).catch(() => null);
+      if (channel) {
+        channelId = channel.id;
+        client.store.updateGuild(guild.id, (g) => {
+          g.stats = g.stats || { enabled: false, categoryId: null, channels: {}, labels: {}, lockChannels: true };
+          g.stats.channels = g.stats.channels || {};
+          g.stats.labels = { ...(g.stats.labels || {}), ...labels };
+          g.stats.enabled = true;
+          if (!g.stats.categoryId && category?.id) g.stats.categoryId = category.id;
+          g.stats.channels[key] = channel.id;
+          return g;
+        });
+      }
+    }
+    resolved[key] = channel || null;
+  }
+  return { labels, live, channels: resolved, category };
+}
+
+async function refreshGuildStats(guild, options = {}) {
   if (!guild) return null;
   const config = getGuildConfig(guild.id);
   if (!config.stats?.enabled) return null;
@@ -353,6 +1169,205 @@ async function refreshGuildStats(guild) {
   return live;
 }
 
+
+function normalizeAnnouncementModeValue(value, fallback = 'embed') {
+  return String(value || fallback).toLowerCase() === 'plain' ? 'plain' : 'embed';
+}
+
+function ensureGuildSectionShape(target, key, fallback) {
+  if (!target[key] || typeof target[key] !== 'object') target[key] = JSON.parse(JSON.stringify(fallback));
+  return target[key];
+}
+
+async function validateChannelRef(guild, id) {
+  if (!id) return null;
+  return guild.channels.cache.get(id) || await guild.channels.fetch(id).catch(() => null);
+}
+
+async function validateRoleRef(guild, id) {
+  if (!id) return null;
+  return guild.roles.cache.get(id) || await guild.roles.fetch(id).catch(() => null);
+}
+
+async function validateUserRef(guild, id) {
+  if (!id) return null;
+  const member = guild.members.cache.get(id) || await guild.members.fetch(id).catch(() => null);
+  return member?.user || await client.users.fetch(id).catch(() => null);
+}
+
+async function repairGuildConfiguration(guild, scope = 'all') {
+  if (!guild) return null;
+  const report = { scope, fixed: [], cleared: [], notes: [] };
+  const wants = (name) => scope === 'all' || scope === name;
+
+  client.store.updateGuild(guild.id, (g) => {
+    if (!g || typeof g !== 'object') g = JSON.parse(JSON.stringify(DEFAULT_GUILD));
+    if (wants('texts')) {
+      const welcome = ensureGuildSectionShape(g, 'welcome', DEFAULT_GUILD.welcome);
+      const leave = ensureGuildSectionShape(g, 'leave', DEFAULT_GUILD.leave);
+      const boost = ensureGuildSectionShape(g, 'boost', DEFAULT_GUILD.boost);
+      welcome.mode = normalizeAnnouncementModeValue(welcome.mode, DEFAULT_GUILD.welcome.mode);
+      leave.mode = normalizeAnnouncementModeValue(leave.mode, DEFAULT_GUILD.leave.mode);
+      leave.dmMode = normalizeAnnouncementModeValue(leave.dmMode, DEFAULT_GUILD.leave.dmMode);
+      boost.mode = normalizeAnnouncementModeValue(boost.mode, DEFAULT_GUILD.boost.mode);
+      for (const [obj, fallback, label] of [[welcome, DEFAULT_GUILD.welcome, 'welcome'], [leave, DEFAULT_GUILD.leave, 'leave'], [boost, DEFAULT_GUILD.boost, 'boost']]) {
+        for (const [key, value] of Object.entries(fallback)) {
+          if (typeof obj[key] === 'undefined') {
+            obj[key] = JSON.parse(JSON.stringify(value));
+            report.fixed.push(`${label}.${key} restored`);
+          }
+        }
+      }
+    }
+    if (wants('logs')) {
+      const logs = ensureGuildSectionShape(g, 'logs', DEFAULT_GUILD.logs);
+      logs.channels = { ...DEFAULT_GUILD.logs.channels, ...(logs.channels || {}) };
+      logs.typeChannels = logs.typeChannels || {};
+      logs.types = { ...DEFAULT_GUILD.logs.types, ...(logs.types || {}) };
+      report.fixed.push('logs shape normalized');
+    }
+    if (wants('support')) {
+      const support = ensureGuildSectionShape(g, 'support', DEFAULT_GUILD.support);
+      support.promptMode = normalizeAnnouncementModeValue(support.promptMode, DEFAULT_GUILD.support.promptMode);
+      report.fixed.push('support shape normalized');
+    }
+    if (wants('security')) {
+      const automod = ensureGuildSectionShape(g, 'automod', DEFAULT_GUILD.automod);
+      automod.whitelistUserIds = Array.from(new Set((automod.whitelistUserIds || []).map(String).filter(Boolean)));
+      automod.whitelistRoleIds = Array.from(new Set((automod.whitelistRoleIds || []).map(String).filter(Boolean)));
+      automod.ignoredChannels = Array.from(new Set((automod.ignoredChannels || []).map(String).filter(Boolean)));
+      automod.picOnlyChannels = Array.from(new Set((automod.picOnlyChannels || []).map(String).filter(Boolean)));
+      automod.ghostPing = { enabled: false, channelId: null, ...(automod.ghostPing || {}) };
+      report.fixed.push('security lists normalized');
+    }
+    if (wants('stats')) {
+      const stats = ensureGuildSectionShape(g, 'stats', DEFAULT_GUILD.stats);
+      stats.channels = { ...DEFAULT_GUILD.stats.channels, ...(stats.channels || {}) };
+      stats.labels = { ...DEFAULT_GUILD.stats.labels, ...(stats.labels || {}) };
+      if (typeof stats.lockChannels !== 'boolean') stats.lockChannels = true;
+      report.fixed.push('stats shape normalized');
+    }
+    return g;
+  });
+
+  const fresh = getGuildConfig(guild.id);
+
+  if (wants('logs')) {
+    const logs = fresh.logs || {};
+    const routeKeys = ['channelId', 'default', 'messages', 'members', 'moderation', 'voice', 'server', 'social'];
+    for (const key of routeKeys) {
+      const id = key === 'channelId' ? logs.channelId : logs.channels?.[key];
+      if (!id) continue;
+      const channel = await validateChannelRef(guild, id);
+      if (channel?.isTextBased?.()) continue;
+      client.store.updateGuild(guild.id, (g) => {
+        if (key === 'channelId') g.logs.channelId = null;
+        else if (g.logs?.channels) g.logs.channels[key] = null;
+        return g;
+      });
+      report.cleared.push(`logs ${key} channel was invalid`);
+    }
+    for (const [type, id] of Object.entries(logs.typeChannels || {})) {
+      if (!id) continue;
+      const channel = await validateChannelRef(guild, id);
+      if (channel?.isTextBased?.()) continue;
+      client.store.updateGuild(guild.id, (g) => {
+        if (g.logs?.typeChannels) delete g.logs.typeChannels[type];
+        return g;
+      });
+      report.cleared.push(`logs type route ${type} was invalid`);
+    }
+  }
+
+  if (wants('support')) {
+    const support = getGuildConfig(guild.id).support || {};
+    for (const [label, id, field] of [['relay', support.channelId, 'channelId'], ['member entry', support.entryChannelId, 'entryChannelId']]) {
+      if (!id) continue;
+      const channel = await validateChannelRef(guild, id);
+      if (channel?.isTextBased?.()) continue;
+      client.store.updateGuild(guild.id, (g) => { if (g.support) g.support[field] = null; return g; });
+      report.cleared.push(`support ${label} channel was invalid`);
+    }
+    if (support.pingRoleId) {
+      const role = await validateRoleRef(guild, support.pingRoleId);
+      if (!role) {
+        client.store.updateGuild(guild.id, (g) => { if (g.support) g.support.pingRoleId = null; return g; });
+        report.cleared.push('support ping role was invalid');
+      }
+    }
+  }
+
+  if (wants('security')) {
+    const automod = getGuildConfig(guild.id).automod || {};
+    const validUsers = [];
+    for (const id of automod.whitelistUserIds || []) {
+      const user = await validateUserRef(guild, id);
+      if (user) validUsers.push(String(id));
+      else report.cleared.push(`whitelist user ${id} removed`);
+    }
+    const validRoles = [];
+    for (const id of automod.whitelistRoleIds || []) {
+      const role = await validateRoleRef(guild, id);
+      if (role) validRoles.push(String(id));
+      else report.cleared.push(`whitelist role ${id} removed`);
+    }
+    const validIgnored = [];
+    for (const id of automod.ignoredChannels || []) {
+      const channel = await validateChannelRef(guild, id);
+      if (channel) validIgnored.push(String(id));
+      else report.cleared.push(`ignored channel ${id} removed`);
+    }
+    const validPicOnly = [];
+    for (const id of automod.picOnlyChannels || []) {
+      const channel = await validateChannelRef(guild, id);
+      if (channel?.isTextBased?.()) validPicOnly.push(String(id));
+      else report.cleared.push(`pic-only channel ${id} removed`);
+    }
+    client.store.updateGuild(guild.id, (g) => {
+      if (g.automod) {
+        g.automod.whitelistUserIds = validUsers;
+        g.automod.whitelistRoleIds = validRoles;
+        g.automod.ignoredChannels = validIgnored;
+        g.automod.picOnlyChannels = validPicOnly;
+      }
+      return g;
+    });
+  }
+
+  if (wants('stats')) {
+    const stats = getGuildConfig(guild.id).stats || {};
+    let inferredCategoryId = stats.categoryId || null;
+    if (!inferredCategoryId) {
+      for (const id of Object.values(stats.channels || {}).filter(Boolean)) {
+        const channel = await validateChannelRef(guild, id);
+        if (channel?.parentId) {
+          inferredCategoryId = channel.parentId;
+          client.store.updateGuild(guild.id, (g) => { if (g.stats) g.stats.categoryId = inferredCategoryId; return g; });
+          report.fixed.push('stats category inferred from an existing counter');
+          break;
+        }
+      }
+    }
+    if (inferredCategoryId) {
+      const category = await validateChannelRef(guild, inferredCategoryId);
+      if (!category || category.type !== ChannelType.GuildCategory) {
+        client.store.updateGuild(guild.id, (g) => { if (g.stats) g.stats.categoryId = null; return g; });
+        report.cleared.push('stats category was invalid');
+      }
+    }
+    const ensured = await ensureGuildStatsChannels(guild, { recreateMissing: true });
+    if (ensured) {
+      await refreshGuildStats(guild);
+      report.notes.push('stats counters were refreshed');
+    } else {
+      report.notes.push('stats are disabled or missing a category, so no counters were recreated');
+    }
+  }
+
+  return report;
+}
+
+client.repairGuildConfiguration = repairGuildConfiguration;
 
 async function refreshProgressBoard(guild, options = {}) {
   if (!guild) return null;
@@ -465,8 +1480,79 @@ async function syncVoiceMuteForMember(member) {
 }
 
 client.refreshGuildStats = refreshGuildStats;
+client.ensureGuildStatsChannels = ensureGuildStatsChannels;
 
-async function sendLog(guild, type, title, description) {
+function getLogTypeColor(type, fallback = '#5865F2') {
+  const map = {
+    messageDelete: '#EF4444',
+    messageEdit: '#F59E0B',
+    ghostPing: '#8B5CF6',
+    memberJoin: '#22C55E',
+    memberLeave: '#F97316',
+    memberUpdate: '#38BDF8',
+    boost: '#EC4899',
+    invite: '#14B8A6',
+    moderation: '#EF4444',
+    security: '#DC2626',
+    giveaway: '#FACC15',
+    support: '#6366F1',
+    tiktok: '#111827',
+    voiceJoin: '#22C55E',
+    voiceLeave: '#F97316',
+    voiceMove: '#38BDF8',
+    roleCreate: '#22C55E',
+    roleDelete: '#EF4444',
+    roleUpdate: '#F59E0B',
+    channelCreate: '#22C55E',
+    channelDelete: '#EF4444',
+    channelUpdate: '#F59E0B',
+    threadCreate: '#22C55E',
+    threadDelete: '#EF4444',
+    serverUpdate: '#60A5FA'
+  };
+  return ensureHexColor(map[type] || fallback || '#5865F2');
+}
+
+async function buildLogEmbed(guild, config, type, title, description, options = {}) {
+  const embed = new EmbedBuilder()
+    .setColor(ensureHexColor(options.color || getLogTypeColor(type, config?.embedColor || '#5865F2')))
+    .setTitle(title)
+    .setDescription(String(description || '').slice(0, 4096) || 'No details.')
+    .setFooter({ text: options.footerText || `DvL • logs • ${type}` })
+    .setTimestamp();
+
+  let authorName = options.authorName || options.userTag || null;
+  let avatarUrl = options.avatarUrl || null;
+  const userId = options.userId || options.authorId || null;
+
+  if ((userId && !avatarUrl) || (userId && !authorName)) {
+    const member = guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
+    const user = member?.user || await client.users.fetch(userId).catch(() => null);
+    if (user) {
+      if (!authorName) authorName = user.tag;
+      if (!avatarUrl) avatarUrl = user.displayAvatarURL?.({ extension: 'png', size: 256 }) || null;
+    }
+  }
+
+  if (authorName) embed.setAuthor({ name: authorName, iconURL: avatarUrl || undefined });
+  if (options.thumbnailUrl || (avatarUrl && options.showAvatarThumbnail !== false)) embed.setThumbnail(options.thumbnailUrl || avatarUrl);
+  if (options.imageUrl) embed.setImage(options.imageUrl);
+
+  const fields = Array.isArray(options.fields)
+    ? options.fields
+        .filter((field) => field && field.name && field.value)
+        .slice(0, 10)
+        .map((field) => ({
+          name: String(field.name).slice(0, 256),
+          value: String(field.value).slice(0, 1024),
+          inline: Boolean(field.inline)
+        }))
+    : [];
+  if (fields.length) embed.addFields(fields);
+  return embed;
+}
+
+async function sendLog(guild, type, title, description, options = {}) {
   if (!guild) return;
   const config = getGuildConfig(guild.id);
   if (!config.logs.enabled) return;
@@ -478,7 +1564,8 @@ async function sendLog(guild, type, title, description) {
   if (!channelId) return;
   const channel = await guild.channels.fetch(channelId).catch(() => null);
   if (!channel?.isTextBased?.()) return;
-  await channel.send({ embeds: [baseEmbed(config, title, description)] }).catch(() => null);
+  const embed = await buildLogEmbed(guild, config, type, title, description, options);
+  await channel.send({ embeds: [embed] }).catch(() => null);
 }
 
 client.sendLog = sendLog;
@@ -553,8 +1640,11 @@ function cacheGhostPingMessage(message) {
     channelId: message.channel?.id || null,
     authorId: message.author.id,
     authorTag: message.author.tag,
+    authorAvatar: message.author.displayAvatarURL?.({ extension: 'png', size: 256 }) || null,
     content: message.content || '',
     url: message.url || null,
+    attachmentUrls: Array.from(message.attachments?.values?.() || []).map((file) => file.url).filter(Boolean),
+    imageUrl: Array.from(message.attachments?.values?.() || []).find((file) => file.contentType?.startsWith?.('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name || ''))?.url || null,
     targets: getMentionTargets(message),
     cachedAt: Date.now()
   };
@@ -577,8 +1667,11 @@ function getGhostPingSnapshot(message) {
     channelId: message.channel?.id || cached?.channelId || null,
     authorId: message.author?.id || cached?.authorId || null,
     authorTag: message.author?.tag || cached?.authorTag || 'Unknown',
+    authorAvatar: message.author?.displayAvatarURL?.({ extension: 'png', size: 256 }) || cached?.authorAvatar || null,
     content: typeof message.content === 'string' ? message.content : (cached?.content || ''),
     url: message.url || cached?.url || null,
+    attachmentUrls: Array.from(message.attachments?.values?.() || []).map((file) => file.url).filter(Boolean).length ? Array.from(message.attachments?.values?.() || []).map((file) => file.url).filter(Boolean) : (cached?.attachmentUrls || []),
+    imageUrl: Array.from(message.attachments?.values?.() || []).find((file) => file.contentType?.startsWith?.('image/') || /\.(png|jpe?g|gif|webp)$/i.test(file.name || ''))?.url || cached?.imageUrl || null,
     targets: [...targetMap.values()],
     cachedAt: Date.now()
   };
@@ -593,8 +1686,11 @@ function getGhostPingSnapshotById(messageId) {
     channelId: cached.channelId || null,
     authorId: cached.authorId || null,
     authorTag: cached.authorTag || 'Unknown',
+    authorAvatar: cached.authorAvatar || null,
     content: cached.content || '',
     url: cached.url || null,
+    attachmentUrls: cached.attachmentUrls || [],
+    imageUrl: cached.imageUrl || null,
     targets: cached.targets || [],
     cachedAt: cached.cachedAt || Date.now()
   };
@@ -607,7 +1703,7 @@ async function handleGhostPingDeleteSnapshot(guild, snapshot) {
     client.snipeCache.set(snapshot.channelId, {
       content: snapshot.content,
       authorTag: snapshot.authorTag,
-      authorAvatar: null,
+      authorAvatar: snapshot.authorAvatar || null,
       deletedAt: Date.now()
     });
   }
@@ -624,8 +1720,19 @@ async function handleGhostPingDeleteSnapshot(guild, snapshot) {
     });
   }
   if (snapshot?.authorTag) {
-    await sendLog(guild, 'messageDelete', 'Message deleted', `${snapshot.authorTag} in <#${snapshot.channelId}>
-${snapshot.content || '[empty / embed]'} `);
+    await sendLog(guild, 'messageDelete', '🗑️ Message deleted', clipText(snapshot.content || '[empty / embed]', 1200), {
+      userId: snapshot.authorId,
+      authorName: snapshot.authorTag,
+      avatarUrl: snapshot.authorAvatar || null,
+      imageUrl: snapshot.imageUrl || null,
+      fields: [
+        { name: 'Author', value: snapshot.authorId ? `<@${snapshot.authorId}>` : snapshot.authorTag || 'Unknown', inline: true },
+        { name: 'Channel', value: snapshot.channelId ? `<#${snapshot.channelId}>` : 'Unknown', inline: true },
+        { name: 'Message ID', value: `\`${snapshot.messageId}\``, inline: true },
+        { name: 'Attachments', value: String((snapshot.attachmentUrls || []).length || 0), inline: true },
+        { name: 'Jump', value: snapshot.url || 'Unavailable', inline: false }
+      ]
+    });
   }
   client.ghostPingCache.delete(snapshot.messageId);
 }
@@ -1349,12 +2456,14 @@ client.once(Events.ClientReady, async () => {
   scheduleLoop('tiktok', 90_000, () => client.runTikTokCheck());
   scheduleLoop('stats', 60_000, async () => {
     for (const guild of client.guilds.cache.values()) {
+      await ensureGuildStatsChannels(guild, { recreateMissing: true });
       await refreshGuildStats(guild);
       await refreshProgressBoard(guild, { createIfMissing: false });
     }
   });
 
   for (const guild of client.guilds.cache.values()) {
+    await ensureGuildStatsChannels(guild, { recreateMissing: true });
     await refreshGuildStats(guild);
     await refreshProgressBoard(guild, { createIfMissing: false });
   }
@@ -1406,10 +2515,26 @@ client.on(Events.GuildMemberAdd, async (member) => {
       guild.invites.codes[invite.code] = { uses: invite.uses || 0, inviterId: invite.inviterId };
       return guild;
     });
-    await sendLog(member.guild, 'invite', 'Invite used', `${member.user.tag} joined using **${invite.code}** from <@${invite.inviterId}>.`);
+    await sendLog(member.guild, 'invite', '🎟️ Invite used', `${member} joined using **${invite.code}** from <@${invite.inviterId}>.`, {
+      userId: member.user.id,
+      authorName: member.user.tag,
+      fields: [
+        { name: 'Invited member', value: `${member}`, inline: true },
+        { name: 'Invite code', value: `\`${invite.code}\``, inline: true },
+        { name: 'Inviter', value: `<@${invite.inviterId}>`, inline: true }
+      ]
+    });
   }
 
-  await sendLog(member.guild, 'memberJoin', 'Member join', `${member.user.tag} joined.`);
+  await sendLog(member.guild, 'memberJoin', '👋 Member join', `${member} joined the server.`, {
+    userId: member.user.id,
+    authorName: member.user.tag,
+    fields: [
+      { name: 'Member', value: `${member}`, inline: true },
+      { name: 'Account', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
+      { name: 'Server count', value: String(member.guild.memberCount || 0), inline: true }
+    ]
+  });
   await refreshGuildStats(member.guild);
   queueProgressBoardRefresh(member.guild.id);
 });
@@ -1420,8 +2545,16 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     const beforeBoost = oldMember?.premiumSinceTimestamp || 0;
     const afterBoost = newMember?.premiumSinceTimestamp || 0;
     if (!beforeBoost && afterBoost) {
-      await sendLog(newMember.guild, 'boost', 'Server boost', `${newMember.user.tag} started boosting the server.
-Boosts: **${newMember.guild.premiumSubscriptionCount || 0}** • Tier: **${newMember.guild.premiumTier || 0}**`);
+      await sendLog(newMember.guild, 'boost', '🚀 Server boost', `${newMember.user.tag} started boosting the server.
+Boosts: **${newMember.guild.premiumSubscriptionCount || 0}** • Tier: **${newMember.guild.premiumTier || 0}**`, {
+        userId: newMember.user.id,
+        authorName: newMember.user.tag,
+        fields: [
+          { name: 'Booster', value: `${newMember}`, inline: true },
+          { name: 'Boosts', value: String(newMember.guild.premiumSubscriptionCount || 0), inline: true },
+          { name: 'Tier', value: String(newMember.guild.premiumTier || 0), inline: true }
+        ]
+      });
       if (config.boost?.enabled && config.boost?.channelId) {
         const channel = await newMember.guild.channels.fetch(config.boost.channelId).catch(() => null);
         if (channel?.isTextBased?.()) {
@@ -1437,7 +2570,15 @@ Boosts: **${newMember.guild.premiumSubscriptionCount || 0}** • Tier: **${newMe
         }
       }
     } else if (beforeBoost && !afterBoost) {
-      await sendLog(newMember.guild, 'boost', 'Boost ended', `${newMember.user.tag} stopped boosting the server.`);
+      await sendLog(newMember.guild, 'boost', '📉 Boost ended', `${newMember} stopped boosting the server.`, {
+        userId: newMember.user.id,
+        authorName: newMember.user.tag,
+        fields: [
+          { name: 'Member', value: `${newMember}`, inline: true },
+          { name: 'Boosts left', value: String(newMember.guild.premiumSubscriptionCount || 0), inline: true },
+          { name: 'Tier', value: String(newMember.guild.premiumTier || 0), inline: true }
+        ]
+      });
     }
 
     const oldNick = oldMember.nickname || oldMember.user.username;
@@ -1518,7 +2659,11 @@ client.on(Events.GuildMemberRemove, async (member) => {
       await channel.send(payload).catch(() => null);
     }
   }
-  await sendLog(member.guild, 'memberLeave', 'Member leave', `${member.user.tag} left the server.`);
+  await sendLog(member.guild, 'memberLeave', '🚪 Member leave', `${member.user.tag} left the server.`, {
+    userId: member.user.id,
+    authorName: member.user.tag,
+    fields: [{ name: 'Joined', value: member.joinedTimestamp ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>` : 'Unknown', inline: true }]
+  });
   await refreshGuildStats(member.guild);
   queueProgressBoardRefresh(member.guild.id);
 });
@@ -1736,9 +2881,24 @@ client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
       after: after?.content || '[empty]'
     });
   }
-  await sendLog(newMessage.guild, 'messageEdit', 'Message edited', `${after?.authorTag || newMessage.author.tag} in <#${after?.channelId || newMessage.channel.id}>
-Before: ${before?.content || '[empty]'}
-After: ${after?.content || '[empty]'}`);
+  await sendLog(newMessage.guild, 'messageEdit', '✏️ Message edited', [
+    `**Before**`,
+    clipText(before?.content || '[empty]', 700),
+    '',
+    `**After**`,
+    clipText(after?.content || '[empty]', 700)
+  ].join('\n'), {
+    userId: after?.authorId || before?.authorId || newMessage.author.id,
+    authorName: after?.authorTag || before?.authorTag || newMessage.author.tag,
+    avatarUrl: after?.authorAvatar || before?.authorAvatar || null,
+    imageUrl: after?.imageUrl || before?.imageUrl || null,
+    fields: [
+      { name: 'Author', value: `<@${after?.authorId || before?.authorId || newMessage.author.id}>`, inline: true },
+      { name: 'Channel', value: `<#${after?.channelId || newMessage.channel.id}>`, inline: true },
+      { name: 'Attachments', value: String((after?.attachmentUrls || before?.attachmentUrls || []).length || 0), inline: true },
+      { name: 'Jump', value: newMessage.url || after?.url || before?.url || 'Unavailable', inline: true }
+    ]
+  });
   cacheGhostPingMessage(newMessage);
 });
 
@@ -1824,196 +2984,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isButton()) {
 
+      if (interaction.customId.startsWith('supportpanel:')) {
+        return handleSupportPanelInteraction(interaction);
+      }
+
       if (interaction.customId.startsWith('cfgpanel:')) {
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
-        const config = getGuildConfig(interaction.guild.id);
-        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-          return interaction.reply({ embeds: [baseEmbed(config, 'Config panel', 'You need Manage Server to use this panel.')], ephemeral: true }).catch(() => null);
-        }
-
-        const parts = interaction.customId.split(':');
-        const action = parts[1];
-        const arg = parts[2] || null;
-        const currentChannel = interaction.channel;
-        const refreshPanel = async (page) => {
-          const fresh = getGuildConfig(interaction.guild.id);
-          return interaction.message.edit({ embeds: [createConfigPanelEmbed(fresh, interaction.guild, page, currentChannel)], components: createConfigPanelComponents(page, currentChannel?.id) }).catch(() => null);
-        };
-        const sendEphemeral = (title, description) => interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), title, description)], ephemeral: true }).catch(() => null);
-
-        if (action === 'page' || action === 'refresh') {
-          const page = arg || 'home';
-          return interaction.update({ embeds: [createConfigPanelEmbed(config, interaction.guild, page, currentChannel)], components: createConfigPanelComponents(page, currentChannel?.id) });
-        }
-
-        if (action === 'ghosttoggle') {
-          let enabled = false;
-          client.store.updateGuild(interaction.guild.id, (guild) => {
-            guild.automod = guild.automod || {};
-            guild.automod.ghostPing = guild.automod.ghostPing || { enabled: false, channelId: null };
-            guild.automod.ghostPing.enabled = !guild.automod.ghostPing.enabled;
-            if (!guild.automod.ghostPing.channelId && currentChannel?.isTextBased?.()) guild.automod.ghostPing.channelId = currentChannel.id;
-            enabled = guild.automod.ghostPing.enabled;
-            return guild;
-          });
-          await sendEphemeral('👻 Ghost ping', `Ghost ping is now **${enabled ? 'enabled' : 'disabled'}**.${enabled && currentChannel?.isTextBased?.() ? `
-Channel: ${currentChannel}` : ''}`);
-          return refreshPanel('home');
-        }
-
-        if (action === 'ghosthere') {
-          if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '👻 Ghost ping', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
-          client.store.updateGuild(interaction.guild.id, (guild) => {
-            guild.automod = guild.automod || {};
-            guild.automod.ghostPing = guild.automod.ghostPing || { enabled: false, channelId: null };
-            guild.automod.ghostPing.enabled = true;
-            guild.automod.ghostPing.channelId = currentChannel.id;
-            return guild;
-          });
-          await sendEphemeral('👻 Ghost ping', `Joining members will be pinged in ${currentChannel}, then the message will delete after 2 seconds.`);
-          return refreshPanel('home');
-        }
-
-        if (action === 'ghosttest') {
-          const fresh = getGuildConfig(interaction.guild.id);
-          const testChannelId = fresh.automod?.ghostPing?.channelId || currentChannel?.id;
-          const testChannel = testChannelId ? (interaction.guild.channels.cache.get(testChannelId) || await interaction.guild.channels.fetch(testChannelId).catch(() => null)) : null;
-          if (!testChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(fresh, '👻 Ghost ping test', 'No valid ghost ping channel is configured yet. Use **Ghost here** first.')], ephemeral: true }).catch(() => null);
-          const me = interaction.guild.members.me || await interaction.guild.members.fetchMe().catch(() => null);
-          const perms = testChannel.permissionsFor(me);
-          const canSend = perms?.has(PermissionFlagsBits.SendMessages);
-          let sent = false;
-          try {
-            if (canSend) {
-              const probe = await testChannel.send({ content: `<@${interaction.user.id}>`, allowedMentions: { users: [interaction.user.id], roles: [], parse: [], repliedUser: false } });
-              if (probe) setTimeout(() => probe.delete().catch(() => null), 2_000).unref?.();
-              sent = true;
-            }
-          } catch (error) {
-            sent = false;
-          }
-          await sendEphemeral('👻 Ghost ping test', sent ? `Test ping sent in ${testChannel}. It will delete after 2 seconds.` : `I could not send a test ping in ${testChannel}. Check **Send Messages**.`);
-          return refreshPanel('home');
-        }
-
-        if (action === 'logshere') {
-          if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '🧾 Logs', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
-          client.store.updateGuild(interaction.guild.id, (guild) => {
-            guild.logs = guild.logs || { enabled: false, channelId: null, channels: {}, types: {} };
-            guild.logs.enabled = true;
-            guild.logs.channelId = currentChannel.id;
-            guild.logs.channels = guild.logs.channels || {};
-            guild.logs.channels.default = currentChannel.id;
-            return guild;
-          });
-          await sendEphemeral('🧾 Logs', `Default logs channel set to ${currentChannel}.`);
-          return refreshPanel('home');
-        }
-
-        if (action === 'trophyhere') {
-          if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '🏆 Trophy board', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
-          client.store.updateGuild(interaction.guild.id, (guild) => {
-            guild.progress = guild.progress || { enabled: false, channelId: null, messageId: null, lastUpdatedAt: null };
-            guild.progress.enabled = true;
-            guild.progress.channelId = currentChannel.id;
-            guild.progress.lastUpdatedAt = Date.now();
-            return guild;
-          });
-          await refreshProgressBoard(interaction.guild, { createIfMissing: true });
-          await sendEphemeral('🏆 Trophy board', `Progress board is now linked to ${currentChannel}.`);
-          return refreshPanel('home');
-        }
-
-        if (action === 'artoggle' || action === 'arhype' || action === 'aroff') {
-          const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
-          const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
-          if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '⚡ Auto-react', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
-          let note = '';
-          client.store.updateGuild(interaction.guild.id, (guild) => {
-            guild.autoReact = guild.autoReact || { channels: {} };
-            guild.autoReact.channels = guild.autoReact.channels || {};
-            const current = guild.autoReact.channels[targetChannel.id] || {};
-            const existingEmojis = Array.isArray(current.emojis) ? current.emojis.filter(Boolean) : [];
-            if (action === 'aroff') {
-              guild.autoReact.channels[targetChannel.id] = { ...current, enabled: false };
-              note = `Auto-react disabled in ${targetChannel}.`;
-            } else if (action === 'arhype') {
-              guild.autoReact.channels[targetChannel.id] = {
-                ...current,
-                enabled: true,
-                emojis: ['🔥', '😂', '💥', '⚡'],
-                mode: 'rotate',
-                maxReactions: 2,
-                chance: 100,
-                cooldownSeconds: 10,
-                allowBots: false,
-                ignoreCommands: true,
-                triggerWords: []
-              };
-              note = `Preset **hype** applied in ${targetChannel}.`;
-            } else {
-              const nextEnabled = !(current.enabled !== false && existingEmojis.length > 0);
-              guild.autoReact.channels[targetChannel.id] = {
-                ...current,
-                enabled: nextEnabled,
-                emojis: existingEmojis.length ? existingEmojis : ['🔥', '😂'],
-                mode: current.mode || 'rotate',
-                maxReactions: Math.max(1, Number(current.maxReactions) || 1),
-                chance: Math.max(1, Number(current.chance) || 100),
-                cooldownSeconds: Math.max(0, Number(current.cooldownSeconds) || 10),
-                allowBots: Boolean(current.allowBots),
-                ignoreCommands: current.ignoreCommands !== false,
-                triggerWords: Array.isArray(current.triggerWords) ? current.triggerWords : []
-              };
-              note = `Auto-react is now **${nextEnabled ? 'enabled' : 'disabled'}** in ${targetChannel}.`;
-            }
-            return guild;
-          });
-          await sendEphemeral('⚡ Auto-react', note);
-          return refreshPanel('automation');
-        }
-
-        if (action === 'stickyoff') {
-          const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
-          const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
-          if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📌 Sticky', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
-          client.store.updateGuild(interaction.guild.id, (guild) => {
-            guild.sticky = guild.sticky || {};
-            delete guild.sticky[targetChannel.id];
-            return guild;
-          });
-          await sendEphemeral('📌 Sticky', `Sticky message disabled in ${targetChannel}.`);
-          return refreshPanel('automation');
-        }
-
-        if (action === 'statsmembers' || action === 'statsonline' || action === 'statsvoice') {
-          const type = action === 'statsmembers' ? 'members' : action === 'statsonline' ? 'online' : 'voice';
-          const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
-          const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
-          if (!targetChannel || ![ChannelType.GuildVoice, ChannelType.GuildStageVoice].includes(targetChannel.type)) {
-            return interaction.reply({ embeds: [baseEmbed(config, '📊 Stats bind', 'Open this panel inside a **voice channel** if you want to bind it as a counter.')], ephemeral: true }).catch(() => null);
-          }
-          const defaultLabels = {
-            members: '👥・Membres : {count}',
-            online: '🌐・En ligne : {count}',
-            voice: '🔊・Vocal : {count}'
-          };
-          client.store.updateGuild(interaction.guild.id, (guild) => {
-            guild.stats = guild.stats || { enabled: false, categoryId: null, channels: {}, labels: {}, lockChannels: true };
-            guild.stats.enabled = true;
-            guild.stats.channels = guild.stats.channels || {};
-            guild.stats.labels = guild.stats.labels || {};
-            guild.stats.channels[type] = targetChannel.id;
-            if (!guild.stats.labels[type]) guild.stats.labels[type] = defaultLabels[type];
-            guild.stats.lockChannels = true;
-            return guild;
-          });
-          await refreshGuildStats(interaction.guild);
-          await sendEphemeral('📊 Stats bind', `Bound **${type}** counter to ${targetChannel}.`);
-          return refreshPanel('channels');
-        }
-
-        return interaction.reply({ embeds: [baseEmbed(config, 'Config panel', 'Unknown action.')] , ephemeral: true }).catch(() => null);
+        return handleConfigPanelInteraction(interaction);
       }
 
       if (interaction.customId.startsWith('dashboard:')) {
@@ -2330,6 +3306,55 @@ Channel: ${currentChannel}` : ''}`);
         if (!value) return interaction.reply({ embeds: [baseEmbed(guildConfig, '🔊 Voice panel', 'Voice channel name cannot be empty.')], ephemeral: true });
         await state.channel.setName(value).catch(() => null);
         return interaction.reply({ embeds: [baseEmbed(guildConfig, '✏️ Temp voice', `Renamed your temp voice to **${value}**.`)], ephemeral: true });
+      }
+
+      if (interaction.customId.startsWith('cfgpanelmodal:')) {
+        const [, moduleKeyRaw, field] = interaction.customId.split(':');
+        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true });
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: 'Manage Server is required.', ephemeral: true });
+        const moduleKey = ['welcome', 'leave', 'leave-dm', 'boost'].includes(moduleKeyRaw) ? moduleKeyRaw : 'welcome';
+        const metaMap = {
+          welcome: { root: 'welcome', titleKey: 'title', messageKey: 'message', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl' },
+          leave: { root: 'leave', titleKey: 'title', messageKey: 'message', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl' },
+          'leave-dm': { root: 'leave', titleKey: 'dmTitle', messageKey: 'dmMessage', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl' },
+          boost: { root: 'boost', titleKey: 'title', messageKey: 'message', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl' }
+        };
+        const meta = metaMap[moduleKey] || metaMap.welcome;
+        const keyMap = { title: meta.titleKey, message: meta.messageKey, footer: meta.footerKey, color: meta.colorKey, image: meta.imageKey };
+        const targetKey = keyMap[field] || meta.messageKey;
+        let value = interaction.fields.getTextInputValue('value').trim();
+        if (field === 'color') value = value ? ensureHexColor(value) : null;
+        client.store.updateGuild(interaction.guild.id, (guild) => {
+          guild[meta.root] = guild[meta.root] || JSON.parse(JSON.stringify(DEFAULT_GUILD[meta.root] || {}));
+          guild[meta.root][targetKey] = value || null;
+          return guild;
+        });
+        const fresh = getGuildConfig(interaction.guild.id);
+        const currentChannel = interaction.channel;
+        if (interaction.message?.editable) {
+          await interaction.message.edit({ embeds: [createConfigPanelEmbed(fresh, interaction.guild, moduleKey, currentChannel)], components: createConfigPanelComponents(moduleKey, currentChannel?.id) }).catch(() => null);
+        }
+        return interaction.reply({ embeds: [baseEmbed(fresh, '📝 Smart panel', `${field} updated for ${moduleKey}.`)], ephemeral: true });
+      }
+
+      if (interaction.customId.startsWith('supportpanelmodal:')) {
+        const [, field] = interaction.customId.split(':');
+        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true });
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: 'Manage Server is required.', ephemeral: true });
+
+        const keyMap = { title: 'promptTitle', message: 'promptMessage', footer: 'promptFooter', color: 'promptColor', image: 'promptImageUrl' };
+        const targetKey = keyMap[field] || 'promptMessage';
+        let value = interaction.fields.getTextInputValue('value').trim();
+        if (field === 'color') value = value ? ensureHexColor(value) : null;
+        client.store.updateGuild(interaction.guild.id, (guild) => updateSupportPrompt(guild, (support) => {
+          support[targetKey] = value || null;
+        }));
+        const fresh = getGuildConfig(interaction.guild.id);
+        const currentChannel = interaction.channel;
+        if (interaction.message?.editable) {
+          await interaction.message.edit({ embeds: [createSupportPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() }).catch(() => null);
+        }
+        return interaction.reply({ embeds: [baseEmbed(fresh, '📨 Support prompt', `${field} updated.`)], ephemeral: true });
       }
       if (interaction.customId.startsWith('embedmodal:')) {
         const [, field, draftId] = interaction.customId.split(':');

@@ -128,7 +128,21 @@ const DEFAULT_GUILD = {
   support: {
     enabled: false,
     channelId: null,
-    pingRoleId: null
+    pingRoleId: null,
+    entryChannelId: null,
+    restrictToEntry: false,
+    promptMode: 'embed',
+    promptTitle: '📨 Need help?',
+    promptMessage: 'To contact the staff, go to {supportChannel} and run `{prefix}support your message`.',
+    promptFooter: 'DvL Support',
+    promptColor: null,
+    promptImageUrl: null
+  },
+  panel: {
+    theme: 'default',
+    deployedChannelId: null,
+    deployedMessageId: null,
+    lastDeployedAt: null
   },
 
   voice: {
