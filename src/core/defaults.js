@@ -138,6 +138,14 @@ const DEFAULT_GUILD = {
     promptColor: null,
     promptImageUrl: null
   },
+  mpall: {
+    mode: 'embed',
+    title: '📨 Message from {server}',
+    message: '',
+    footer: 'DvL',
+    color: null,
+    imageUrl: null
+  },
   panel: {
     theme: 'default',
     deployedChannelId: null,

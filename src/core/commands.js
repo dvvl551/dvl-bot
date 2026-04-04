@@ -37,7 +37,6 @@ const CATEGORY_META = {
   System: { emoji: '🧰', style: ButtonStyle.Secondary },
   Config: { emoji: '⚙️', style: ButtonStyle.Secondary },
   General: { emoji: '✨', style: ButtonStyle.Primary },
-  Fun: { emoji: '🎉', style: ButtonStyle.Success },
   Info: { emoji: '📌', style: ButtonStyle.Secondary },
   Utility: { emoji: '🛠️', style: ButtonStyle.Secondary },
   Automation: { emoji: '⚡', style: ButtonStyle.Primary },
@@ -56,7 +55,7 @@ const CATEGORY_META = {
   Owner: { emoji: '👑', style: ButtonStyle.Danger }
 };
 
-const CATEGORY_ORDER = ['General', 'System', 'Config', 'Welcome', 'Logs', 'Tracking', 'Support', 'Roles', 'Permissions', 'Voice', 'Security', 'Moderation', 'Automation', 'Progress', 'Giveaway', 'TikTok', 'Utility', 'Info', 'Owner', 'Fun'];
+const CATEGORY_ORDER = ['General', 'System', 'Config', 'Welcome', 'Logs', 'Tracking', 'Support', 'Roles', 'Permissions', 'Voice', 'Security', 'Moderation', 'Automation', 'Progress', 'Giveaway', 'TikTok', 'Utility', 'Info', 'Owner'];
 
 
 const CATEGORY_BLURBS = {
@@ -79,22 +78,20 @@ const CATEGORY_BLURBS = {
   Utility: 'Small practical tools.',
   Info: 'Server and user info views.',
   Owner: 'Owner-only maintenance tools.',
-  Fun: 'Light fun commands.'
 };
 
 const CONFIG_HELP_GROUPS = {
   'Core setup / overview': ['setup', 'config', 'setprefix', 'setembedcolor', 'setlanguage'],
-  'System / panels / diagnostics': ['system', 'dashboard', 'configpanel', 'modules', 'setupcheck', 'backup'],
-  'Welcome / leave texts': ['texts', 'welcome', 'leave', 'welcometoggle', 'setwelcomechannel', 'setwelcometitle', 'setwelcomemessage', 'leavetoggle', 'setleavechannel', 'setleavetitle', 'setleavemessage', 'leavedm', 'setleavedm', 'testleavedm', 'previewwelcome', 'previewleave', 'welcomeconfig'],
-  'Logs / boost routing': ['logs', 'boost', 'boosttoggle', 'setboostchannel', 'setboosttitle', 'setboostmessage', 'previewboost', 'boostconfig', 'setlogchannel', 'logtoggle', 'logtype', 'logtypes', 'logconfig', 'logtest'],
-  'Logs / routing': ['logs', 'setlogchannel', 'logtoggle', 'logtype', 'logtypes', 'logconfig', 'logtest'],
-  'Tracking / invites / counters': ['tracking', 'stats', 'statschannel', 'statssetup', 'setstatslabel', 'statsrefresh', 'statsconfig', 'statsoff', 'invites', 'inviteleaderboard'],
-  'Support / relay': ['support', 'reply', 'supporttoggle', 'setsupportchannel', 'setsupportrole', 'support panel', 'support relay', 'support entry', 'support text'],
-  'Roles / access / status': ['roles', 'autorole', 'roleall', 'autoroleadd', 'autoroleremove', 'autorolelist', 'reactbutton', 'setstatusrole', 'statusroletoggle', 'statusroleconfig', 'clearstatusrole', 'statusrolecheck'],
-  'Voice / temp voice': ['voice', 'createvoc', 'voicepanel', 'move', 'moveall', 'pull', 'voicekick', 'voicemute', 'voiceunmute', 'voiceban', 'voiceunban', 'setvoicemuterole', 'setvoicebanrole', 'voicepermconfig'],
-  'Security / restricted channels': ['security', 'automodconfig', 'securitypreset', 'ghostping', 'setantispam', 'setantimention', 'setanticaps', 'setantiemoji', 'setraidage', 'automodignore', 'automodunignore', 'automodignored', 'badwordadd', 'badwordremove', 'badwords', 'wl', 'unwl', 'whitelistlist', 'piconly', 'piconlylist'],
+  'System / panels / diagnostics': ['system', 'dashboard', 'configpanel', 'modules', 'setupcheck', 'repair', 'backup'],
+  'Welcome / leave / boost texts': ['texts', 'welcome', 'leave', 'boost'],
+  'Logs / routing': ['logs'],
+  'Tracking / invites / counters': ['tracking', 'stats', 'invites', 'inviteleaderboard'],
+  'Support / relay': ['support', 'reply'],
+  'Roles / access / status': ['roles', 'autorole', 'roleall', 'rolepanel', 'reactbutton', 'setstatusrole', 'statusroletoggle', 'statusroleconfig', 'clearstatusrole', 'statusrolecheck'],
+  'Voice / temp voice': ['voice', 'createvoc', 'voicepanel', 'move', 'moveall', 'pull', 'voicekick', 'voicemute', 'voiceunmute', 'voiceban', 'voiceunban'],
+  'Security / restricted channels': ['security', 'automodconfig', 'securitypreset', 'ghostping', 'badwords', 'wl', 'unwl', 'whitelistlist', 'piconly', 'piconlylist'],
   'Automation / sticky / auto react': ['automation', 'stickyset', 'stickyoff', 'stickyconfig', 'autoreact', 'remind', 'afk'],
-  'Progress / trophy / milestones': ['trophy', 'trophychannel', 'trophyrefresh', 'trophyconfig', 'trophygoal', 'trophytitle', 'trophyimage', 'milestonerole', 'milestoneinterval', 'milestonechannel', 'milestoneconfig'],
+  'Progress / trophy / milestones': ['trophy', 'trophygoal', 'trophytitle', 'trophyimage', 'milestonerole', 'milestoneinterval', 'milestonechannel', 'milestoneconfig'],
   'Permission levels': ['permrole', 'permcmd', 'permconfig'],
   'Giveaways': ['giveaway', 'gstart', 'gend', 'greroll', 'gpause', 'gresume', 'gedit', 'gdelete', 'ginfo', 'gparticipants', 'glist'],
   'TikTok': ['tiktok', 'tiktokadd', 'tiktokremove', 'tiktoklist', 'tiktoksetrole', 'tiktoksetchannel', 'tiktoktogglelive', 'tiktoktogglevideo', 'tiktokforcecheck', 'tiktoktest']
@@ -103,42 +100,20 @@ const CONFIG_HELP_GROUPS = {
 const SETUP_GROUPS_PER_PAGE = 3;
 
 const TRANSFORMS = [
-  ['reverse', 'Reverse text', 'reverse <text>', ['rev'], (text) => text.split('').reverse().join('\n')],
+  ['reverse', 'Reverse text', 'reverse <text>', ['rev'], (text) => text.split('').reverse().join('')],
   ['uppercase', 'Uppercase text', 'uppercase <text>', ['upper', 'caps'], (text) => text.toUpperCase()],
   ['lowercase', 'Lowercase text', 'lowercase <text>', ['lower'], (text) => text.toLowerCase()],
   ['spoiler', 'Wrap text in spoiler tags', 'spoiler <text>', ['spoil'], (text) => text.split(/\s+/).map((word) => `||${word}||`).join(' ')],
   ['clap', 'Insert 👏 between words', 'clap <text>', [], (text) => text.split(/\s+/).join(' 👏 ')],
-  ['mock', 'Mocking text', 'mock <text>', [], (text) => text.split('').map((char, index) => (index % 2 ? char.toUpperCase() : char.toLowerCase())).join('\n')],
+  ['mock', 'Mocking text', 'mock <text>', [], (text) => text.split('').map((char, index) => (index % 2 ? char.toUpperCase() : char.toLowerCase())).join('')],
   ['binary', 'Encode text to binary', 'binary <text>', [], (text) => Array.from(text).map((c) => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' ')],
   ['base64', 'Encode text to base64', 'base64 <text>', ['b64'], (text) => Buffer.from(text).toString('base64')],
   ['hash', 'SHA256 hash', 'hash <text>', ['sha256'], (text) => crypto.createHash('sha256').update(text).digest('hex')]
 ];
 
-const RANDOM_METERS = [
-  ['rate', 'Rate something', 'rate <text>', ['rating'], '📊 Rate', 0, 100, '/100'],
-  ['hotmeter', 'Random hot meter', 'hotmeter <text>', ['hot'], '🌡️ Hot meter', 0, 100, '%'],
-  ['simp', 'Simp meter', 'simp <text>', [], '🫠 Simp meter', 0, 100, '% simp'],
-  ['clown', 'Clown meter', 'clown <text>', [], '🤡 Clown meter', 0, 100, '% clown'],
-  ['iq', 'Fake IQ meter', 'iq <text>', [], '🧠 IQ meter', 50, 200, ' IQ']
-];
 
-const RANDOM_LINES = {
-  truth: [
-    'What is the last thing you deleted from your phone?',
-    'What is the most embarrassing thing you have done in voice chat?',
-    'Who do you stalk the most in this server?'
-  ],
-  dare: [
-    'Send a dramatic message in general chat.',
-    'Type in full caps for 2 minutes.',
-    'Change your nickname to something cursed for 10 minutes.'
-  ],
-  wyr: [
-    'Lose Discord for 1 month or TikTok for 1 year?',
-    'Read every message out loud or answer only in rhymes?',
-    'Be muted for 24h or reply to everything with "yes boss"?'
-  ]
-};
+
+
 
 const LOG_TYPE_CHOICES = [
   ['moderation', 'Moderation'],
@@ -1028,7 +1003,7 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
           value: [
             '`+dashboard setup`',
             '`+logs`',
-            '`+statssetup`',
+            '`+stats setup`',
             '`+trophychannel here`',
             '`+setupcheck`'
           ].join(' • '),
@@ -1072,7 +1047,7 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
           value: [
             '`+setwelcomechannel #channel`',
             '`+setlogchannel #logs`',
-            '`+setsupportchannel #support`',
+            '`+supportchannel #support-logs`',
             '`+stickyset <message>`',
             '`+backup create`'
           ].join('\n'),
@@ -1158,7 +1133,7 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
           `**Stats panel:** ${g.stats?.enabled ? 'on' : 'off'}`,
           `**Current voice users:** ${formatStatNumber(voiceCount)}`
         ].join('\n'), inline: true },
-        { name: 'Useful commands', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+statssetup`', inline: false }
+        { name: 'Useful commands', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+stats setup`', inline: false }
       );
   }
 
@@ -1228,7 +1203,7 @@ function createSetupCheckEmbed(guildConfig, guild) {
   const recommendations = [];
   if (!(guildConfig.logs?.enabled && (guildConfig.logs?.channelId || guildConfig.logs?.channels?.default || Object.values(guildConfig.logs?.channels || {}).some(Boolean)))) recommendations.push('Set logs with `+setlogchannel #logs`');
   if (!(guildConfig.automod?.ghostPing?.enabled)) recommendations.push('Enable ghostping with `+ghostping on`');
-  if (!(guildConfig.stats?.enabled)) recommendations.push('Create server stats with `+statssetup`');
+  if (!(guildConfig.stats?.enabled)) recommendations.push('Create server stats with `+stats setup`');
   if (!(guildConfig.progress?.enabled)) recommendations.push('Create the trophy board with `+trophychannel here`');
   if (!(guildConfig.voice?.moderation?.muteRoleId || guildConfig.voice?.moderation?.banRoleId)) recommendations.push('Configure voice roles with `+setvoicemuterole` and `+setvoicebanrole`');
   return baseEmbed(guildConfig, '🩺 Setup health check', [
@@ -1288,7 +1263,7 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
           name: 'Quick setup',
           value: [
             '`+logs`',
-            '`+statssetup`',
+            '`+stats setup`',
             '`+trophychannel here`',
             '`+automodconfig`',
             '`+voicepanel`',
@@ -1341,7 +1316,7 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
           `**Stats panel:** ${g.stats?.enabled ? 'on' : 'off'}`,
           `**Current voice users:** ${formatStatNumber(voiceCount)}`
         ].join('\n'), inline: true },
-        { name: 'Useful commands', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+statssetup`', inline: false }
+        { name: 'Useful commands', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+stats setup`', inline: false }
       );
   }
 
@@ -2207,6 +2182,86 @@ function createSupportPromptPayload(guildConfig, guild, prefix = '+', fallbackCh
   }, description);
 }
 
+function normalizeMpallMode(value) {
+  const mode = String(value || '').toLowerCase();
+  return ['plain', 'simple', 'text'].includes(mode) ? 'plain' : 'embed';
+}
+
+function getMpallVariables(guild, member) {
+  return {
+    user: member?.toString?.() || `<@${member?.id || '0'}>`,
+    userTag: member?.user?.tag || 'Unknown#0000',
+    server: guild?.name || 'Server',
+    memberCount: guild?.memberCount || 0
+  };
+}
+
+function createMpallPayload(guildConfig, guild, member) {
+  const source = guildConfig?.mpall || {};
+  const vars = getMpallVariables(guild, member);
+  const message = fillTemplate(source.message || '', vars).trim();
+  const title = fillTemplate(source.title || '📨 Message from {server}', vars).trim();
+  const footer = source.footer == null ? '' : fillTemplate(source.footer ?? 'DvL', vars).trim();
+  const imageUrl = fillTemplate(source.imageUrl || '', vars).trim();
+  return createAnnouncementPreviewPayload(guildConfig, {
+    mode: normalizeMpallMode(source.mode),
+    title,
+    footer,
+    color: source.color,
+    imageUrl
+  }, message || 'No message set.');
+}
+
+function buildMpallModuleEmbed(guildConfig, prefix = '+') {
+  const mpall = guildConfig?.mpall || {};
+  const mode = normalizeMpallMode(mpall.mode);
+  return baseEmbed(guildConfig, '📨 MP all', 'Mass DM module for server announcements. Configure the style once, then send it to everyone, humans only, bots only, or one role.')
+    .addFields(
+      {
+        name: 'Current style',
+        value: [
+          `**Mode:** ${mode === 'plain' ? 'simple' : 'embed'}`,
+          `**Title:** ${formatTemplatePreview(mpall.title, '📨 Message from {server}')}`,
+          `**Message:** ${formatTemplatePreview(mpall.message, 'not set')}`,
+          `**Footer:** ${mode === 'embed' ? formatTemplatePreview(mpall.footer, 'DvL') : 'unused in simple mode'}`,
+          `**Color:** ${mode === 'embed' ? code(mpall.color || guildConfig?.embedColor || '#5865F2') : 'unused in simple mode'}`,
+          `**Image:** ${mode === 'embed' ? formatTemplatePreview(mpall.imageUrl, 'none') : 'unused in simple mode'}`
+        ].join('\n').slice(0, 1024),
+        inline: false
+      },
+      {
+        name: 'Config',
+        value: [
+          `\`${prefix}mpall mode embed\``,
+          `\`${prefix}mpall mode simple\``,
+          `\`${prefix}mpall title 📢 Important\``,
+          `\`${prefix}mpall message Salut {user}, ...\``,
+          `\`${prefix}mpall footer Staff\``,
+          `\`${prefix}mpall color #FF4D6D\``,
+          `\`${prefix}mpall image https://...\``
+        ].join('\n'),
+        inline: true
+      },
+      {
+        name: 'Send',
+        value: [
+          `\`${prefix}mpall test\``,
+          `\`${prefix}mpall send\``,
+          `\`${prefix}mpall send humans\``,
+          `\`${prefix}mpall send bots\``,
+          `\`${prefix}mpall send @Role\``,
+          `\`${prefix}mpall reset\``
+        ].join('\n'),
+        inline: true
+      },
+      {
+        name: 'Variables',
+        value: '`{user}` • `{userTag}` • `{server}` • `{memberCount}`',
+        inline: false
+      }
+    );
+}
+
 function buildSupportModuleEmbed(guildConfig, prefix = '+') {
   const support = guildConfig.support || {};
   return baseEmbed(guildConfig, '📨 Support hub', 'Keep support simple: one relay for staff, one optional public support channel, and one configurable prompt panel.')
@@ -2227,8 +2282,8 @@ function buildSupportModuleEmbed(guildConfig, prefix = '+') {
         name: 'Quick setup',
         value: [
           `\`${prefix}support panel\``,
-          `\`${prefix}support relay #support-logs\``,
-          `\`${prefix}support entry #support\``,
+          `\`${prefix}supportchannel #support-logs\``,
+          `\`${prefix}supportmemberchannel #support\``,
           `\`${prefix}support role @Staff\``,
           `\`${prefix}support test\``
         ].join('\n'),
@@ -2238,7 +2293,7 @@ function buildSupportModuleEmbed(guildConfig, prefix = '+') {
         name: 'Member flow',
         value: [
           `post the prompt in the public support channel`,
-          `members run \`${prefix}support mon message\``,
+          `members run \`${prefix}support <message>\` or DM the bot directly`,
           `bot moves the conversation to DM`,
           `staff answer with \`${prefix}reply\``
         ].join('\n'),
@@ -2942,29 +2997,6 @@ function createTransformCommand(name, description, usage, aliases, fn) {
   });
 }
 
-function createMeterCommand(name, description, usage, aliases, title, min, max, suffix) {
-  return makeSimpleCommand({
-    name,
-    aliases,
-    category: 'Fun',
-    description,
-    usage,
-    dmAllowed: true,
-    slash: {
-      root: 'fun',
-      sub: name,
-      description,
-      options: [{ type: 'string', name: 'text', description: 'Text', required: true }]
-    },
-    async execute(ctx) {
-      const text = ctx.interaction ? ctx.interaction.options.getString('text') : ctx.getRest(0);
-      if (!text) return ctx.invalidUsage();
-      const value = min + Math.floor(Math.random() * (max - min + 1));
-      await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, title, `**${text}** → **${value}${suffix}**`)] });
-    }
-  });
-}
-
 function createToggleCommand(name, description, path, aliases = []) {
   return makeSimpleCommand({
     name,
@@ -3209,8 +3241,8 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     embed
       .setTitle('✨ DvL Help Center')
       .setDescription([
-        'Vue rapide du bot.',
-        `Le bouton **Categories** ouvre une navigation propre au lieu d'afficher tout d'un coup.`,
+        'Quick overview of the bot.',
+        `Use **Categories** for a cleaner browse view instead of dumping everything at once.`,
         '',
         `Examples: \`${prefix}help ban\`, \`${prefix}help logs\`, \`${prefix}help tracking\`, \`${prefix}help support\`, \`${prefix}help setup\`, \`${prefix}panel\``,
         `Shortcuts: \`${prefix}help start\` • \`${prefix}help staff\` • \`${prefix}help members\` • \`${prefix}help repair\``,
@@ -3237,8 +3269,8 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     embed
       .setTitle('📂 Help Categories')
       .setDescription([
-        `Page **${safePage}/${pages.length}** • choisis une catégorie avec les boutons en dessous.`,
-        `Tu peux aussi chercher direct avec \`${prefix}help +commande\`.`
+        `Page **${safePage}/${pages.length}** • choose a category with the buttons below.`,
+        `You can also search directly with \`${prefix}help +command\`.`
       ].join('\n'));
     current.forEach((name) => {
       embed.addFields({
@@ -3307,7 +3339,7 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
   }
   if (category === 'Support') {
     intro.push(
-      `Members: run \`${prefix}support\` in the server, then send the real message in bot DMs.`,
+      `Members: use \`${prefix}support <message>\` in the server or DM the bot directly.`,
       `Staff: use \`${prefix}reply @user <text>\` in the support channel or reply to a forwarded message with \`${prefix}reply <text>\`.`
     );
   }
@@ -3661,10 +3693,10 @@ function createCommands() {
               '`+setwelcomechannel #channel`',
               '`+setlogchannel #logs`',
               '`+setlogchannel messages #msg-logs`',
-              '`+statssetup`',
+              '`+stats setup`',
               '`+trophychannel here`',
               '`+setvoicemuterole @MutedVC`',
-              '`+setsupportchannel #support`',
+              '`+supportchannel #support-logs`',
               '`+setboostchannel #boosts`'
             ].join(' • '),
             inline: false
@@ -4761,13 +4793,38 @@ Route resolved to ${channel}.`)] }).catch(() => null);
       aliases: ['language', 'lang'],
       category: 'Config',
       description: 'Set the bot language for this server',
-      usage: 'setlanguage <en|fr|es>',
+      usage: 'setlanguage <fr|en>',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
-      slash: { root: 'general', sub: 'setlanguage', description: 'Set the bot language', options: [{ type: 'string', name: 'language', description: 'Language code', required: true, choices: [{ name: 'English', value: 'en' }, { name: 'French', value: 'fr' }, { name: 'Spanish', value: 'es' }] }] },
+      slash: { root: 'general', sub: 'setlanguage', description: 'Set the bot language', options: [{ type: 'string', name: 'language', description: 'Language code', required: false, choices: [{ name: 'French', value: 'fr' }, { name: 'English', value: 'en' }] }] },
       async execute(ctx) {
-        const lang = (ctx.getText('language', 0) || '').toLowerCase();
-        if (!['en', 'fr', 'es'].includes(lang)) return ctx.invalidUsage('Allowed values: `en`, `fr`, `es`.');
+        const raw = (ctx.getText('language', 0) || '').trim().toLowerCase();
+        const aliases = {
+          fr: 'fr',
+          français: 'fr',
+          francais: 'fr',
+          french: 'fr',
+          en: 'en',
+          english: 'en'
+        };
+        if (!raw) {
+          const current = ctx.guildConfig?.language === 'fr' ? 'fr' : 'en';
+          return ctx.reply({
+            embeds: [
+              baseEmbed(
+                ctx.guildConfig,
+                '🌐 Language',
+                [
+                  `**Current:** \`${current}\``,
+                  '**Allowed:** `fr`, `en`',
+                  `**Quick use:** \`${ctx.prefix}language fr\` • \`${ctx.prefix}language en\``
+                ].join('\n')
+              )
+            ]
+          });
+        }
+        const lang = aliases[raw];
+        if (!lang) return ctx.invalidUsage('Allowed values: `fr`, `en`.');
         ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.language = lang; return guild; });
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🌐 Language updated', `Server language set to **${lang}**.`)] });
       }
@@ -5198,6 +5255,7 @@ You can now run \`${ctx.prefix}backup load ${entry.id}\` on any server where the
         const row2 = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId(`embed:image:${draftId}`).setLabel('Image').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId(`embed:thumbnail:${draftId}`).setLabel('Thumbnail').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`embed:copy:${draftId}`).setLabel('Copy').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId(`embed:send:${draftId}`).setLabel('Send').setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId(`embed:cancel:${draftId}`).setLabel('Cancel').setStyle(ButtonStyle.Danger)
         );
@@ -5651,72 +5709,6 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       }
     }),
 
-    makeSimpleCommand({ name: '8ball', aliases: ['eightball'], category: 'Fun', description: 'Random answer', usage: '8ball <question>', dmAllowed: true,
-      slash: { root: 'fun', sub: '8ball', description: 'Random answer', options: [{ type: 'string', name: 'question', description: 'Question', required: true }] },
-      async execute(ctx) { const q = ctx.interaction ? ctx.interaction.options.getString('question') : ctx.getRest(0); if (!q) return ctx.invalidUsage(); await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎱 8ball', randomOf(['Yes.', 'No.', 'Maybe.', 'Absolutely.', 'Not a chance.', 'Ask later.']))] }); } }),
-    makeSimpleCommand({ name: 'coinflip', aliases: ['flip'], category: 'Fun', description: 'Flip a coin', usage: 'coinflip', dmAllowed: true, slash: { root: 'fun', sub: 'coinflip', description: 'Flip a coin' }, async execute(ctx) { await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🪙 Coinflip', randomOf(['Heads', 'Tails']))] }); } }),
-    makeSimpleCommand({
-      name: 'roll',
-      aliases: ['dice'],
-      category: 'Fun',
-      description: 'Roll a die',
-      usage: 'roll [sides]',
-      dmAllowed: true,
-      slash: { root: 'fun', sub: 'roll', description: 'Roll a die', options: [{ type: 'integer', name: 'sides', description: 'Number of sides', required: false, minValue: 2, maxValue: 1000 }] },
-      async execute(ctx) {
-        const sides = Number(ctx.getText('sides', 0) || 6);
-        const result = Math.floor(Math.random() * sides) + 1;
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎲 Roll', `d${sides} → **${result}**`)] });
-      }
-    }),
-    makeSimpleCommand({
-      name: 'rps',
-      aliases: ['rockpaperscissors'],
-      category: 'Fun',
-      description: 'Play rock paper scissors',
-      usage: 'rps <rock|paper|scissors>',
-      dmAllowed: true,
-      slash: { root: 'fun', sub: 'rps', description: 'Play rock paper scissors', options: [{ type: 'string', name: 'choice', description: 'Your choice', required: true, choices: [{ name: 'rock', value: 'rock' }, { name: 'paper', value: 'paper' }, { name: 'scissors', value: 'scissors' }] }] },
-      async execute(ctx) {
-        const choice = (ctx.getText('choice', 0) || '').toLowerCase();
-        if (!['rock', 'paper', 'scissors'].includes(choice)) return ctx.invalidUsage();
-        const bot = randomOf(['rock', 'paper', 'scissors']);
-        const wins = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
-        const result = choice === bot ? 'Draw.' : wins[choice] === bot ? 'You win.' : 'You lose.';
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✂️ RPS', `You: **${choice}**\nBot: **${bot}**\n\n${result}`)] });
-      }
-    }),
-    makeSimpleCommand({ name: 'guess', aliases: [], category: 'Fun', description: 'Guess a number from 1 to 10', usage: 'guess <number>', dmAllowed: true,
-      slash: { root: 'fun', sub: 'guess', description: 'Guess a number', options: [{ type: 'integer', name: 'number', description: 'Number', required: true, minValue: 1, maxValue: 10 }] },
-      async execute(ctx) { const n = Number(ctx.getText('number', 0)); if (!n) return ctx.invalidUsage(); const bot = Math.floor(Math.random() * 10) + 1; await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔢 Guess', `You chose **${n}**. The number was **${bot}**.\n${n === bot ? 'Nice.' : 'Nope.'}`)] }); } }),
-    makeSimpleCommand({ name: 'slots', aliases: ['slot'], category: 'Fun', description: 'Fake slot machine', usage: 'slots', dmAllowed: true, slash: { root: 'fun', sub: 'slots', description: 'Fake slot machine' }, async execute(ctx) { const icons = ['🍒', '🍋', '💎', '7️⃣', '🍇']; const spin = [randomOf(icons), randomOf(icons), randomOf(icons)]; const win = spin.every((i) => i === spin[0]); await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎰 Slots', `${spin.join(' │ ')}\n\n${win ? 'Jackpot.' : 'No luck this time.'}`)] }); } }),
-    makeSimpleCommand({ name: 'blackjack', aliases: ['bj'], category: 'Fun', description: 'Simple blackjack', usage: 'blackjack', dmAllowed: true, slash: { root: 'fun', sub: 'blackjack', description: 'Simple blackjack' }, async execute(ctx) { const draw = () => Math.floor(Math.random() * 10) + 1; const you = draw() + draw(); const bot = draw() + draw(); const result = (you > 21 || (bot <= 21 && bot > you)) ? 'You lose.' : you === bot ? 'Draw.' : 'You win.'; await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🃏 Blackjack', `You: **${you}**\nBot: **${bot}**\n\n${result}`)] }); } }),
-    makeSimpleCommand({
-      name: 'ship',
-      aliases: [],
-      category: 'Fun',
-      description: 'Ship two members',
-      usage: 'ship <@a> [@b]',
-      guildOnly: true,
-      slash: { root: 'fun', sub: 'ship', description: 'Ship two members', options: [{ type: 'user', name: 'target1', description: 'First member', required: true }, { type: 'user', name: 'target2', description: 'Second member', required: false }] },
-      async execute(ctx) {
-        const first = await ctx.getMember('target1', 0);
-        const second = ctx.interaction ? (ctx.interaction.options.getMember('target2') || ctx.member) : (ctx.message?.mentions.members.at(1) || ctx.member);
-        if (!first || !second) return ctx.invalidUsage();
-        const percent = Math.floor(Math.random() * 101);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💞 Ship', `${first} + ${second} = **${percent}%**`)] });
-      }
-    }),
-    makeSimpleCommand({ name: 'roast', aliases: [], category: 'Fun', description: 'Fake roast', usage: 'roast <@member>', guildOnly: true, slash: { root: 'fun', sub: 'roast', description: 'Fake roast', options: [{ type: 'user', name: 'target', description: 'Target', required: true }] }, async execute(ctx) { const target = await ctx.getMember('target', 0); if (!target) return ctx.invalidUsage(); const roasts = ['has a ping higher than their patience.', 'could miss a pinned message somehow.', 'types like they are always half AFK.']; await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔥 Roast', `${target} ${randomOf(roasts)}`)] }); } }),
-    makeSimpleCommand({ name: 'compliment', aliases: ['complimentme'], category: 'Fun', description: 'Random compliment', usage: 'compliment <@member>', guildOnly: true, slash: { root: 'fun', sub: 'compliment', description: 'Random compliment', options: [{ type: 'user', name: 'target', description: 'Target', required: true }] }, async execute(ctx) { const target = await ctx.getMember('target', 0); if (!target) return ctx.invalidUsage(); const compliments = ['brings good energy here.', 'actually makes the server better.', 'has a brain behind the keyboard.']; await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✨ Compliment', `${target} ${randomOf(compliments)}`)] }); } }),
-    makeSimpleCommand({ name: 'truth', aliases: [], category: 'Fun', description: 'Truth question', usage: 'truth', dmAllowed: true, slash: { root: 'fun', sub: 'truth', description: 'Truth question' }, async execute(ctx) { await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧠 Truth', randomOf(RANDOM_LINES.truth))] }); } }),
-    makeSimpleCommand({ name: 'dare', aliases: [], category: 'Fun', description: 'Dare challenge', usage: 'dare', dmAllowed: true, slash: { root: 'fun', sub: 'dare', description: 'Dare challenge' }, async execute(ctx) { await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⚡ Dare', randomOf(RANDOM_LINES.dare))] }); } }),
-    makeSimpleCommand({ name: 'wyr', aliases: ['wouldyourather'], category: 'Fun', description: 'Would you rather', usage: 'wyr', dmAllowed: true, slash: { root: 'fun', sub: 'wyr', description: 'Would you rather' }, async execute(ctx) { await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🤔 Would you rather', randomOf(RANDOM_LINES.wyr))] }); } }),
-    makeSimpleCommand({ name: 'hack', aliases: [], category: 'Fun', description: 'Fake hack command', usage: 'hack <@member>', guildOnly: true, slash: { root: 'fun', sub: 'hack', description: 'Fake hack', options: [{ type: 'user', name: 'target', description: 'Target', required: true }] }, async execute(ctx) { const target = await ctx.getMember('target', 0); if (!target) return ctx.invalidUsage(); const percent = Math.floor(Math.random() * 100); await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💻 Hack', `Scanning ${target} complete.\n\n- Passwords found: **${percent}**\n- Panic level: **${Math.min(100, percent + 12)}%**\n\nThis command is fake.`)] }); } }),
-    makeSimpleCommand({ name: 'choose', aliases: ['pick'], category: 'Fun', description: 'Choose one option', usage: 'choose option1 | option2 | option3', dmAllowed: true, slash: { root: 'fun', sub: 'choose', description: 'Choose one option', options: [{ type: 'string', name: 'options', description: 'Options separated with |', required: true }] }, async execute(ctx) { const raw = ctx.interaction ? ctx.interaction.options.getString('options') : ctx.getRest(0); if (!raw) return ctx.invalidUsage(); const options = raw.split('|').map((p) => p.trim()).filter(Boolean); if (options.length < 2) return ctx.invalidUsage('Use at least 2 options separated by `|`.'); await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎯 Choice', `I pick: **${randomOf(options)}**`)] }); } }),
-    makeSimpleCommand({ name: 'memeify', aliases: ['meme'], category: 'Fun', description: 'Small meme format', usage: 'memeify <text>', dmAllowed: true, slash: { root: 'fun', sub: 'memeify', description: 'Small meme format', options: [{ type: 'string', name: 'text', description: 'Text', required: true }] }, async execute(ctx) { const text = ctx.interaction ? ctx.interaction.options.getString('text') : ctx.getRest(0); if (!text) return ctx.invalidUsage(); await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🖼️ Memeify', `Top text\n\n**${text.toUpperCase()}**\n\nBottom text`)] }); } }),
-
-    ...RANDOM_METERS.map(([name, description, usage, aliases, title, min, max, suffix]) => createMeterCommand(name, description, usage, aliases, title, min, max, suffix)),
     ...TRANSFORMS.map(([name, description, usage, aliases, fn]) => createTransformCommand(name, description, usage, aliases, fn)),
 
 
@@ -6292,6 +6284,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     makeSimpleCommand({
       name: 'statschannel',
       aliases: ['setstatschannel', 'bindstatschannel'],
+      hidden: true,
       category: 'Tracking',
       description: 'Bind one voice counter channel quickly',
       usage: 'statschannel <members|online|voice> <here|#voice|id>',
@@ -6324,6 +6317,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     makeSimpleCommand({
       name: 'statssetup',
       aliases: ['serverstats', 'statspanel', 'statsetup'],
+      hidden: true,
       category: 'Tracking',
       description: 'Create the locked live stats channels like members / online / voice',
       usage: 'statssetup [category name]',
@@ -6384,13 +6378,14 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           `Online: ${onlineChannel || 'not created'}`,
           `Voice: ${voiceChannel || 'not created'}`,
           '',
-          `Use \`${ctx.prefix}setstatslabel members 👥 • Membres : {count}\` to restyle a line.`
+          `Use \`${ctx.prefix}stats label members 👥 • Membres : {count}\` to restyle a line.`
         ].join('\n'))] });
       }
     }),
     makeSimpleCommand({
       name: 'setstatslabel',
       aliases: ['statslabel', 'setstatlabel'],
+      hidden: true,
       category: 'Tracking',
       description: 'Customize one live stats label and optionally bind an existing voice channel as the counter channel',
       usage: 'setstatslabel <members|member|membre|online|voice|vocal> [#voice-channel|channel-id] <label with {count}>',
@@ -6494,6 +6489,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     makeSimpleCommand({
       name: 'statsrepair',
       aliases: ['repairstats', 'fixstats'],
+      hidden: true,
       category: 'Tracking',
       description: 'Recreate missing stats counters and refresh their names',
       usage: 'statsrepair',
@@ -6515,6 +6511,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     makeSimpleCommand({
       name: 'statsrefresh',
       aliases: ['refreshstats', 'updatestats'],
+      hidden: true,
       category: 'Tracking',
       description: 'Force-refresh the live stats channel names',
       usage: 'statsrefresh',
@@ -6534,6 +6531,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     makeSimpleCommand({
       name: 'statsconfig',
       aliases: ['serverstatsconfig', 'statconfig'],
+      hidden: true,
       category: 'Tracking',
       description: 'Show the current live stats configuration',
       usage: 'statsconfig',
@@ -6558,6 +6556,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     makeSimpleCommand({
       name: 'statsoff',
       aliases: ['statsdisable', 'disablestats'],
+      hidden: true,
       category: 'Tracking',
       description: 'Disable automatic live stats updates without deleting the channels',
       usage: 'statsoff',
@@ -6595,18 +6594,70 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     }),
     makeSimpleCommand({
       name: 'clear',
-      aliases: ['purge', 'prune'],
+      aliases: ['prune'],
       category: 'Moderation',
-      description: 'Delete messages in bulk',
+      description: 'Delete the latest messages without deleting the command message',
       usage: 'clear <amount>',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageMessages],
-      slash: { root: 'mod', sub: 'clear', description: 'Delete messages in bulk', options: [{ type: 'integer', name: 'amount', description: '1-100', required: true, minValue: 1, maxValue: 100 }] },
+      slash: { root: 'mod', sub: 'clear', description: 'Delete the latest messages in bulk', options: [{ type: 'integer', name: 'amount', description: '1-100', required: true, minValue: 1, maxValue: 100 }] },
       async execute(ctx) {
         const amount = Number(ctx.getText('amount', 0));
-        if (!amount) return ctx.invalidUsage();
-        const deleted = await ctx.channel.bulkDelete(amount, true).catch(() => null);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧹 Clear', `Deleted **${deleted?.size || 0}** message(s).`)] });
+        if (!Number.isInteger(amount) || amount < 1 || amount > 100) return ctx.invalidUsage();
+
+        let deleted = null;
+        if (ctx.interaction) {
+          deleted = await ctx.channel.bulkDelete(amount, true).catch(() => null);
+        } else {
+          const recent = await ctx.channel.messages.fetch({ limit: amount, before: ctx.message.id }).catch(() => null);
+          if (recent?.size) deleted = await ctx.channel.bulkDelete(recent, true).catch(() => null);
+        }
+
+        const sent = await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧹 Clear', `Deleted **${deleted?.size || 0}** message(s).`)] });
+        if (sent) setTimeout(() => sent.delete().catch(() => null), 10_000).unref?.();
+      }
+    }),
+    makeSimpleCommand({
+      name: 'purge',
+      aliases: ['userpurge'],
+      category: 'Moderation',
+      description: "Delete a specific member's recent messages in this channel",
+      usage: 'purge <@user|id> <amount>',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.ManageMessages],
+      slash: {
+        root: 'mod',
+        sub: 'purge',
+        description: "Delete a member's recent messages in this channel",
+        options: [
+          { type: 'user', name: 'user', description: 'Target member', required: true },
+          { type: 'integer', name: 'amount', description: '1-100', required: true, minValue: 1, maxValue: 100 }
+        ]
+      },
+      async execute(ctx) {
+        const target = await ctx.getMember('user', 0);
+        const amount = Number(ctx.getText('amount', 1));
+        if (!target || !Number.isInteger(amount) || amount < 1 || amount > 100) {
+          return ctx.invalidUsage(`Examples: \`${ctx.prefix}purge @user 5\`, \`${ctx.prefix}purge 123456789012345678 5\`.`);
+        }
+
+        const fetched = await ctx.channel.messages.fetch({ limit: 100 }).catch(() => null);
+        if (!fetched) {
+          const fail = await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧹 Purge', 'I could not read the recent messages in this channel.')] });
+          if (fail) setTimeout(() => fail.delete().catch(() => null), 10_000).unref?.();
+          return;
+        }
+
+        const targets = fetched
+          .filter((msg) => msg.id !== ctx.message?.id && msg.author?.id === target.id)
+          .first(amount);
+
+        const deleted = targets.length
+          ? await ctx.channel.bulkDelete(targets, true).catch(() => null)
+          : null;
+
+        const sent = await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧹 Purge', `Deleted **${deleted?.size || 0}** message(s) from **${escapeMarkdown(target.user.tag)}**.`)] });
+        if (sent) setTimeout(() => sent.delete().catch(() => null), 10_000).unref?.();
       }
     }),
     makeSimpleCommand({
@@ -6720,7 +6771,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     }),
     makeSimpleCommand({
       name: 'warnings',
-      aliases: ['warns'],
+      aliases: ['warns', 'warnlist', 'warninglist', 'warnhistory'],
       category: 'Moderation',
       description: 'List warnings for a member',
       usage: 'warnings <@member>',
@@ -8923,18 +8974,58 @@ Matched: **${result.matched}**.`)] });
     }),
     makeSimpleCommand({
       name: 'setsupportchannel',
-      aliases: ['supportchannel'],
+      aliases: ['supportchannel', 'supportrelaychannel', 'supportrelay'],
       category: 'Support',
       description: 'Set the staff support relay channel',
-      usage: 'setsupportchannel <#channel>',
+      usage: 'setsupportchannel <here|#channel|id|off>',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
       slash: { root: 'support', sub: 'setsupportchannel', description: 'Set the staff support relay channel', options: [{ type: 'channel', name: 'channel', description: 'Channel', required: true, channelTypes: [ChannelType.GuildText, ChannelType.GuildAnnouncement] }] },
       async execute(ctx) {
-        const channel = await ctx.getChannel('channel', 0);
-        if (!channel) return ctx.invalidUsage();
-        ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.support.channelId = channel.id; return guild; });
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support channel', `Support relay channel set to ${channel}.`)] });
+        const raw = String(ctx.getText('channel', 0) || '').toLowerCase();
+        const clear = ['off', 'none', 'remove', 'clear'].includes(raw);
+        let channel = null;
+        if (!clear) {
+          if (raw === 'here') channel = ctx.channel;
+          else channel = await ctx.getChannel('channel', 0);
+        }
+        if (!clear && !channel?.isTextBased?.()) {
+          return ctx.invalidUsage(`Examples: \`${ctx.prefix}supportchannel here\`, \`${ctx.prefix}supportchannel #support-logs\`, \`${ctx.prefix}supportchannel 123456789012345678\`, \`${ctx.prefix}supportchannel off\`.`);
+        }
+        ctx.store.updateGuild(ctx.guild.id, (guild) => {
+          guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+          guild.support.channelId = clear ? null : channel.id;
+          guild.support.enabled = clear ? false : true;
+          return guild;
+        });
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support channel', clear ? 'Support relay disabled and channel cleared.' : `Support relay channel set to ${channel}. Support is now **on**.`)] });
+      }
+    }),
+    makeSimpleCommand({
+      name: 'setsupportentrychannel',
+      aliases: ['supportentrychannel', 'supportmemberchannel', 'supportpublicchannel', 'supportunchannel'],
+      category: 'Support',
+      description: 'Set the public member support channel',
+      usage: 'setsupportentrychannel <here|#channel|id|off>',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.ManageGuild],
+      async execute(ctx) {
+        const raw = String(ctx.getText('channel', 0) || '').toLowerCase();
+        const clear = ['off', 'none', 'remove', 'clear'].includes(raw);
+        let channel = null;
+        if (!clear) {
+          if (raw === 'here') channel = ctx.channel;
+          else channel = await ctx.getChannel('channel', 0);
+        }
+        if (!clear && !channel?.isTextBased?.()) {
+          return ctx.invalidUsage(`Examples: \`${ctx.prefix}supportmemberchannel here\`, \`${ctx.prefix}supportmemberchannel #support\`, \`${ctx.prefix}supportmemberchannel 123456789012345678\`, \`${ctx.prefix}supportmemberchannel off\`.`);
+        }
+        ctx.store.updateGuild(ctx.guild.id, (guild) => {
+          guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+          guild.support.entryChannelId = clear ? null : channel.id;
+          return guild;
+        });
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support member channel', clear ? 'Public support channel cleared.' : `Members should now use ${channel} for \`${ctx.prefix}support\`.`)] });
       }
     }),
     makeSimpleCommand({
@@ -8958,7 +9049,7 @@ Matched: **${result.matched}**.`)] });
       aliases: ['helpme', 'mp', 'supporthelp'],
       category: 'Support',
       description: 'Support hub for config, panel editing and member DMs',
-      usage: 'support [view|panel|on|off|relay <here|#channel|off>|entry <here|#channel|off>|role <@role|off>|restrict <on|off>|text [config|send]|test|member|status]',
+      usage: 'support [message|panel|view|on|off|relay <here|#channel|id|off>|entry <here|#channel|id|off>|role <@role|off>|restrict <on|off>|text [config|send]|test|member|status]',
       dmAllowed: true,
       slash: { root: 'support', sub: 'support', description: 'Open support via DMs', options: [{ type: 'string', name: 'message', description: 'Optional first message', required: false }] },
       async execute(ctx) {
@@ -8983,7 +9074,7 @@ Matched: **${result.matched}**.`)] });
 
         if (sub === 'member') {
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support • Member flow', [
-            `1. member runs \`${ctx.prefix}support mon message\``,
+            `1. member runs \`${ctx.prefix}support <message>\` or DMs the bot directly`,
             `2. bot opens/uses DM with the member`,
             `3. bot forwards the message to the relay channel`,
             `4. staff answer with \`${ctx.prefix}reply\` or by replying to a forwarded support message`
@@ -9076,7 +9167,7 @@ Matched: **${result.matched}**.`)] });
             const targetChannelId = ctx.guildConfig.support?.entryChannelId || ctx.channel?.id;
             const targetChannel = await ctx.guild.channels.fetch(targetChannelId).catch(() => null);
             if (!targetChannel?.isTextBased?.()) {
-              return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support prompt', `Set a member channel first with \`${ctx.prefix}support entry #support\`, or run this command in the channel where the prompt should be sent.`)] });
+              return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support prompt', `Set a member channel first with \`${ctx.prefix}supportmemberchannel #support\`, or run this command in the channel where the prompt should be sent.`)] });
             }
             const payload = createSupportPromptPayload(ctx.guildConfig, ctx.guild, ctx.prefix, targetChannel);
             const sent = await targetChannel.send(payload).catch(() => null);
@@ -9088,7 +9179,7 @@ Matched: **${result.matched}**.`)] });
         if (sub === 'check') return ctx.reply({ embeds: [buildSupportModuleEmbed(ctx.guildConfig, ctx.prefix)] });
 
         if (sub === 'test') {
-          if (!support.channelId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support test', `No relay channel is set yet. Use \`${ctx.prefix}support relay #support-logs\`.`)] });
+          if (!support.channelId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support test', `No relay channel is set yet. Use \`${ctx.prefix}supportchannel #support-logs\`.`)] });
           const relayChannel = await ctx.guild.channels.fetch(support.channelId).catch(() => null);
           if (!relayChannel?.isTextBased?.()) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support test', 'The configured relay channel no longer exists or is not text-based.')] });
           const sent = await relayChannel.send({
@@ -9192,6 +9283,192 @@ Send your message here and staff replies will come back here.`)] }).catch(() => 
         }
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support reply', `Reply sent to **${user.tag}**.${files.length ? `
 Attachments: **${files.length}**` : ''}`)] });
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'mpall',
+      aliases: ['dmall', 'massdm', 'broadcastdm'],
+      category: 'Moderation',
+      description: 'Configure and send a mass DM to server members',
+      usage: 'mpall <view|mode|title|message|footer|color|image|test|send|reset> [...]',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.Administrator],
+      async execute(ctx) {
+        const sub = String(ctx.args[0] || 'view').toLowerCase();
+        const current = ctx.guildConfig.mpall || {};
+
+        if (['view', 'config', 'show', 'status', 'list', 'home'].includes(sub)) {
+          return ctx.reply({ embeds: [buildMpallModuleEmbed(ctx.guildConfig, ctx.prefix)] });
+        }
+
+        if (sub === 'mode') {
+          const rawMode = String(ctx.args[1] || '').toLowerCase();
+          if (!['embed', 'plain', 'simple', 'text'].includes(rawMode)) return ctx.invalidUsage(`Examples: \`${ctx.prefix}mpall mode embed\`, \`${ctx.prefix}mpall mode simple\`.`);
+          const nextMode = normalizeMpallMode(rawMode);
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.mpall = guild.mpall || { ...DEFAULT_GUILD.mpall };
+            guild.mpall.mode = nextMode;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all mode', `Mass DM style now uses **${nextMode === 'plain' ? 'simple' : 'embed'}** mode.`)] });
+        }
+
+        if (sub === 'title') {
+          const value = String(ctx.getRest(1) || '').trim();
+          if (!value) return ctx.invalidUsage(`Example: \`${ctx.prefix}mpall title 📢 Important update\`.`);
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.mpall = guild.mpall || { ...DEFAULT_GUILD.mpall };
+            guild.mpall.title = value;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all title', `Saved title:
+${value}`)] });
+        }
+
+        if (sub === 'message') {
+          const value = String(ctx.getRest(1) || '').trim();
+          if (!value) return ctx.invalidUsage(`Example: \`${ctx.prefix}mpall message Salut {user}, on a une annonce.\`.`);
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.mpall = guild.mpall || { ...DEFAULT_GUILD.mpall };
+            guild.mpall.message = value;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all message', `Saved message preview:
+${value.slice(0, 1800)}`)] });
+        }
+
+        if (sub === 'footer') {
+          const raw = String(ctx.getRest(1) || '').trim();
+          if (!raw) return ctx.invalidUsage(`Examples: \`${ctx.prefix}mpall footer Staff team\`, \`${ctx.prefix}mpall footer off\`.`);
+          const clear = isOffWord(raw);
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.mpall = guild.mpall || { ...DEFAULT_GUILD.mpall };
+            guild.mpall.footer = clear ? null : raw;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all footer', clear ? 'Footer cleared.' : `Saved footer: ${raw}`)] });
+        }
+
+        if (sub === 'color') {
+          const raw = String(ctx.args[1] || '').trim();
+          if (!raw) return ctx.invalidUsage(`Examples: \`${ctx.prefix}mpall color #FF4D6D\`, \`${ctx.prefix}mpall color default\`.`);
+          if (!isDefaultWord(raw) && !isOffWord(raw) && !isValidHexColorInput(raw)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all color', 'Use a valid hex color like `#FF4D6D`, or `default`.')] });
+          const nextColor = (isDefaultWord(raw) || isOffWord(raw)) ? null : ensureHexColor(raw);
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.mpall = guild.mpall || { ...DEFAULT_GUILD.mpall };
+            guild.mpall.color = nextColor;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all color', nextColor ? `Saved color: \`${nextColor}\`` : 'Color reset to the default embed color.')] });
+        }
+
+        if (sub === 'image') {
+          const raw = String(ctx.getRest(1) || '').trim();
+          if (!raw) return ctx.invalidUsage(`Examples: \`${ctx.prefix}mpall image https://...\`, \`${ctx.prefix}mpall image off\`.`);
+          if (!isOffWord(raw) && !isValidHttpUrl(raw)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all image', 'Use a direct image URL that starts with http/https, or `off`.')] });
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.mpall = guild.mpall || { ...DEFAULT_GUILD.mpall };
+            guild.mpall.imageUrl = isOffWord(raw) ? null : raw;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all image', isOffWord(raw) ? 'Image cleared.' : 'Image URL saved.')] });
+        }
+
+        if (sub === 'reset') {
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.mpall = { ...DEFAULT_GUILD.mpall };
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all reset', 'Mass DM style was reset to default values.')] });
+        }
+
+        if (sub === 'test') {
+          const target = await ctx.getMember('member', 1) || ctx.member;
+          if (!target) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all test', 'I could not resolve the target member for the preview.')] });
+          const fresh = ctx.store.getGuild(ctx.guild.id);
+          if (!String(fresh.mpall?.message || '').trim()) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all test', `Set a message first with \`${ctx.prefix}mpall message ...\`.`)] });
+          const payload = createMpallPayload(fresh, ctx.guild, target);
+          const sent = await target.user.send(payload).catch(() => null);
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all test', sent ? `Preview sent to **${target.user.tag}**.` : `I could not DM **${target.user.tag}**.`)] });
+        }
+
+        if (sub === 'send') {
+          const fresh = ctx.store.getGuild(ctx.guild.id);
+          if (!String(fresh.mpall?.message || '').trim()) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all', `Set a message first with \`${ctx.prefix}mpall message ...\`.`)] });
+
+          const rawTarget = String(ctx.args[1] || '').trim();
+          const lowered = rawTarget.toLowerCase();
+          let filterLabel = 'humans';
+          let role = null;
+          let matcher = (member) => !member.user.bot;
+
+          if (!rawTarget || ['all', 'humans', 'members'].includes(lowered)) {
+            filterLabel = 'humans';
+            matcher = (member) => !member.user.bot;
+          } else if (['bots', 'bot'].includes(lowered)) {
+            filterLabel = 'bots';
+            matcher = (member) => member.user.bot;
+          } else {
+            role = await ctx.getRole('role', 1);
+            if (!role) return ctx.invalidUsage(`Examples: \`${ctx.prefix}mpall send\`, \`${ctx.prefix}mpall send humans\`, \`${ctx.prefix}mpall send @Role\`.`);
+            filterLabel = `role ${role.name}`;
+            matcher = (member) => member.roles.cache.has(role.id) && !member.user.bot;
+          }
+
+          const status = await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all', `Preparing mass DM for **${filterLabel}**...`)] });
+
+          (async () => {
+            try {
+              const fetched = await ctx.guild.members.fetch().catch(() => ctx.guild.members.cache);
+              const members = Array.from(fetched.values()).filter((member) => member && !member.user.system && matcher(member));
+
+              if (!members.length) {
+                await status.edit({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all', `No members found for **${filterLabel}**.`)] }).catch(() => null);
+                return;
+              }
+
+              let sentCount = 0;
+              let failedCount = 0;
+              const startedAt = Date.now();
+
+              for (let index = 0; index < members.length; index += 1) {
+                const member = members[index];
+                const payload = createMpallPayload(fresh, ctx.guild, member);
+                const delivered = await member.user.send(payload).catch(() => null);
+                if (delivered) sentCount += 1;
+                else failedCount += 1;
+
+                if ((index + 1) % 15 === 0 || index === members.length - 1) {
+                  await status.edit({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all running', [
+                    `**Target:** ${filterLabel}`,
+                    `**Processed:** ${index + 1}/${members.length}`,
+                    `**Sent:** ${sentCount}`,
+                    `**Failed:** ${failedCount}`
+                  ].join('\n'))] }).catch(() => null);
+                }
+
+                if (index < members.length - 1) await new Promise((resolve) => setTimeout(resolve, 750));
+              }
+
+              const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+              await status.edit({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all finished', [
+                `**Target:** ${filterLabel}`,
+                `**Total:** ${members.length}`,
+                `**Sent:** ${sentCount}`,
+                `**Failed:** ${failedCount}`,
+                `**Time:** ${durationSeconds}s`
+              ].join('\n'))] }).catch(() => null);
+            } catch (error) {
+              console.error('MP all failed:', error);
+              await status.edit({ embeds: [baseEmbed(ctx.guildConfig, '📨 MP all failed', 'An error occurred while sending the mass DM.')] }).catch(() => null);
+            }
+          })();
+
+          return status;
+        }
+
+        return ctx.invalidUsage(`Examples: \`${ctx.prefix}mpall\`, \`${ctx.prefix}mpall message Salut {user}\`, \`${ctx.prefix}mpall send\`, \`${ctx.prefix}mpall send @VIP\`.`);
       }
     }),
 
@@ -9731,7 +10008,7 @@ Attachments: **${files.length}**` : ''}`)] });
       const list = ctx.client.guilds.cache.map((guild) => `• **${guild.name}** — ${guild.id}`).join('\n').slice(0, 3900);
       await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, '👑 Guilds', list || 'No guilds.')] });
     }),
-    ownerBase('leaveguild', 'Leave a guild by ID', 'leaveguild <guildId>', ['leave'], [{ type: 'string', name: 'id', description: 'Guild ID', required: true }], async (ctx) => {
+    ownerBase('leaveguild', 'Leave a guild by ID', 'leaveguild <guildId>', ['leavebotguild', 'leave-server'], [{ type: 'string', name: 'id', description: 'Guild ID', required: true }], async (ctx) => {
       const id = ctx.getText('id', 0);
       const guild = ctx.client.guilds.cache.get(id);
       if (!guild) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, 'Leave guild', 'Guild not found.')] });
@@ -9751,8 +10028,39 @@ Attachments: **${files.length}**` : ''}`)] });
     })
   ];
 
+  normalizeCommandRegistry(commands);
   return commands;
 }
+
+function normalizeCommandRegistry(commands) {
+  const legacyHiddenNames = new Set([
+    'statschannel', 'statssetup', 'setstatslabel', 'statsrepair', 'statsrefresh', 'statsconfig', 'statsoff',
+    'setlogchannel', 'logtoggle', 'logtype', 'logconfig', 'logtypes', 'logtest',
+    'welcometoggle', 'setwelcomechannel', 'setwelcomemessage', 'setwelcometitle', 'previewwelcome',
+    'leavetoggle', 'setleavechannel', 'setleavemessage', 'setleavetitle', 'previewleave',
+    'boosttoggle', 'setboostchannel', 'setboostmessage', 'setboosttitle', 'previewboost', 'boostconfig',
+    'leavedm', 'setleavedm', 'testleavedm', 'welcomeconfig',
+    'supporttoggle', 'setsupportchannel', 'setsupportentrychannel', 'setsupportrole',
+    'autoroleadd', 'autoroleremove', 'autorolelist',
+    'setvoicemuterole', 'setvoicebanrole', 'voicepermconfig',
+    'trophychannel', 'trophyrefresh', 'trophyconfig'
+  ]);
+
+  const seen = new Set();
+  for (const command of commands) {
+    if (legacyHiddenNames.has(command.name)) command.hidden = true;
+    const aliases = [];
+    for (const alias of command.aliases || []) {
+      const key = String(alias || '').trim().toLowerCase();
+      if (!key || key === command.name || seen.has(key)) continue;
+      aliases.push(key);
+      seen.add(key);
+    }
+    command.aliases = aliases;
+    seen.add(command.name);
+  }
+}
+
 
 
 
@@ -9978,7 +10286,7 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
           name: 'Quick setup',
           value: [
             '`+logs`',
-            '`+statssetup`',
+            '`+stats setup`',
             '`+trophychannel here`',
             '`+ghostping on`',
             '`+autoreact preset #general hype`',
@@ -10088,7 +10396,7 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
           `**Stats panel:** ${g.stats?.enabled ? 'on' : 'off'}`,
           `**Current voice users:** ${formatStatNumber(voiceCount)}`
         ].join('\n'), inline: true },
-        { name: 'Useful commands', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+statssetup`', inline: false }
+        { name: 'Useful commands', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+stats setup`', inline: false }
       );
   }
 
@@ -10791,11 +11099,6 @@ function createConfigPanelComponents(current = 'home', channelId = null) {
       new ButtonBuilder().setCustomId(`cfgpanel:texttest:${focus}`).setLabel('Test').setEmoji('🧪').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`cfgpanel:textreset:${focus}`).setLabel('Reset').setEmoji('♻️').setStyle(ButtonStyle.Danger)
     ));
-    rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:clean`).setLabel('Preset clean').setEmoji('✨').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:premium`).setLabel('Preset premium').setEmoji('💎').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:minimal`).setLabel('Preset minimal').setEmoji('🪶').setStyle(ButtonStyle.Secondary)
-    ));
   } else if (safePage === 'logs') {
     rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('cfgpanel:logtoggle').setLabel('Logs on/off').setEmoji('🧾').setStyle(ButtonStyle.Primary),
@@ -10827,8 +11130,8 @@ function createConfigPanelComponents(current = 'home', channelId = null) {
     rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`cfgpanel:artoggle:${cid}`).setLabel('Auto-react on/off').setEmoji('✨').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`cfgpanel:arhype:${cid}`).setLabel('Preset hype').setEmoji('🔥').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:aroff:${cid}`).setLabel('Auto-react off').setEmoji('🛑').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:stickyoff:${cid}`).setLabel('Sticky off').setEmoji('📌').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:stickyset:${cid}`).setLabel('Sticky set').setEmoji('📌').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:stickyoff:${cid}`).setLabel('Sticky off').setEmoji('🗑️').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:refresh:automation').setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     ));
   } else if (safePage === 'channels') {
