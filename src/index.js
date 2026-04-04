@@ -36,7 +36,8 @@ const {
   parseRoleArgument,
   parseUserArgument,
   translateText,
-  localizePayload
+  localizePayload,
+  normalizeSystemNoticePayload
 } = require('./core/utils');
 const { checkTikTokWatchers } = require('./core/tiktok');
 const { DEFAULT_GUILD } = require('./core/defaults');
@@ -59,6 +60,18 @@ const SMART_TEXT_PRESETS = {
   minimal: { mode: 'plain', footer: null, color: null, image: null, title: null }
 };
 
+const TRANSIENT_SYSTEM_DELETE_MS = 10_000;
+
+function scheduleMessageDelete(message, delay = TRANSIENT_SYSTEM_DELETE_MS) {
+  if (!message || typeof message.delete !== 'function' || !Number.isFinite(delay) || delay <= 0) return;
+  setTimeout(() => message.delete().catch(() => null), delay).unref?.();
+}
+
+function payloadLooksTransientSystemNotice(payload = {}) {
+  return normalizeSystemNoticePayload(payload, null, { defaultDeleteAfter: TRANSIENT_SYSTEM_DELETE_MS }).suggestedDeleteAfter === TRANSIENT_SYSTEM_DELETE_MS;
+}
+
+if (!TOKEN)
 if (!TOKEN) {
   console.error('Missing DISCORD_TOKEN in .env');
   process.exit(1);
@@ -113,6 +126,14 @@ function getGuildConfig(guildId) {
   return client.store.getGuild(guildId);
 }
 
+function uiLangText(guildConfig, fr, en) {
+  return String(guildConfig?.language || '').toLowerCase() === 'fr' ? fr : en;
+}
+
+function interactionUi(interaction, fr, en) {
+  return uiLangText(interaction?.guild ? getGuildConfig(interaction.guild.id) : null, fr, en);
+}
+
 function parseEmbedSourceInput(raw, fallbackChannelId = null) {
   const value = String(raw || '').trim();
   if (!value) return null;
@@ -150,20 +171,20 @@ function buildEmbedDraftPreview(guildConfig, draft) {
   return preview;
 }
 
-function buildEmbedDraftComponents(draftId) {
+function buildEmbedDraftComponents(draftId, guildConfig = null) {
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`embed:title:${draftId}`).setLabel('Titre').setEmoji('🏷️').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`embed:description:${draftId}`).setLabel('Texte').setEmoji('📝').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`embed:author:${draftId}`).setLabel('Auteur').setEmoji('👤').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:title:${draftId}`).setLabel(uiLangText(guildConfig, 'Titre', 'Title')).setEmoji('🏷️').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`embed:description:${draftId}`).setLabel(uiLangText(guildConfig, 'Texte', 'Text')).setEmoji('📝').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`embed:author:${draftId}`).setLabel(uiLangText(guildConfig, 'Auteur', 'Author')).setEmoji('👤').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`embed:footer:${draftId}`).setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:color:${draftId}`).setLabel('Couleur').setEmoji('🌈').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(`embed:color:${draftId}`).setLabel(uiLangText(guildConfig, 'Couleur', 'Color')).setEmoji('🌈').setStyle(ButtonStyle.Secondary)
   );
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`embed:image:${draftId}`).setLabel('Image').setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:thumbnail:${draftId}`).setLabel('Miniature').setEmoji('🪄').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:copy:${draftId}`).setLabel('Copier').setEmoji('📥').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:send:${draftId}`).setLabel('Envoyer').setEmoji('📤').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`embed:cancel:${draftId}`).setLabel('Fermer').setEmoji('✖️').setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId(`embed:image:${draftId}`).setLabel(uiLangText(guildConfig, 'Image', 'Image')).setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:thumbnail:${draftId}`).setLabel(uiLangText(guildConfig, 'Miniature', 'Thumbnail')).setEmoji('🪄').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:copy:${draftId}`).setLabel(uiLangText(guildConfig, 'Copier', 'Copy')).setEmoji('📥').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:send:${draftId}`).setLabel(uiLangText(guildConfig, 'Envoyer', 'Send')).setEmoji('📤').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`embed:cancel:${draftId}`).setLabel(uiLangText(guildConfig, 'Fermer', 'Close')).setEmoji('✖️').setStyle(ButtonStyle.Danger)
   );
   return [row1, row2];
 }
@@ -453,10 +474,10 @@ function resetSupportPrompt(guild) {
 }
 
 async function handleSupportPanelInteraction(interaction) {
-  if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+  if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
   const config = getGuildConfig(interaction.guild.id);
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-    return interaction.reply({ embeds: [baseEmbed(config, 'Support panel', 'You need Manage Server to use this panel.')], ephemeral: true }).catch(() => null);
+    return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, 'Panel support', 'Support panel'), uiLangText(config, 'Tu dois avoir Gérer le serveur pour utiliser ce panel.', 'You need Manage Server to use this panel.'))], ephemeral: true }).catch(() => null);
   }
 
   const parts = interaction.customId.split(':');
@@ -465,12 +486,12 @@ async function handleSupportPanelInteraction(interaction) {
   const currentChannel = interaction.channel;
   const refreshPanel = async () => {
     const fresh = getGuildConfig(interaction.guild.id);
-    return interaction.message.edit({ embeds: [createSupportPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() }).catch(() => null);
+    return interaction.message.edit({ embeds: [createSupportPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents(fresh) }).catch(() => null);
   };
   const sendEphemeral = (title, description) => interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), title, description)], ephemeral: true }).catch(() => null);
 
   if (action === 'refresh') {
-    return interaction.update({ embeds: [createSupportPanelEmbed(config, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() });
+    return interaction.update({ embeds: [createSupportPanelEmbed(config, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents(config) });
   }
 
   if (action === 'toggle') {
@@ -482,30 +503,30 @@ async function handleSupportPanelInteraction(interaction) {
       enabled = guild.support.enabled;
       return guild;
     });
-    await sendEphemeral('📨 Support relay', `Support relay is now **${enabled ? 'enabled' : 'disabled'}**.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📨 Relais support', '📨 Support relay'), uiLangText(getGuildConfig(interaction.guild.id), `Le relais support est maintenant **${enabled ? 'activé' : 'désactivé'}**.`, `Support relay is now **${enabled ? 'enabled' : 'disabled'}**.`));
     return refreshPanel();
   }
 
   if (action === 'relayhere') {
-    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📨 Support panel', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📨 Panel support', '📨 Support panel'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
       guild.support.enabled = true;
       guild.support.channelId = currentChannel.id;
       return guild;
     });
-    await sendEphemeral('📨 Support relay', `Relay channel set to ${currentChannel}.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📨 Relais support', '📨 Support relay'), uiLangText(getGuildConfig(interaction.guild.id), `Le salon relais est maintenant ${currentChannel}.`, `Relay channel set to ${currentChannel}.`));
     return refreshPanel();
   }
 
   if (action === 'entryhere') {
-    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📨 Support panel', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📨 Panel support', '📨 Support panel'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
       guild.support.entryChannelId = currentChannel.id;
       return guild;
     });
-    await sendEphemeral('📍 Support member channel', `Members should now use ${currentChannel} for support.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📍 Salon support membres', '📍 Support member channel'), uiLangText(getGuildConfig(interaction.guild.id), `Les membres doivent maintenant utiliser ${currentChannel} pour le support.`, `Members should now use ${currentChannel} for support.`));
     return refreshPanel();
   }
 
@@ -518,7 +539,7 @@ async function handleSupportPanelInteraction(interaction) {
       return guild;
     });
     const fresh = getGuildConfig(interaction.guild.id);
-    await sendEphemeral('🚧 Support restriction', enabled ? `Members must now use support in ${fresh.support?.entryChannelId ? `<#${fresh.support.entryChannelId}>` : 'the configured support channel'}.` : 'Members can now use support from any channel again.');
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🚧 Restriction support', '🚧 Support restriction'), enabled ? uiLangText(fresh, `Les membres doivent maintenant utiliser le support dans ${fresh.support?.entryChannelId ? `<#${fresh.support.entryChannelId}>` : 'le salon configuré'}.`, `Members must now use support in ${fresh.support?.entryChannelId ? `<#${fresh.support.entryChannelId}>` : 'the configured support channel'}.`) : uiLangText(fresh, 'Les membres peuvent de nouveau utiliser le support depuis n’importe quel salon.', 'Members can now use support from any channel again.'));
     return refreshPanel();
   }
 
@@ -528,13 +549,13 @@ async function handleSupportPanelInteraction(interaction) {
       nextMode = String(support.promptMode || 'embed').toLowerCase() === 'plain' ? 'embed' : 'plain';
       support.promptMode = nextMode;
     }));
-    await sendEphemeral('🎨 Support prompt', `Prompt now uses **${nextMode}** mode.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🎨 Prompt support', '🎨 Support prompt'), uiLangText(getGuildConfig(interaction.guild.id), `Le prompt utilise maintenant le mode **${nextMode === 'plain' ? 'texte' : 'embed'}**.`, `Prompt now uses **${nextMode}** mode.`));
     return refreshPanel();
   }
 
   if (action === 'reset') {
     client.store.updateGuild(interaction.guild.id, (guild) => resetSupportPrompt(guild));
-    await sendEphemeral('♻️ Support prompt', 'Support prompt style was reset to default values.');
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '♻️ Prompt support', '♻️ Support prompt'), uiLangText(getGuildConfig(interaction.guild.id), 'Le style du prompt support a été remis par défaut.', 'Support prompt style was reset to default values.'));
     return refreshPanel();
   }
 
@@ -546,7 +567,7 @@ async function handleSupportPanelInteraction(interaction) {
       if (field === 'relay') guild.support.channelId = null;
       return guild;
     });
-    await sendEphemeral('🧹 Support panel', field === 'entry' ? 'Support member channel cleared.' : 'Support relay channel cleared.');
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🧹 Panel support', '🧹 Support panel'), field === 'entry' ? uiLangText(getGuildConfig(interaction.guild.id), 'Le salon support membres a été retiré.', 'Support member channel cleared.') : uiLangText(getGuildConfig(interaction.guild.id), 'Le salon relais support a été retiré.', 'Support relay channel cleared.'));
     return refreshPanel();
   }
 
@@ -555,11 +576,11 @@ async function handleSupportPanelInteraction(interaction) {
     const targetId = currentChannel?.isTextBased?.() ? currentChannel.id : fresh.support?.entryChannelId;
     const targetChannel = targetId ? await interaction.guild.channels.fetch(targetId).catch(() => null) : null;
     if (!targetChannel?.isTextBased?.()) {
-      return interaction.reply({ embeds: [baseEmbed(fresh, '📨 Support prompt', 'Open this panel inside the public support channel, or set a member channel first.')], ephemeral: true }).catch(() => null);
+      return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '📨 Prompt support', '📨 Support prompt'), uiLangText(fresh, 'Ouvre ce panel dans le salon support public, ou configure d’abord un salon membre.', 'Open this panel inside the public support channel, or set a member channel first.'))], ephemeral: true }).catch(() => null);
     }
     const payload = createSupportPromptPayload(fresh, interaction.guild, client.meta.defaultPrefix || '+', targetChannel);
     const sent = await targetChannel.send(payload).catch(() => null);
-    await sendEphemeral('📤 Support prompt', sent ? `Support prompt sent in ${targetChannel}.` : 'I could not send the support prompt.');
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📤 Prompt support', '📤 Support prompt'), sent ? uiLangText(fresh, `Le prompt support a été envoyé dans ${targetChannel}.`, `Support prompt sent in ${targetChannel}.`) : uiLangText(fresh, 'Je n’ai pas pu envoyer le prompt support.', 'I could not send the support prompt.'));
     return refreshPanel();
   }
 
@@ -568,14 +589,14 @@ async function handleSupportPanelInteraction(interaction) {
     const source = config.support || {};
     const keyMap = { title: 'promptTitle', message: 'promptMessage', footer: 'promptFooter', color: 'promptColor', image: 'promptImageUrl' };
     const labelMap = {
-      title: 'Support prompt title',
-      message: 'Support prompt message',
-      footer: 'Support prompt footer',
-      color: 'Support prompt color (#RRGGBB)',
-      image: 'Support prompt image URL'
+      title: uiLangText(config, 'Titre du prompt support', 'Support prompt title'),
+      message: uiLangText(config, 'Message du prompt support', 'Support prompt message'),
+      footer: uiLangText(config, 'Footer du prompt support', 'Support prompt footer'),
+      color: uiLangText(config, 'Couleur du prompt support (#RRGGBB)', 'Support prompt color (#RRGGBB)'),
+      image: uiLangText(config, 'Image du prompt support (URL)', 'Support prompt image URL')
     };
     const value = String(source?.[keyMap[safeField]] || '').slice(0, 4000);
-    const modal = new ModalBuilder().setCustomId(`supportpanelmodal:${safeField}`).setTitle(`Edit ${labelMap[safeField]}`.slice(0, 45));
+    const modal = new ModalBuilder().setCustomId(`supportpanelmodal:${safeField}`).setTitle(uiLangText(config, `Modifier ${labelMap[safeField]}`, `Edit ${labelMap[safeField]}`).slice(0, 45));
     modal.addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -594,10 +615,10 @@ async function handleSupportPanelInteraction(interaction) {
 }
 
 async function handleConfigPanelInteraction(interaction) {
-  if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+  if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
   const config = getGuildConfig(interaction.guild.id);
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-    return interaction.reply({ embeds: [baseEmbed(config, 'Smart panel', 'You need Manage Server to use this panel.')], ephemeral: true }).catch(() => null);
+    return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, 'Smart panel', 'Smart panel'), uiLangText(config, 'Tu dois avoir Gérer le serveur pour utiliser ce panel.', 'You need Manage Server to use this panel.'))], ephemeral: true }).catch(() => null);
   }
 
   const parts = interaction.customId.split(':');
@@ -622,7 +643,7 @@ async function handleConfigPanelInteraction(interaction) {
   }
 
   if (action === 'supportopen') {
-    return interaction.update({ embeds: [createSupportPanelEmbed(config, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() });
+    return interaction.update({ embeds: [createSupportPanelEmbed(config, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents(config) });
   }
 
   if (action === 'securityopen') {
@@ -726,8 +747,8 @@ async function handleConfigPanelInteraction(interaction) {
     }
 
     if (action === 'texthere') {
-      if (!meta.hasChannel) return interaction.reply({ embeds: [baseEmbed(config, '📝 Text panel', 'This module sends in DMs, not in a server channel.')], ephemeral: true }).catch(() => null);
-      if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📝 Text panel', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+      if (!meta.hasChannel) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📝 Panel textes', '📝 Text panel'), uiLangText(config, 'Ce module envoie en MP, pas dans un salon du serveur.', 'This module sends in DMs, not in a server channel.'))], ephemeral: true }).catch(() => null);
+      if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📝 Panel textes', '📝 Text panel'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
       client.store.updateGuild(interaction.guild.id, (guild) => updatePanelTextModule(guild, moduleKey, (target) => {
         target[meta.enabledKey] = true;
         target[meta.channelKey] = currentChannel.id;
@@ -753,7 +774,7 @@ async function handleConfigPanelInteraction(interaction) {
         nextMode = String(target[meta.modeKey] || 'embed').toLowerCase() === 'plain' ? 'embed' : 'plain';
         target[meta.modeKey] = nextMode;
       }));
-      await sendEphemeral('🎨 Text mode', `${meta.label} now uses **${nextMode}** mode.`);
+      await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🎨 Mode du texte', '🎨 Text mode'), uiLangText(getGuildConfig(interaction.guild.id), `${meta.label} utilise maintenant le mode **${nextMode === 'plain' ? 'texte' : 'embed'}**.`, `${meta.label} now uses **${nextMode}** mode.`));
       return refreshPanel(moduleKey);
     }
   }
@@ -800,9 +821,9 @@ async function handleConfigPanelInteraction(interaction) {
   }
 
   if (action === 'deploy') {
-    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📌 Smart panel', 'Open the panel inside a text channel first.')], ephemeral: true }).catch(() => null);
-    const sent = await currentChannel.send({ embeds: [createConfigPanelEmbed(getGuildConfig(interaction.guild.id), interaction.guild, 'home', currentChannel)], components: createConfigPanelComponents('home', currentChannel.id) }).catch(() => null);
-    if (!sent) return interaction.reply({ embeds: [baseEmbed(config, '📌 Smart panel', 'I could not deploy the panel in this channel.')], ephemeral: true }).catch(() => null);
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📌 Smart panel', '📌 Smart panel'), uiLangText(config, 'Ouvre le panel dans un salon texte d’abord.', 'Open the panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
+    const sent = await currentChannel.send({ embeds: [createConfigPanelEmbed(getGuildConfig(interaction.guild.id), interaction.guild, 'home', currentChannel)], components: createConfigPanelComponents('home', currentChannel.id, getGuildConfig(interaction.guild.id)) }).catch(() => null);
+    if (!sent) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📌 Smart panel', '📌 Smart panel'), uiLangText(config, 'Je n’ai pas pu déployer le panel dans ce salon.', 'I could not deploy the panel in this channel.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.panel = guild.panel || {};
       guild.panel.deployedChannelId = currentChannel.id;
@@ -810,7 +831,7 @@ async function handleConfigPanelInteraction(interaction) {
       guild.panel.lastDeployedAt = Date.now();
       return guild;
     });
-    return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), '📌 Smart panel', `Control center deployed in ${currentChannel}. Pin that message for staff.`)], ephemeral: true }).catch(() => null);
+    return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '📌 Smart panel', '📌 Smart panel'), uiLangText(getGuildConfig(interaction.guild.id), `Centre de contrôle déployé dans ${currentChannel}. Épingle ce message pour le staff.`, `Control center deployed in ${currentChannel}. Pin that message for staff.`))], ephemeral: true }).catch(() => null);
   }
 
   if (action === 'supporttoggle') {
@@ -822,30 +843,30 @@ async function handleConfigPanelInteraction(interaction) {
       enabled = guild.support.enabled;
       return guild;
     });
-    await sendEphemeral('📨 Support relay', `Support relay is now **${enabled ? 'enabled' : 'disabled'}**.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📨 Relais support', '📨 Support relay'), uiLangText(getGuildConfig(interaction.guild.id), `Le relais support est maintenant **${enabled ? 'activé' : 'désactivé'}**.`, `Support relay is now **${enabled ? 'enabled' : 'disabled'}**.`));
     return refreshPanel('support');
   }
 
   if (action === 'supportrelayhere') {
-    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📨 Support', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📨 Support', '📨 Support'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
       guild.support.enabled = true;
       guild.support.channelId = currentChannel.id;
       return guild;
     });
-    await sendEphemeral('📨 Support relay', `Relay channel set to ${currentChannel}.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📨 Relais support', '📨 Support relay'), uiLangText(getGuildConfig(interaction.guild.id), `Le salon relais est maintenant ${currentChannel}.`, `Relay channel set to ${currentChannel}.`));
     return refreshPanel('support');
   }
 
   if (action === 'supportentryhere') {
-    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📨 Support', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📨 Support', '📨 Support'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
       guild.support.entryChannelId = currentChannel.id;
       return guild;
     });
-    await sendEphemeral('📍 Support entry', `Members should use ${currentChannel} for \`${client.meta.defaultPrefix || '+'}support\`.`);
+    await sendEphemeral('📍 Support entry', uiLangText(getGuildConfig(interaction.guild.id), `Les membres doivent utiliser ${currentChannel} pour \`${client.meta.defaultPrefix || '+'}support\`.`, `Members should use ${currentChannel} for \`${client.meta.defaultPrefix || '+'}support\`.`));
     return refreshPanel('support');
   }
 
@@ -857,7 +878,7 @@ async function handleConfigPanelInteraction(interaction) {
       enabled = guild.support.restrictToEntry;
       return guild;
     });
-    await sendEphemeral('🚧 Support restriction', enabled ? 'Members are now restricted to the configured support channel.' : 'Members can now use support from any channel again.');
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🚧 Restriction support', '🚧 Support restriction'), enabled ? uiLangText(getGuildConfig(interaction.guild.id), 'Les membres sont maintenant limités au salon support configuré.', 'Members are now restricted to the configured support channel.') : uiLangText(getGuildConfig(interaction.guild.id), 'Les membres peuvent de nouveau utiliser le support depuis n’importe quel salon.', 'Members can now use support from any channel again.'));
     return refreshPanel('support');
   }
 
@@ -865,10 +886,10 @@ async function handleConfigPanelInteraction(interaction) {
     const fresh = getGuildConfig(interaction.guild.id);
     const targetId = fresh.support?.entryChannelId || currentChannel?.id;
     const targetChannel = targetId ? (interaction.guild.channels.cache.get(targetId) || await interaction.guild.channels.fetch(targetId).catch(() => null)) : null;
-    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(fresh, '📨 Support prompt', 'Set a valid support member channel first.')], ephemeral: true }).catch(() => null);
+    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '📨 Prompt support', '📨 Support prompt'), uiLangText(fresh, 'Configure d’abord un salon support membres valide.', 'Set a valid support member channel first.'))], ephemeral: true }).catch(() => null);
     const payload = createSupportPromptPayload(fresh, interaction.guild, client.meta.defaultPrefix || '+', targetChannel);
     const sent = await targetChannel.send(payload).catch(() => null);
-    await sendEphemeral('📤 Support prompt', sent ? `Support prompt sent in ${targetChannel}.` : 'I could not send the support prompt.');
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📤 Prompt support', '📤 Support prompt'), sent ? uiLangText(fresh, `Le prompt support a été envoyé dans ${targetChannel}.`, `Support prompt sent in ${targetChannel}.`) : uiLangText(fresh, 'Je n’ai pas pu envoyer le prompt support.', 'I could not send the support prompt.'));
     return refreshPanel('support');
   }
 
@@ -899,12 +920,12 @@ async function handleConfigPanelInteraction(interaction) {
       enabled = guild.automod.ghostPing.enabled;
       return guild;
     });
-    await sendEphemeral('👻 Ghost ping', `Ghost ping is now **${enabled ? 'enabled' : 'disabled'}**.${enabled && currentChannel?.isTextBased?.() ? `\nChannel: ${currentChannel}` : ''}`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '👻 Ghost ping', '👻 Ghost ping'), uiLangText(getGuildConfig(interaction.guild.id), `Le ghost ping est maintenant **${enabled ? 'activé' : 'désactivé'}**.${enabled && currentChannel?.isTextBased?.() ? `\nSalon : ${currentChannel}` : ''}`, `Ghost ping is now **${enabled ? 'enabled' : 'disabled'}**.${enabled && currentChannel?.isTextBased?.() ? `\nChannel: ${currentChannel}` : ''}`));
     return refreshPanel('security');
   }
 
   if (action === 'ghosthere') {
-    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '👻 Ghost ping', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '👻 Ghost ping', '👻 Ghost ping'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.automod = guild.automod || {};
       guild.automod.ghostPing = guild.automod.ghostPing || { enabled: false, channelId: null };
@@ -912,7 +933,7 @@ async function handleConfigPanelInteraction(interaction) {
       guild.automod.ghostPing.channelId = currentChannel.id;
       return guild;
     });
-    await sendEphemeral('👻 Ghost ping', `Joining members will be pinged in ${currentChannel}, then the message will delete after 2 seconds.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '👻 Ghost ping', '👻 Ghost ping'), uiLangText(getGuildConfig(interaction.guild.id), `Les membres qui rejoignent seront ping dans ${currentChannel}, puis le message sera supprimé après 2 secondes.`, `Joining members will be pinged in ${currentChannel}, then the message will delete after 2 seconds.`));
     return refreshPanel('security');
   }
 
@@ -920,7 +941,7 @@ async function handleConfigPanelInteraction(interaction) {
     const fresh = getGuildConfig(interaction.guild.id);
     const testChannelId = fresh.automod?.ghostPing?.channelId || currentChannel?.id;
     const testChannel = testChannelId ? (interaction.guild.channels.cache.get(testChannelId) || await interaction.guild.channels.fetch(testChannelId).catch(() => null)) : null;
-    if (!testChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(fresh, '👻 Ghost ping test', 'No valid ghost ping channel is configured yet. Use **Ghost here** first.')], ephemeral: true }).catch(() => null);
+    if (!testChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '👻 Test ghost ping', '👻 Ghost ping test'), uiLangText(fresh, 'Aucun salon ghost ping valide n’est encore configuré. Utilise d’abord **Ghost ici**.', 'No valid ghost ping channel is configured yet. Use **Ghost here** first.'))], ephemeral: true }).catch(() => null);
     const me = interaction.guild.members.me || await interaction.guild.members.fetchMe().catch(() => null);
     const perms = testChannel.permissionsFor(me);
     const canSend = perms?.has(PermissionFlagsBits.SendMessages);
@@ -934,12 +955,12 @@ async function handleConfigPanelInteraction(interaction) {
     } catch (error) {
       sent = false;
     }
-    await sendEphemeral('👻 Ghost ping test', sent ? `Test ping sent in ${testChannel}. It will delete after 2 seconds.` : `I could not send a test ping in ${testChannel}. Check **Send Messages**.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '👻 Test ghost ping', '👻 Ghost ping test'), sent ? uiLangText(fresh, `Test ping envoyé dans ${testChannel}. Il sera supprimé après 2 secondes.`, `Test ping sent in ${testChannel}. It will delete after 2 seconds.`) : uiLangText(fresh, `Je n’ai pas pu envoyer un test ping dans ${testChannel}. Vérifie **Envoyer des messages**.`, `I could not send a test ping in ${testChannel}. Check **Send Messages**.`));
     return refreshPanel('home');
   }
 
   if (action === 'logshere') {
-    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '🧾 Logs', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '🧾 Logs', '🧾 Logs'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.logs = guild.logs || { enabled: false, channelId: null, channels: {}, types: {} };
       guild.logs.enabled = true;
@@ -953,7 +974,7 @@ async function handleConfigPanelInteraction(interaction) {
   }
 
   if (action === 'trophyhere') {
-    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '🏆 Trophy board', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '🏆 Trophy board', '🏆 Trophy board'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.progress = guild.progress || { enabled: false, channelId: null, messageId: null, lastUpdatedAt: null };
       guild.progress.enabled = true;
@@ -969,7 +990,7 @@ async function handleConfigPanelInteraction(interaction) {
   if (action === 'artoggle' || action === 'arhype' || action === 'aroff') {
     const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
     const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
-    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '⚡ Auto-react', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '⚡ Auto-react', '⚡ Auto-react'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     let note = '';
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.autoReact = guild.autoReact || { channels: {} };
@@ -1018,7 +1039,7 @@ async function handleConfigPanelInteraction(interaction) {
   if (action === 'stickyset') {
     const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
     const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
-    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📌 Sticky', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📌 Sticky', '📌 Sticky'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     const currentSticky = getGuildConfig(interaction.guild.id).sticky?.[targetChannel.id]?.message || '';
     const modal = new ModalBuilder().setCustomId(`cfgpanelsticky:${targetChannel.id}`).setTitle('Set sticky message');
     modal.addComponents(
@@ -1038,25 +1059,25 @@ async function handleConfigPanelInteraction(interaction) {
   if (action === 'stickyoff') {
     const targetChannelId = arg && arg !== '0' ? arg : currentChannel?.id;
     const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
-    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, '📌 Sticky', 'Open this panel inside a text channel first.')], ephemeral: true }).catch(() => null);
+    if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📌 Sticky', '📌 Sticky'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
       guild.sticky = guild.sticky || {};
       delete guild.sticky[targetChannel.id];
       return guild;
     });
-    await sendEphemeral('📌 Sticky', `Sticky message disabled in ${targetChannel}.`);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📌 Sticky', '📌 Sticky'), uiLangText(getGuildConfig(interaction.guild.id), `Sticky désactivé dans ${targetChannel}.`, `Sticky message disabled in ${targetChannel}.`));
     return refreshPanel('automation');
   }
 
   if (action === 'statsmembers' || action === 'statsonline' || action === 'statsvoice') {
     const type = action === 'statsmembers' ? 'members' : action === 'statsonline' ? 'online' : 'voice';
     return interaction.reply({
-      embeds: [baseEmbed(config, '📊 Stats bind', `Select the voice channel to use for **${type}**.`)],
+      embeds: [baseEmbed(config, uiLangText(config, '📊 Liaison stats', '📊 Stats bind'), uiLangText(config, `Choisis le salon vocal à utiliser pour **${type}**.`, `Select the voice channel to use for **${type}**.`))],
       components: [
         new ActionRowBuilder().addComponents(
           new ChannelSelectMenuBuilder()
             .setCustomId(`cfgpanelstats:${type}`)
-            .setPlaceholder(`Select a voice channel for ${type}`)
+            .setPlaceholder(uiLangText(config, `Choisis un salon vocal pour ${type}`, `Select a voice channel for ${type}`))
             .setMinValues(1)
             .setMaxValues(1)
             .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
@@ -1066,7 +1087,7 @@ async function handleConfigPanelInteraction(interaction) {
     }).catch(() => null);
   }
 
-  return interaction.reply({ embeds: [baseEmbed(config, 'Smart panel', 'Unknown action.')] , ephemeral: true }).catch(() => null);
+  return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, 'Smart panel', 'Smart panel'), uiLangText(config, 'Action inconnue.', 'Unknown action.'))] , ephemeral: true }).catch(() => null);
 }
 
 
@@ -2016,13 +2037,17 @@ function buildCtx(source, command) {
     lastReply: null,
     async reply(payload = {}) {
       let sent;
-      const localized = localizePayload(guildConfig, payload);
+      const { deleteAfter = null, ...rest } = payload || {};
+      const localized = localizePayload(guildConfig, rest);
+      const normalized = normalizeSystemNoticePayload(localized, guildConfig, { defaultDeleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
       if (interaction) {
-        const base = { ...localized };
+        const base = { ...normalized.payload };
         if (!interaction.replied && !interaction.deferred) sent = await interaction.reply({ ...base, fetchReply: true });
         else sent = await interaction.followUp(base);
       } else {
-        sent = await channel.send(localized);
+        sent = await channel.send(normalized.payload);
+        const shouldDelete = Number.isFinite(deleteAfter) ? deleteAfter : normalized.suggestedDeleteAfter;
+        if (sent && shouldDelete) scheduleMessageDelete(sent, shouldDelete);
       }
       this.lastReply = sent || null;
       if (this.command?.name === 'embed' && sent) {
@@ -2094,13 +2119,11 @@ function buildCtx(source, command) {
         extra || null,
         command.aliases?.length ? `Aliases: ${command.aliases.map((alias) => `\`${prefix}${alias}\``).join(', ')}` : null
       ].filter(Boolean).join('\n');
-      const payload = { embeds: [baseEmbed(guildConfig, '❌ Invalid usage', usage)] };
+      const payload = { embeds: [baseEmbed(guildConfig, '❌ Invalid usage', usage)], deleteAfter: TRANSIENT_SYSTEM_DELETE_MS };
       if (interaction) {
         return this.reply({ ...payload, ephemeral: true });
       }
-      const sent = await channel.send(payload).catch(() => null);
-      if (sent) setTimeout(() => sent.delete().catch(() => null), 10_000).unref?.();
-      return sent;
+      return this.reply(payload);
     }
   };
 
@@ -2118,7 +2141,10 @@ function patchInteractionLocalization(interaction, guildConfig) {
   for (const method of ['reply', 'update', 'followUp']) {
     if (typeof interaction[method] !== 'function') continue;
     const original = interaction[method].bind(interaction);
-    interaction[method] = (payload = {}) => original(localizePayload(guildConfig, payload));
+    interaction[method] = (payload = {}) => {
+      const localized = localizePayload(guildConfig, payload);
+      return original(normalizeSystemNoticePayload(localized, guildConfig, { defaultDeleteAfter: TRANSIENT_SYSTEM_DELETE_MS }).payload);
+    };
   }
   interaction.__dvlLocalized = true;
   return interaction;
@@ -2128,17 +2154,17 @@ async function runCommand(source, command) {
   const ctx = buildCtx(source, command);
 
   if (command.guildOnly && !ctx.guild) {
-    return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Command denied', 'This command only works inside a server.')] });
+    return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚫 Command denied', 'This command only works inside a server.')], deleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
   }
   if (!command.dmAllowed && !command.guildOnly && !ctx.guild && source.isChatInputCommand?.()) {
-    return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Command denied', 'This command does not work here.')], ephemeral: true });
+    return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚫 Command denied', 'This command does not work here.')], ephemeral: true });
   }
   if (command.ownerOnly && !ownerCheck(ctx.user.id)) {
-    return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Owner only', 'This command is restricted to bot owners.')] });
+    return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👑 Owner only', 'This command is restricted to bot owners.')], deleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
   }
   if (ctx.guild && command.userPermissions?.length && !ctx.member.permissions.has(command.userPermissions)) {
     if (!hasCustomCommandAccess(ctx.member, command)) {
-      return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Permissions', 'You do not have the required permissions for this command.')] });
+      return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚫 Permissions', 'You do not have the required permissions for this command.')], deleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
     }
   }
 
@@ -2146,7 +2172,7 @@ async function runCommand(source, command) {
     await command.execute(ctx);
   } catch (error) {
     console.error(`[command:${command.name}]`, error);
-    const payload = { embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, 'Error', `An error occurred while running **${command.name}**.`)] };
+    const payload = { embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, '❌ Error', `An error occurred while running **${command.name}**.`)], deleteAfter: TRANSIENT_SYSTEM_DELETE_MS };
     if (ctx.interaction) {
       if (!ctx.interaction.replied && !ctx.interaction.deferred) await ctx.interaction.reply({ ...payload, ephemeral: true }).catch(() => null);
       else await ctx.interaction.followUp({ ...payload, ephemeral: true }).catch(() => null);
@@ -3305,23 +3331,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (interaction.customId.startsWith('dashboard:')) {
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
         const page = interaction.customId.split(':')[1] || 'home';
         const guildConfig = getGuildConfig(interaction.guild.id);
-        return interaction.update({ embeds: [createDashboardEmbed(guildConfig, interaction.guild, page)], components: createDashboardComponents(page) });
+        return interaction.update({ embeds: [createDashboardEmbed(guildConfig, interaction.guild, page)], components: createDashboardComponents(page, guildConfig) });
       }
 
       if (interaction.customId.startsWith('dashboardquick:')) {
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
         const [, action, pageRaw] = interaction.customId.split(':');
         const page = pageRaw || 'home';
         const guildConfig = getGuildConfig(interaction.guild.id);
         if (action === 'refresh') {
-          return interaction.update({ embeds: [createDashboardEmbed(guildConfig, interaction.guild, page)], components: createDashboardComponents(page) });
+          return interaction.update({ embeds: [createDashboardEmbed(guildConfig, interaction.guild, page)], components: createDashboardComponents(page, guildConfig) });
         }
         if (action === 'help') {
           const info = getHelpTargetInfo(client, 'Categories');
-          return interaction.update({ embeds: [createHelpEmbed(client, guildConfig, 'Categories', 1)], components: createHelpComponents(info.category || 'Categories', 1, info.totalPages || 1) });
+          return interaction.update({ embeds: [createHelpEmbed(client, guildConfig, 'Categories', 1)], components: createHelpComponents(info.category || 'Categories', 1, info.totalPages || 1, guildConfig) });
         }
         if (action === 'logs') {
           return interaction.update({ embeds: [createLogsPanelEmbed(guildConfig, 1)], components: createLogsPanelComponents(guildConfig, 1) });
@@ -3332,7 +3358,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       
       if (interaction.customId === 'trophy:refresh') {
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
         const freshConfig = getGuildConfig(interaction.guild.id);
         client.store.updateGuild(interaction.guild.id, (guild) => {
           guild.progress = guild.progress || { enabled: false, channelId: null, messageId: null, lastUpdatedAt: null };
@@ -3348,7 +3374,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const guildConfig = interaction.guild ? getGuildConfig(interaction.guild.id) : { embedColor: '#5865F2', prefix: DEFAULT_PREFIX };
         const info = getHelpTargetInfo(client, category || 'Home');
         const page = Math.max(1, Number(pageRaw) || 1);
-        return interaction.update({ embeds: [createHelpEmbed(client, guildConfig, category || 'Home', page)], components: createHelpComponents(info.category || 'Home', page, info.totalPages || 1) });
+        return interaction.update({ embeds: [createHelpEmbed(client, guildConfig, category || 'Home', page)], components: createHelpComponents(info.category || 'Home', page, info.totalPages || 1, guildConfig) });
       }
       if (interaction.customId.startsWith('help:')) {
         const [, categoryRaw, pageRaw] = interaction.customId.split(':');
@@ -3356,14 +3382,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const page = Math.max(1, Number(pageRaw) || 1);
         const guildConfig = interaction.guild ? getGuildConfig(interaction.guild.id) : { embedColor: '#5865F2', prefix: DEFAULT_PREFIX };
         const info = getHelpTargetInfo(client, category);
-        return interaction.update({ embeds: [createHelpEmbed(client, guildConfig, category, page)], components: createHelpComponents(info.category || category, page, info.totalPages || 1) });
+        return interaction.update({ embeds: [createHelpEmbed(client, guildConfig, category, page)], components: createHelpComponents(info.category || category, page, info.totalPages || 1, guildConfig) });
       }
 
       if (interaction.customId.startsWith('logpanel:')) {
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
         const config = getGuildConfig(interaction.guild.id);
         if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-          return interaction.reply({ embeds: [baseEmbed(config, 'Logs panel', 'You need Manage Server to use this panel.')], ephemeral: true });
+          return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, 'Panel logs', 'Logs panel'), uiLangText(config, 'Tu dois avoir Gérer le serveur pour utiliser ce panel.', 'You need Manage Server to use this panel.'))], ephemeral: true });
         }
 
         const parts = interaction.customId.split(':');
@@ -3407,7 +3433,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (interaction.customId === 'voicehub:create') {
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
         const guildConfig = getGuildConfig(interaction.guild.id);
         const existingId = Object.entries(guildConfig.voice?.temp?.channels || {}).find(([, entry]) => entry.ownerId === interaction.user.id)?.[0];
         let channel = existingId ? await interaction.guild.channels.fetch(existingId).catch(() => null) : null;
@@ -3536,48 +3562,49 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.customId.startsWith('embed:')) {
         const [, field, draftId] = interaction.customId.split(':');
         const draft = client.embedDrafts.get(draftId);
-        if (!draft) return interaction.reply({ content: 'Brouillon introuvable.', ephemeral: true });
-        if (draft.ownerId !== interaction.user.id) return interaction.reply({ content: 'Ce builder ne t’appartient pas.', ephemeral: true });
+        const guildConfig = getGuildConfig(interaction.guild.id);
+        if (!draft) return interaction.reply({ content: uiLangText(guildConfig, 'Brouillon introuvable.', 'Draft not found.'), ephemeral: true });
+        if (draft.ownerId !== interaction.user.id) return interaction.reply({ content: uiLangText(guildConfig, 'Ce builder ne t’appartient pas.', 'This builder is not yours.'), ephemeral: true });
 
         if (field === 'send') {
           const channel = await client.channels.fetch(draft.channelId).catch(() => null);
-          if (!channel?.isTextBased?.()) return interaction.reply({ content: 'Salon introuvable.', ephemeral: true });
-          const embed = buildEmbedDraftPreview(getGuildConfig(interaction.guild.id), draft).setFooter({ text: draft.embed.footer || 'DvL' });
+          if (!channel?.isTextBased?.()) return interaction.reply({ content: uiLangText(guildConfig, 'Salon introuvable.', 'Channel not found.'), ephemeral: true });
+          const embed = buildEmbedDraftPreview(guildConfig, draft).setFooter({ text: draft.embed.footer || 'DvL' });
           await channel.send({ embeds: [embed] }).catch(() => null);
           client.embedDrafts.delete(draftId);
-          return interaction.update({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), 'Embed envoyé', 'Ton embed a bien été envoyé.')], components: [] });
+          return interaction.update({ embeds: [baseEmbed(guildConfig, uiLangText(guildConfig, 'Embed envoyé', 'Embed sent'), uiLangText(guildConfig, 'Ton embed a bien été envoyé.', 'Your embed was sent successfully.'))], components: [] });
         }
 
         if (field === 'cancel') {
           client.embedDrafts.delete(draftId);
-          return interaction.update({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), 'Studio fermé', 'Le builder a été fermé.')], components: [] });
+          return interaction.update({ embeds: [baseEmbed(guildConfig, uiLangText(guildConfig, 'Studio fermé', 'Studio closed'), uiLangText(guildConfig, 'Le builder a été fermé.', 'The builder has been closed.'))], components: [] });
         }
 
         if (field === 'copy') {
-          const modal = new ModalBuilder().setCustomId(`embedmodal:copy:${draftId}`).setTitle('Copier un embed');
+          const modal = new ModalBuilder().setCustomId(`embedmodal:copy:${draftId}`).setTitle(uiLangText(guildConfig, 'Copier un embed', 'Copy an embed'));
           modal.addComponents(
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
                 .setCustomId('value')
-                .setLabel('ID du message ou lien Discord')
+                .setLabel(uiLangText(guildConfig, 'ID du message ou lien Discord', 'Message ID or Discord link'))
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
-                .setPlaceholder('Même salon : 123...  |  ou colle un lien complet')
+                .setPlaceholder(uiLangText(guildConfig, 'Même salon : 123...  |  ou colle un lien complet', 'Same channel: 123...  |  or paste a full link'))
             )
           );
           return interaction.showModal(modal);
         }
 
         const labels = {
-          title: 'Titre',
-          description: 'Texte',
-          author: 'Auteur',
+          title: uiLangText(guildConfig, 'Titre', 'Title'),
+          description: uiLangText(guildConfig, 'Texte', 'Text'),
+          author: uiLangText(guildConfig, 'Auteur', 'Author'),
           footer: 'Footer',
-          color: 'Couleur hex',
-          image: 'URL de l’image',
-          thumbnail: 'URL de la miniature'
+          color: uiLangText(guildConfig, 'Couleur hex', 'Hex color'),
+          image: uiLangText(guildConfig, 'URL de l’image', 'Image URL'),
+          thumbnail: uiLangText(guildConfig, 'URL de la miniature', 'Thumbnail URL')
         };
-        const modal = new ModalBuilder().setCustomId(`embedmodal:${field}:${draftId}`).setTitle(`Modifier ${labels[field] || field}`);
+        const modal = new ModalBuilder().setCustomId(`embedmodal:${field}:${draftId}`).setTitle(uiLangText(guildConfig, `Modifier ${labels[field] || field}`, `Edit ${labels[field] || field}`));
         modal.addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -3594,13 +3621,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (interaction.isChannelSelectMenu()) {
       if (interaction.customId.startsWith('cfgpanelstats:')) {
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
-        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: 'Manage Server is required.', ephemeral: true }).catch(() => null);
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: interactionUi(interaction, 'Gérer le serveur est requis.', 'Manage Server is required.'), ephemeral: true }).catch(() => null);
         const type = interaction.customId.split(':')[1] || 'members';
         const targetChannelId = interaction.values?.[0];
         const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
         if (!targetChannel || ![ChannelType.GuildVoice, ChannelType.GuildStageVoice].includes(targetChannel.type)) {
-          return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), '📊 Stats bind', 'Pick a valid voice channel.')], ephemeral: true }).catch(() => null);
+          return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '📊 Liaison stats', '📊 Stats bind'), uiLangText(getGuildConfig(interaction.guild.id), 'Choisis un salon vocal valide.', 'Pick a valid voice channel.'))], ephemeral: true }).catch(() => null);
         }
         const defaultLabels = {
           members: '👥・Membres : {count}',
@@ -3619,7 +3646,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
         await refreshGuildStats(interaction.guild);
         return interaction.update({
-          embeds: [baseEmbed(getGuildConfig(interaction.guild.id), '📊 Stats bind', `Bound **${type}** counter to ${targetChannel}.`)],
+          embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '📊 Liaison stats', '📊 Stats bind'), uiLangText(getGuildConfig(interaction.guild.id), `Compteur **${type}** lié à ${targetChannel}.`, `Bound **${type}** counter to ${targetChannel}.`))],
           components: []
         }).catch(() => null);
       }
@@ -3664,10 +3691,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       if (interaction.customId.startsWith('cfgpanelsticky:')) {
         const channelId = interaction.customId.split(':')[1];
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true }).catch(() => null);
-        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: 'Manage Server is required.', ephemeral: true }).catch(() => null);
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: interactionUi(interaction, 'Gérer le serveur est requis.', 'Manage Server is required.'), ephemeral: true }).catch(() => null);
         const targetChannel = channelId ? (interaction.guild.channels.cache.get(channelId) || await interaction.guild.channels.fetch(channelId).catch(() => null)) : null;
-        if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), '📌 Sticky', 'That channel is invalid or no longer exists.')], ephemeral: true }).catch(() => null);
+        if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '📌 Sticky', '📌 Sticky'), uiLangText(getGuildConfig(interaction.guild.id), 'Ce salon est invalide ou n’existe plus.', 'That channel is invalid or no longer exists.'))], ephemeral: true }).catch(() => null);
         const value = interaction.fields.getTextInputValue('value').trim();
         client.store.updateGuild(interaction.guild.id, (guild) => {
           guild.sticky = guild.sticky || {};
@@ -3692,8 +3719,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       if (interaction.customId.startsWith('cfgpanelmodal:')) {
         const [, moduleKeyRaw, field] = interaction.customId.split(':');
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true });
-        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: 'Manage Server is required.', ephemeral: true });
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true });
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: interactionUi(interaction, 'Gérer le serveur est requis.', 'Manage Server is required.'), ephemeral: true });
         const moduleKey = ['welcome', 'leave', 'leave-dm', 'boost'].includes(moduleKeyRaw) ? moduleKeyRaw : 'welcome';
         const metaMap = {
           welcome: { root: 'welcome', titleKey: 'title', messageKey: 'message', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl' },
@@ -3716,13 +3743,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.message?.editable) {
           await interaction.message.edit(buildSafeConfigPanelPayload(fresh, interaction.guild, moduleKey, currentChannel)).catch(() => null);
         }
-        return interaction.reply({ embeds: [baseEmbed(fresh, '📝 Smart panel', `${field} updated for ${moduleKey}.`)], ephemeral: true });
+        return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '📝 Smart panel', '📝 Smart panel'), uiLangText(fresh, `${field} mis à jour pour ${moduleKey}.`, `${field} updated for ${moduleKey}.`))], ephemeral: true });
       }
 
       if (interaction.customId.startsWith('supportpanelmodal:')) {
         const [, field] = interaction.customId.split(':');
-        if (!interaction.guild) return interaction.reply({ content: 'Guild only.', ephemeral: true });
-        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: 'Manage Server is required.', ephemeral: true });
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true });
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: interactionUi(interaction, 'Gérer le serveur est requis.', 'Manage Server is required.'), ephemeral: true });
 
         const keyMap = { title: 'promptTitle', message: 'promptMessage', footer: 'promptFooter', color: 'promptColor', image: 'promptImageUrl' };
         const targetKey = keyMap[field] || 'promptMessage';
@@ -3734,27 +3761,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const fresh = getGuildConfig(interaction.guild.id);
         const currentChannel = interaction.channel;
         if (interaction.message?.editable) {
-          await interaction.message.edit({ embeds: [createSupportPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() }).catch(() => null);
+          await interaction.message.edit({ embeds: [createSupportPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents(fresh) }).catch(() => null);
         }
-        return interaction.reply({ embeds: [baseEmbed(fresh, '📨 Support prompt', `${field} mis à jour.`)], ephemeral: true });
+        return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '📨 Prompt support', '📨 Support prompt'), uiLangText(fresh, `${field} mis à jour.`, `${field} updated.`))], ephemeral: true });
       }
       if (interaction.customId.startsWith('embedmodal:')) {
         const [, field, draftId] = interaction.customId.split(':');
         const draft = client.embedDrafts.get(draftId);
-        if (!draft) return interaction.reply({ content: 'Brouillon introuvable.', ephemeral: true });
-        if (draft.ownerId !== interaction.user.id) return interaction.reply({ content: 'Ce builder ne t’appartient pas.', ephemeral: true });
+        const guildConfig = getGuildConfig(interaction.guild.id);
+        if (!draft) return interaction.reply({ content: uiLangText(guildConfig, 'Brouillon introuvable.', 'Draft not found.'), ephemeral: true });
+        if (draft.ownerId !== interaction.user.id) return interaction.reply({ content: uiLangText(guildConfig, 'Ce builder ne t’appartient pas.', 'This builder is not yours.'), ephemeral: true });
 
         if (field === 'copy') {
           const raw = interaction.fields.getTextInputValue('value').trim();
           const found = await fetchEmbedSourceMessage(interaction.guild, raw, interaction.channel?.id || draft.channelId);
-          if (!found) return interaction.reply({ content: 'Message introuvable. Utilise un ID du même salon ou un lien Discord complet.', ephemeral: true });
+          if (!found) return interaction.reply({ content: uiLangText(guildConfig, 'Message introuvable. Utilise un ID du même salon ou un lien Discord complet.', 'Message not found. Use an ID from the same channel or a full Discord link.'), ephemeral: true });
           const sourceEmbed = found.message.embeds?.[0];
-          if (!sourceEmbed) return interaction.reply({ content: 'Ce message n’a aucun embed à copier.', ephemeral: true });
+          if (!sourceEmbed) return interaction.reply({ content: uiLangText(guildConfig, 'Ce message n’a aucun embed à copier.', 'That message has no embed to copy.'), ephemeral: true });
           importEmbedIntoDraft(draft, sourceEmbed);
           const channel = await client.channels.fetch(draft.channelId).catch(() => null);
           const message = channel?.isTextBased?.() && draft.messageId ? await channel.messages.fetch(draft.messageId).catch(() => null) : null;
-          if (message) await message.edit({ embeds: [buildEmbedDraftPreview(getGuildConfig(interaction.guild.id), draft)], components: buildEmbedDraftComponents(draftId) }).catch(() => null);
-          return interaction.reply({ content: `Embed copié depuis le message \`${found.message.id}\`. Clique sur **Envoyer** pour le republier.`, ephemeral: true });
+          if (message) await message.edit({ embeds: [buildEmbedDraftPreview(guildConfig, draft)], components: buildEmbedDraftComponents(draftId, guildConfig) }).catch(() => null);
+          return interaction.reply({ content: uiLangText(guildConfig, `Embed copié depuis le message \`${found.message.id}\`. Clique sur **Envoyer** pour le republier.`, `Embed copied from message \`${found.message.id}\`. Click **Send** to post it again.`), ephemeral: true });
         }
 
         let value = interaction.fields.getTextInputValue('value').trim();
@@ -3764,8 +3792,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const channel = await client.channels.fetch(draft.channelId).catch(() => null);
         const message = channel?.isTextBased?.() && draft.messageId ? await channel.messages.fetch(draft.messageId).catch(() => null) : null;
 
-        if (message) await message.edit({ embeds: [buildEmbedDraftPreview(getGuildConfig(interaction.guild.id), draft)], components: buildEmbedDraftComponents(draftId) }).catch(() => null);
-        return interaction.reply({ content: `${field} mis à jour.`, ephemeral: true });
+        if (message) await message.edit({ embeds: [buildEmbedDraftPreview(guildConfig, draft)], components: buildEmbedDraftComponents(draftId, guildConfig) }).catch(() => null);
+        return interaction.reply({ content: uiLangText(guildConfig, `${field} mis à jour.`, `${field} updated.`), ephemeral: true });
       }
     }
   } catch (error) {

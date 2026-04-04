@@ -89,6 +89,14 @@ const FR_REPLACEMENTS = [
   [/No content\./gi, 'Aucun contenu.'],
   [/No details\./gi, 'Aucun détail.'],
   [/Server language set to \*\*(fr|en)\*\*\./gi, 'Langue du serveur définie sur **$1**.'],
+  [/Command denied/gi, 'Commande refusée'],
+  [/Owner only/gi, 'Owner uniquement'],
+  [/This command is restricted to bot owners\./gi, 'Cette commande est réservée aux owners du bot.'],
+  [/You do not have the required permissions for this command\./gi, 'Tu n’as pas les permissions requises pour utiliser cette commande.'],
+  [/This command only works inside a server\./gi, 'Cette commande fonctionne uniquement dans un serveur.'],
+  [/This command does not work here\./gi, 'Cette commande ne fonctionne pas ici.'],
+  [/Permissions$/gi, 'Permissions'],
+  [/Error$/gi, 'Erreur'],
   [/Current:/g, 'Actuel :'],
   [/Allowed values:/g, 'Valeurs autorisées :'],
   [/Allowed:/g, 'Autorisé :'],
@@ -236,6 +244,111 @@ const FR_REPLACEMENTS = [
 ];
 
 
+const SYSTEM_NOTICE_KIND_PATTERNS = {
+  error: /(❌|🚫|⛔|error|failed|failure|forbidden|denied|missing|invalid|refused|permission|owner only|unable|introuvable|erreur|échec|refus|interdit|invalide|impossible)/i,
+  warning: /(⚠️|warning|warn|careful|attention|avertissement)/i,
+  success: /(✅|success|done|saved|sent|created|enabled|updated|ready|restored|applied|successfully|terminé|envoyé|créé|activé|mis à jour|prêt|rétabli|appliqué)/i,
+  info: /(ℹ️|info|information|config|setup|panel|dashboard|hub|status|state|overview|statut|vue d.?ensemble)/i
+};
+
+const PERSISTENT_NOTICE_PATTERNS = /(help|panel|dashboard|setup|hub|overview|cat[ée]gories|categories|leaderboard|watchers|warnings|list|liste|config|preview|studio|progress|security|s[ée]curit[ée]|logs types|role panel|voice panel|support panel|smart panel)/i;
+
+function extractPayloadText(payload = {}) {
+  return [
+    typeof payload.content === 'string' ? payload.content : '',
+    ...(Array.isArray(payload.embeds) ? payload.embeds.flatMap((embed) => [embed?.data?.title, embed?.data?.description, embed?.title, embed?.description].filter(Boolean)) : [])
+  ].join('\n').trim();
+}
+
+function inferSystemNoticeKind(text = '') {
+  const sample = String(text || '').trim();
+  if (!sample) return null;
+  if (SYSTEM_NOTICE_KIND_PATTERNS.error.test(sample)) return 'error';
+  if (SYSTEM_NOTICE_KIND_PATTERNS.warning.test(sample)) return 'warning';
+  if (SYSTEM_NOTICE_KIND_PATTERNS.success.test(sample)) return 'success';
+  if (SYSTEM_NOTICE_KIND_PATTERNS.info.test(sample)) return 'info';
+  return null;
+}
+
+function buildNoticeTitle(guildConfig, kind) {
+  const fr = isFrenchGuild(guildConfig);
+  if (kind === 'error') return fr ? '❌ Erreur' : '❌ Error';
+  if (kind === 'warning') return fr ? '⚠️ Attention' : '⚠️ Warning';
+  if (kind === 'success') return fr ? '✅ Succès' : '✅ Success';
+  return fr ? 'ℹ️ Information' : 'ℹ️ Information';
+}
+
+function buildNoticeFooter(guildConfig, kind, deleteAfterMs = null) {
+  const fr = isFrenchGuild(guildConfig);
+  const label = {
+    error: fr ? 'DvL • Erreur' : 'DvL • Error',
+    warning: fr ? 'DvL • Attention' : 'DvL • Warning',
+    success: fr ? 'DvL • Succès' : 'DvL • Success',
+    info: fr ? 'DvL • Info' : 'DvL • Info'
+  }[kind || 'info'];
+  if (!Number.isFinite(deleteAfterMs) || deleteAfterMs <= 0) return label;
+  const seconds = Math.max(1, Math.round(deleteAfterMs / 1000));
+  return fr ? `${label} • suppression auto ${seconds}s` : `${label} • auto-delete ${seconds}s`;
+}
+
+function isCompactSystemNotice(payload = {}) {
+  if (!payload || typeof payload !== 'object') return false;
+  if (payload.components?.length || payload.files?.length || payload.stickers?.length || payload.poll) return false;
+  if (Array.isArray(payload.embeds) && payload.embeds.length > 1) return false;
+  const text = extractPayloadText(payload);
+  if (!text || text.length > 1200) return false;
+  const embed = Array.isArray(payload.embeds) ? payload.embeds[0] : null;
+  const fields = embed?.data?.fields || embed?.fields || [];
+  if (Array.isArray(fields) && fields.length > 3) return false;
+  return true;
+}
+
+function shouldKeepNoticePersistent(payload = {}) {
+  const text = extractPayloadText(payload);
+  return !text || PERSISTENT_NOTICE_PATTERNS.test(text) || text.split('\n').length > 14;
+}
+
+function normalizeSystemNoticePayload(payload = {}, guildConfig, options = {}) {
+  if (!payload || typeof payload !== 'object') return { payload, suggestedDeleteAfter: null, kind: null };
+  const { defaultDeleteAfter = null, allowPlainContentEmbed = true } = options || {};
+  const next = { ...payload };
+  const rawText = extractPayloadText(next);
+  let kind = inferSystemNoticeKind(rawText);
+
+  if ((!next.embeds || !next.embeds.length) && allowPlainContentEmbed && typeof next.content === 'string' && next.content.trim() && !/[<@#:&]/.test(next.content) && next.content.length <= 320 && !next.components?.length && !next.files?.length) {
+    kind = kind || 'info';
+    next.embeds = [baseEmbed(guildConfig, buildNoticeTitle(guildConfig, kind), next.content)];
+    delete next.content;
+  }
+
+  const compact = isCompactSystemNotice(next);
+  const persistent = shouldKeepNoticePersistent(next);
+  const suggestedDeleteAfter = compact && !persistent && Number.isFinite(defaultDeleteAfter) ? defaultDeleteAfter : null;
+
+  if (Array.isArray(next.embeds) && next.embeds.length === 1 && compact) {
+    let embed;
+    try {
+      embed = EmbedBuilder.from(next.embeds[0]);
+    } catch {
+      embed = new EmbedBuilder(next.embeds[0] || {});
+    }
+    const text = [embed.data?.title || '', embed.data?.description || ''].join('\n').trim();
+    kind = kind || inferSystemNoticeKind(text) || 'info';
+    if (!embed.data?.color) {
+      const colors = { error: '#EF4444', warning: '#F59E0B', success: '#22C55E', info: '#5865F2' };
+      embed.setColor(colors[kind] || ensureHexColor(guildConfig?.embedColor));
+    }
+    const currentFooter = embed.data?.footer?.text ? String(embed.data.footer.text) : '';
+    if (!currentFooter || /^DvL(?:\s|•|$)/i.test(currentFooter)) {
+      embed.setFooter({ ...(embed.data?.footer || {}), text: buildNoticeFooter(guildConfig, kind, suggestedDeleteAfter) });
+    }
+    next.embeds = [applyEmbedVisualStyle(embed, guildConfig)];
+  }
+
+  return { payload: next, suggestedDeleteAfter, kind };
+}
+
+
 function getVisualAuthorLabel(guildConfig) {
   return isFrenchGuild(guildConfig) ? '✦ DvL • Gestion' : '✦ DvL • Management';
 }
@@ -341,12 +454,23 @@ function localizePayload(guildConfig, payload = {}) {
   return next;
 }
 
+function resolveBaseEmbedColor(guildConfig, title, description) {
+  const fallback = ensureHexColor(guildConfig?.embedColor);
+  const resolved = Array.isArray(description) ? description.filter(Boolean).join('\n') : String(description || '');
+  const sample = `${String(title || '')}\n${resolved}`.toLowerCase();
+  if (/(✅|success|done|saved|sent|created|enabled|updated|restored|successfully|terminé|envoyé|créé|activé|mis à jour|rétabli)/i.test(sample)) return '#22C55E';
+  if (/(⚠️|warning|warn|careful|attention|avertissement)/i.test(sample)) return '#F59E0B';
+  if (/(❌|🚫|⛔|error|failed|failure|forbidden|denied|missing|invalid|refused|permission|owner only|unable|introuvable|erreur|échec|refus|interdit|invalide|impossible)/i.test(sample)) return '#EF4444';
+  if (/(ℹ️|info|information|config|setup|panel|dashboard|hub|statut|status)/i.test(sample)) return '#5865F2';
+  return fallback;
+}
+
 function baseEmbed(guildConfig, title, description) {
   const resolvedDescription = Array.isArray(description)
     ? description.filter(Boolean).join('\n')
     : String(description || '').trim();
   return applyEmbedVisualStyle(new EmbedBuilder()
-    .setColor(ensureHexColor(guildConfig?.embedColor))
+    .setColor(resolveBaseEmbedColor(guildConfig, title, resolvedDescription))
     .setTitle(translateText(String(title || 'DvL'), guildConfig).slice(0, 256))
     .setDescription(translateText((resolvedDescription || 'No details.'), guildConfig).slice(0, 4096)), guildConfig);
 }
@@ -432,6 +556,7 @@ module.exports = {
   translateText,
   applyEmbedVisualStyle,
   localizePayload,
+  normalizeSystemNoticePayload,
   baseEmbed,
   fillTemplate,
   parseUserArgument,

@@ -80,6 +80,114 @@ const CATEGORY_BLURBS = {
   Owner: 'Owner-only maintenance tools.',
 };
 
+const CATEGORY_BLURBS_FR = {
+  General: 'Commandes générales du quotidien.',
+  System: 'Panels, diagnostics et outils rapides serveur.',
+  Config: 'Réglages de base et options du bot.',
+  Welcome: 'Welcome, leave et textes visibles par les membres.',
+  Logs: 'Logs, routes et tests de logs.',
+  Tracking: 'Compteurs voc, invites et stats live.',
+  Support: 'Relais MP et réponses staff.',
+  Roles: 'Auto-rôles, panneaux de rôles et rôles de statut.',
+  Permissions: 'Niveaux d’accès personnalisés pour les commandes.',
+  Voice: 'Temp voice et modération vocale.',
+  Security: 'Automod, whitelist et salons restreints.',
+  Moderation: 'Warns, timeout, kick et ban.',
+  Automation: 'Sticky, auto-react et aides automatiques.',
+  Progress: 'Trophy board et récompenses de paliers.',
+  Giveaway: 'Giveaways, rerolls et suivi.',
+  TikTok: 'Watchers TikTok, alertes et rôles.',
+  Utility: 'Petits outils pratiques.',
+  Info: 'Vues serveur et utilisateur.',
+  Owner: 'Outils réservés au propriétaire.'
+};
+
+const CATEGORY_LABELS_FR = {
+  Home: 'Accueil',
+  Setup: 'Setup',
+  Categories: 'Catégories',
+  All: 'Tout',
+  System: 'Système',
+  Config: 'Config',
+  General: 'Général',
+  Info: 'Infos',
+  Utility: 'Utilitaire',
+  Automation: 'Automation',
+  Progress: 'Progression',
+  Voice: 'Vocal',
+  Moderation: 'Modération',
+  Security: 'Sécurité',
+  Permissions: 'Permissions',
+  Roles: 'Rôles',
+  Welcome: 'Welcome',
+  Support: 'Support',
+  Giveaway: 'Giveaway',
+  Logs: 'Logs',
+  Tracking: 'Tracking',
+  TikTok: 'TikTok',
+  Owner: 'Owner'
+};
+
+const SETUP_GROUP_LABELS_FR = {
+  'Core setup / overview': 'Setup principal / vue d’ensemble',
+  'System / panels / diagnostics': 'Système / panels / diagnostics',
+  'Welcome / leave / boost texts': 'Textes welcome / leave / boost',
+  'Logs / routing': 'Logs / routage',
+  'Tracking / invites / counters': 'Tracking / invites / compteurs',
+  'Support / relay': 'Support / relais',
+  'Roles / access / status': 'Rôles / accès / statuts',
+  'Voice / temp voice': 'Vocal / temp voice',
+  'Security / restricted channels': 'Sécurité / salons restreints',
+  'Automation / sticky / auto react': 'Automation / sticky / auto-react',
+  'Progress / trophy / milestones': 'Progression / trophées / paliers',
+  'Permission levels': 'Niveaux de permission',
+  Giveaways: 'Giveaways',
+  TikTok: 'TikTok'
+};
+
+function isFrenchUi(guildConfig) {
+  return String(guildConfig?.language || '').toLowerCase() === 'fr';
+}
+
+function uiText(guildConfig, fr, en) {
+  return isFrenchUi(guildConfig) ? fr : en;
+}
+
+function categoryBlurbFor(guildConfig, category) {
+  return isFrenchUi(guildConfig) ? (CATEGORY_BLURBS_FR[category] || CATEGORY_BLURBS[category] || '') : (CATEGORY_BLURBS[category] || '');
+}
+
+function categoryLabelFor(guildConfig, category) {
+  return isFrenchUi(guildConfig) ? (CATEGORY_LABELS_FR[category] || category) : category;
+}
+
+function setupGroupLabelFor(guildConfig, label) {
+  return isFrenchUi(guildConfig) ? (SETUP_GROUP_LABELS_FR[label] || label) : label;
+}
+
+const UI_FR_TO_EN_REPLACEMENTS = [
+  [/Centre d’aide DvL/g, 'DvL help center'],
+  [/Accueil/g, 'Home'], [/Catégories/g, 'Categories'], [/Tout/g, 'All'], [/Début/g, 'Start'], [/Membres/g, 'Members'], [/Santé/g, 'Health'], [/Sécurité/g, 'Security'], [/Vocal/g, 'Voice'], [/Progression/g, 'Progress'], [/Textes/g, 'Texts'], [/Salons/g, 'Channels'], [/Titre/g, 'Title'], [/Couleur/g, 'Color'], [/Variables/g, 'Variables'], [/État actuel/g, 'Current state'], [/Commandes rapides/g, 'Quick commands'], [/Flow conseillé/g, 'Recommended flow'], [/Prompt public/g, 'Public prompt'], [/Routage/g, 'Routing'], [/Actions rapides/g, 'Quick actions'], [/Vue rapide/g, 'Quick view'], [/Suite logique/g, 'Next steps'], [/Modules configurés/g, 'Configured modules'], [/Base/g, 'Basics'], [/par défaut/g, 'default'], [/non défini/g, 'not set'], [/aucune/g, 'none'], [/aucun/g, 'none'], [/actif/g, 'enabled'], [/inactif/g, 'disabled'], [/Les hubs principaux sont ici : aide, panel, dashboard, support et setup\./g, 'Main hubs are here: help, panel, dashboard, support and setup.'], [/Parcours propre par famille de commandes\./g, 'Clean browse by command family.'], [/Commandes visibles/g, 'Visible commands'], [/Panneau support/g, 'Support panel'], [/panneau support/g, 'support panel'], [/Le hub principal du serveur\. Passe d’une page à l’autre avec les boutons dessous\./g, 'The main server hub. Use the buttons below to switch pages.'], [/Un endroit propre pour configurer le support sans empiler 15 commandes presque pareilles\./g, 'A clean place to configure support without stacking 15 near-identical commands.'], [/Hub staff pour/g, 'Staff hub for'], [/Un seul panel propre au lieu de courir après des commandes doublonnées\./g, 'One clean panel instead of chasing duplicated setup commands.'], [/Panel staff fixe/g, 'Persistent staff panel'], [/Points à vérifier/g, 'Things to check'], [/Pages à ouvrir d’abord/g, 'Best pages to open first'], [/Modifie et teste/g, 'Edit and test'], [/Actions de cette page/g, 'This page actions'], [/Presets rapides/g, 'Quick presets'], [/La plupart des erreurs de setup sont corrigées automatiquement\./g, 'Most setup mistakes are auto-corrected now.'], [/Vue claire du serveur : état, modules, setup et raccourcis utiles\./g, 'Clear server overview: status, modules, setup and useful shortcuts.'], [/Progression du setup global et prochains réglages conseillés\./g, 'Overall setup progress and the next recommended steps.'], [/Routage principal des logs et vue rapide des salons utilisés\./g, 'Main log routing and a quick view of the channels in use.'], [/État des protections AutoMod, ghost ping et filtres principaux\./g, 'Status of AutoMod protections, ghost ping and the main filters.'], [/Temp voice, panel voc et modération voc en un seul endroit\./g, 'Temp voice, voice panel and voice moderation in one place.'], [/Auto-react, sticky, rôles auto et petits systèmes utiles\./g, 'Auto-react, sticky posts, auto roles and useful automations.'], [/Trophées, milestones et avancement du serveur\./g, 'Trophies, milestones and overall server progress.'], [/Hub staff/g, 'Staff hub'], [/ce salon/g, 'this channel']
+];
+
+function translateUiStringToEnglish(value) {
+  let out = String(value || '');
+  for (const [pattern, replacement] of UI_FR_TO_EN_REPLACEMENTS) out = out.replace(pattern, replacement);
+  return out;
+}
+
+function translateEmbedForUi(guildConfig, embed) {
+  if (isFrenchUi(guildConfig) || !embed?.data) return embed;
+  const walk = (value) => {
+    if (typeof value === 'string') return translateUiStringToEnglish(value);
+    if (Array.isArray(value)) return value.map(walk);
+    if (value && typeof value === 'object') { for (const key of Object.keys(value)) value[key] = walk(value[key]); }
+    return value;
+  };
+  walk(embed.data);
+  return embed;
+}
+
 
 function polishGuildPanelEmbed(embed, guild, sectionLabel = 'DvL') {
   if (!embed?.setAuthor) return embed;
@@ -126,6 +234,7 @@ function quickExamplesForCommand(command, prefix = '+') {
     voice: [`${prefix}voice`, `${prefix}voice panel`, `${prefix}createvoc`],
     voicepanel: [`${prefix}voicepanel`, `${prefix}createvoc`, `${prefix}move @user #vocal`],
     embed: [`${prefix}embed`, `${prefix}embed`, `${prefix}say test`],
+    botbanner: [`${prefix}botbanner https://image.url/banner.png`, `${prefix}botbanner`, `${prefix}botbanner off`],
     mpall: [`${prefix}mpall`, `${prefix}mpall send`, `${prefix}mpall test`],
     clear: [`${prefix}clear 10`, `${prefix}clear 1`, `${prefix}purge @user 5`],
     purge: [`${prefix}purge @user 5`, `${prefix}purge 123456789012345678 10`, `${prefix}clear 20`],
@@ -336,12 +445,23 @@ function splitLinesForField(lines, chunkSize = 8) {
   return chunks;
 }
 
+
 function createLogsOverviewEmbed(guildConfig, prefix = '+') {
   const logs = guildConfig.logs || { enabled: false, channelId: null, channels: {}, typeSalons: {}, types: {} };
   const defaultChannelId = logs.channels?.default || logs.channelId || null;
+  const noRoute = uiText(guildConfig, 'route par défaut', 'default route');
+  const notSet = uiText(guildConfig, 'non défini', 'not set');
+  const familyLabelMap = {
+    messages: uiText(guildConfig, 'Messages', 'Messages'),
+    members: uiText(guildConfig, 'Membres / invites / boosts', 'Members / invites / boosts'),
+    moderation: uiText(guildConfig, 'Modération / sécurité', 'Moderation / security'),
+    voice: uiText(guildConfig, 'Vocal', 'Voice'),
+    server: uiText(guildConfig, 'Serveur / rôles / salons', 'Server / roles / channels'),
+    social: uiText(guildConfig, 'Support / TikTok / invites', 'Support / TikTok / invite codes')
+  };
   const familyLines = LOG_CHANNEL_GROUPS.map((group) => {
     const channelId = logs.channels?.[group.key] || null;
-    return `• **${group.label}** → ${channelId ? `<#${channelId}>` : 'default route'}`;
+    return `• **${familyLabelMap[group.key] || group.label}** → ${channelId ? `<#${channelId}>` : noRoute}`;
   });
   const typeOverrides = Object.entries(logs.typeSalons || {})
     .filter(([, channelId]) => Boolean(channelId))
@@ -350,68 +470,93 @@ function createLogsOverviewEmbed(guildConfig, prefix = '+') {
   const enabledTypes = LOG_TYPE_CHOICES.filter(([type]) => logs.types?.[type] !== false).map(([type]) => type);
   const disabledTypes = LOG_TYPE_CHOICES.filter(([type]) => logs.types?.[type] === false).map(([type]) => `• ${getLogTypeLabel(type)}`);
 
-  const embed = baseEmbed(guildConfig, '🧾 Logs overview', 'Main place for logs routing, event toggles and quick tests.')
-    .addFields(
-      {
-        name: 'Status',
-        value: [
-          `**Master:** ${logs.enabled ? 'on' : 'off'}`,
-          `**Default route:** ${defaultChannelId ? `<#${defaultChannelId}>` : 'not set'}`,
-          `**Families routed:** ${Object.values(logs.channels || {}).filter(Boolean).length}`,
-          `**Direct per-type routes:** ${typeOverrides.length}`,
-          `**Enabled event types:** ${enabledTypes.length}/${LOG_TYPE_CHOICES.length}`
-        ].join('\n'),
-        inline: false
-      },
-      {
-        name: 'One-shot setup',
-        value: [
-          `\`${prefix}logs setup\` → create category + separated channels`,
-          `\`${prefix}logs on\` → turn the whole module on`,
-          `\`${prefix}logs view\` → show current routes`,
-          `\`${prefix}logs test all\` → verify important routes`
-        ].join('\n'),
-        inline: false
-      },
-      {
-        name: 'Fast routing',
-        value: [
-          `\`${prefix}logs messages #message-logs\``,
-          `\`${prefix}logs members #member-logs\``,
-          `\`${prefix}logs moderation #mod-logs\``,
-          `\`${prefix}logs boost here\``
-        ].join('\n'),
-        inline: false
-      }
-    );
+  const embed = baseEmbed(
+    guildConfig,
+    uiText(guildConfig, '🧾 Hub logs', '🧾 Logs hub'),
+    uiText(guildConfig, 'Vue propre pour le routage, les types actifs et les tests rapides.', 'Clean view for routing, enabled event types and fast tests.')
+  ).addFields(
+    {
+      name: uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'),
+      value: [
+        `**${uiText(guildConfig, 'Module', 'Module')} :** ${uiState(logs.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))}`,
+        `**${uiText(guildConfig, 'Route par défaut', 'Default route')} :** ${defaultChannelId ? `<#${defaultChannelId}>` : notSet}`,
+        `**${uiText(guildConfig, 'Familles routées', 'Routed families')} :** ${Object.values(logs.channels || {}).filter(Boolean).length}`,
+        `**${uiText(guildConfig, 'Routes par type', 'Direct per-type routes')} :** ${typeOverrides.length}`,
+        `**${uiText(guildConfig, 'Types actifs', 'Enabled event types')} :** ${enabledTypes.length}/${LOG_TYPE_CHOICES.length}`
+      ].join('\n'),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '⚡ Setup conseillé', '⚡ Recommended setup'),
+      value: [
+        `• \`${prefix}logs setup\` ${uiText(guildConfig, '→ crée la catégorie et les salons', '→ create the category and channels')}`,
+        `• \`${prefix}logs on\` ${uiText(guildConfig, '→ active tout le module', '→ enable the whole module')}`,
+        `• \`${prefix}logs messages #message-logs\``,
+        `• \`${prefix}logs test all\` ${uiText(guildConfig, '→ vérifie les routes importantes', '→ verify the important routes')}`
+      ].join('\n'),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '🧭 Familles', '🧭 Families'),
+      value: familyLines.join('\n').slice(0, 1024),
+      inline: false
+    }
+  );
 
-  embed.addFields({ name: 'Families', value: familyLines.join('\n').slice(0, 1024), inline: false });
   if (typeOverrides.length) {
     const chunks = splitLinesForField(typeOverrides, 10);
-    chunks.forEach((chunk, index) => embed.addFields({ name: index === 0 ? 'Direct per-type routes' : 'Direct per-type routes (more)', value: chunk.join('\n').slice(0, 1024), inline: false }));
-  }
-  if (disabledTypes.length) {
-    const chunks = splitLinesForField(disabledTypes, 14);
-    chunks.forEach((chunk, index) => embed.addFields({ name: index === 0 ? 'Disabled event types' : 'Disabled event types (more)', value: chunk.join('\n').slice(0, 1024), inline: false }));
+    chunks.forEach((chunk, index) => embed.addFields({
+      name: index === 0
+        ? uiText(guildConfig, '🎯 Routes par type', '🎯 Direct per-type routes')
+        : uiText(guildConfig, '🎯 Routes par type (suite)', '🎯 Direct per-type routes (more)'),
+      value: chunk.join('\n').slice(0, 1024),
+      inline: false
+    }));
   }
 
-  return embed.addFields({
-    name: 'Good to know',
+  if (disabledTypes.length) {
+    const chunks = splitLinesForField(disabledTypes, 14);
+    chunks.forEach((chunk, index) => embed.addFields({
+      name: index === 0
+        ? uiText(guildConfig, '⏸️ Types coupés', '⏸️ Disabled event types')
+        : uiText(guildConfig, '⏸️ Types coupés (suite)', '⏸️ Disabled event types (more)'),
+      value: chunk.join('\n').slice(0, 1024),
+      inline: false
+    }));
+  }
+
+  embed.addFields({
+    name: uiText(guildConfig, '💡 À savoir', '💡 Good to know'),
     value: [
-      `• families are broad routes like messages / members / moderation`,
-      `• direct per-type routes override family routes`,
-      `• \`${prefix}logs enable <type>\` and \`${prefix}logs disable <type>\` control which events are sent`,
-      `• \`${prefix}logs types\` shows every precise event name`
+      `• ${uiText(guildConfig, 'les familles sont des routes larges : messages, membres, modération…', 'families are broad routes like messages, members and moderation')}`,
+      `• ${uiText(guildConfig, 'une route précise par type passe avant la famille', 'a direct per-type route overrides the family route')}`,
+      `• \`${prefix}logs enable <type>\` ${uiText(guildConfig, 'et', 'and')} \`${prefix}logs disable <type>\` ${uiText(guildConfig, 'gèrent quels événements partent', 'control which events are sent')}`,
+      `• \`${prefix}logs types\` ${uiText(guildConfig, 'affiche tous les noms précis', 'shows every precise event name')}`
     ].join('\n').slice(0, 1024),
     inline: false
   });
+
+  return embed;
 }
 
+
 function createLogTypesEmbed(guildConfig, prefix = '+') {
-  const embed = baseEmbed(guildConfig, '🧾 Log types', `Use \`${prefix}logs <type> here\` to route one precise type, or \`${prefix}logs enable <type>\` / \`${prefix}logs disable <type>\`.`);
+  const embed = baseEmbed(
+    guildConfig,
+    uiText(guildConfig, '🧾 Types de logs', '🧾 Log types'),
+    uiText(guildConfig, `Utilise \`${prefix}logs <type> here\` pour router un type précis, ou \`${prefix}logs enable <type>\` / \`${prefix}logs disable <type>\`.`, `Use \`${prefix}logs <type> here\` to route one precise type, or \`${prefix}logs enable <type>\` / \`${prefix}logs disable <type>\`.`)
+  );
+  const familyLabelMap = {
+    messages: uiText(guildConfig, 'Messages', 'Messages'),
+    members: uiText(guildConfig, 'Membres / invites / boosts', 'Members / invites / boosts'),
+    moderation: uiText(guildConfig, 'Modération / sécurité', 'Moderation / security'),
+    voice: uiText(guildConfig, 'Vocal', 'Voice'),
+    server: uiText(guildConfig, 'Serveur / rôles / salons', 'Server / roles / channels'),
+    social: uiText(guildConfig, 'Support / TikTok / invites', 'Support / TikTok / invite codes')
+  };
   for (const group of LOG_CHANNEL_GROUPS) {
     const lines = group.types.map((type) => `• **${type}** — ${getLogTypeLabel(type)}`);
-    embed.addFields({ name: group.label, value: lines.join('\n').slice(0, 1024), inline: false });
+    embed.addFields({ name: familyLabelMap[group.key] || group.label, value: lines.join('\n').slice(0, 1024), inline: false });
   }
   return embed;
 }
@@ -1222,26 +1367,27 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
       );
   }
 
-  return embed.setFooter({ text: `DvL • dashboard • page: ${safePage}` });
+  embed.setFooter({ text: `DvL • dashboard • page: ${safePage}` });
+  return translateEmbedForUi(guildConfig, embed);
 }
 
-function createDashboardComponents(current = 'home') {
+function createDashboardComponents(current = 'home', guildConfig = null) {
   const pages = ['home', 'setup', 'logs', 'security', 'voice', 'progress'];
   const safePage = pages.includes(current) ? current : 'home';
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('dashboard:home').setLabel('Home').setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('dashboard:home').setLabel(uiText(guildConfig, 'Accueil', 'Home')).setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('dashboard:setup').setLabel('Setup').setEmoji('🧩').setStyle(safePage === 'setup' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('dashboard:logs').setLabel('Logs').setEmoji('🧾').setStyle(safePage === 'logs' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('dashboard:security').setLabel('Security').setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('dashboard:security').setLabel(uiText(guildConfig, 'Sécurité', 'Security')).setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('dashboard:voice').setLabel('Voice').setEmoji('🔊').setStyle(safePage === 'voice' ? ButtonStyle.Success : ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('dashboard:progress').setLabel('Progress').setEmoji('🏆').setStyle(safePage === 'progress' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`dashboardquick:refresh:${safePage}`).setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('dashboard:progress').setLabel(uiText(guildConfig, 'Progression', 'Progress')).setEmoji('🏆').setStyle(safePage === 'progress' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`dashboardquick:refresh:${safePage}`).setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('dashboardquick:help').setLabel('Help').setEmoji('📂').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('dashboardquick:logs').setLabel('Logs panel').setEmoji('📋').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('dashboardquick:progress').setLabel('Trophée').setEmoji('🥇').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('dashboardquick:progress').setLabel(uiText(guildConfig, 'Trophée', 'Trophy')).setEmoji('🥇').setStyle(ButtonStyle.Primary)
     )
   ];
 }
@@ -1406,18 +1552,19 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
       );
   }
 
-  return embed.setFooter({ text: `DvL • dashboard • page: ${safePage}` });
+  embed.setFooter({ text: `DvL • dashboard • page: ${safePage}` });
+  return translateEmbedForUi(guildConfig, embed);
 }
 
-function createDashboardComponents(current = 'home') {
+function createDashboardComponents(current = 'home', guildConfig = null) {
   const safePage = ['home', 'security', 'voice', 'progress'].includes(current) ? current : 'home';
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('dashboard:home').setLabel('Home').setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('dashboard:security').setLabel('Security').setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('dashboard:voice').setLabel('Voice').setEmoji('🔊').setStyle(safePage === 'voice' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('dashboard:progress').setLabel('Progress').setEmoji('🏆').setStyle(safePage === 'progress' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('help:Categories:1').setLabel('Help').setEmoji('📂').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('dashboard:home').setLabel(uiText(guildConfig, 'Accueil', 'Home')).setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('dashboard:security').setLabel(uiText(guildConfig, 'Sécurité', 'Security')).setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('dashboard:voice').setLabel(uiText(guildConfig, 'Vocal', 'Voice')).setEmoji('🔊').setStyle(safePage === 'voice' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('dashboard:progress').setLabel(uiText(guildConfig, 'Progression', 'Progress')).setEmoji('🏆').setStyle(safePage === 'progress' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:Categories:1').setLabel(uiText(guildConfig, 'Aide', 'Help')).setEmoji('📂').setStyle(ButtonStyle.Secondary)
     )
   ];
 }
@@ -1884,7 +2031,8 @@ function addOption(builder, option) {
     boolean: 'addBooleanOption',
     user: 'addUserOption',
     channel: 'addChannelOption',
-    role: 'addRoleOption'
+    role: 'addRoleOption',
+    attachment: 'addAttachmentOption'
   };
   const method = map[option.type];
   if (!method) return builder;
@@ -2230,7 +2378,7 @@ function getSupportPromptVariables(guild, support, prefix = '+', fallbackChannel
 function createSupportPromptPayload(guildConfig, guild, prefix = '+', fallbackChannel = null) {
   const support = guildConfig.support || {};
   const vars = getSupportPromptVariables(guild, support, prefix, fallbackChannel);
-  const title = fillTemplate(support.promptTitre || '📨 Need help?', vars).trim();
+  const title = fillTemplate(support.promptTitle || '📨 Need help?', vars).trim();
   const description = fillTemplate(support.promptMessage || 'To contact the staff, go to {supportChannel} and run `{prefix}support your message`.', vars).trim();
   const footer = fillTemplate(support.promptFooter ?? 'DvL Support', vars).trim();
   const imageUrl = fillTemplate(support.promptImageUrl || '', vars).trim();
@@ -2238,7 +2386,7 @@ function createSupportPromptPayload(guildConfig, guild, prefix = '+', fallbackCh
     mode: support.promptMode || 'embed',
     title,
     footer,
-    color: support.promptCouleur,
+    color: support.promptColor,
     imageUrl
   }, description);
 }
@@ -2365,75 +2513,83 @@ function buildSupportModuleEmbed(guildConfig, prefix = '+') {
 
 function createSupportPanelEmbed(guildConfig, guild, prefix = '+', currentChannel = null) {
   const support = guildConfig.support || {};
-  const channelMention = currentChannel?.id ? `${currentChannel}` : 'ce salon';
-  const previewTarget = support.entryChannelId ? `<#${support.entryChannelId}>` : (currentChannel?.isTextBased?.() ? channelMention : 'non défini');
-  const embed = polishGuildPanelEmbed(baseEmbed(guildConfig, '📨 Panneau support', 'Un endroit propre pour configurer le support sans empiler 15 commandes presque pareilles.'), guild, 'Support')
-    .addFields(
-      {
-        name: '📍 Routage',
-        value: [
-          `**Relais :** ${support.enabled ? '🟢 actif' : '🔴 inactif'}`,
-          `**Salon relais :** ${support.channelId ? `<#${support.channelId}>` : 'non défini'}`,
-          `**Salon membre :** ${support.entryChannelId ? `<#${support.entryChannelId}>` : 'non défini'}`,
-          `**Limiter au salon membre :** ${support.restrictToEntry ? '✅ oui' : '❌ non'}`,
-          `**Rôle ping :** ${support.pingRoleId ? `<@&${support.pingRoleId}>` : 'aucun'}`
-        ].join('\n'),
-        inline: false
-      },
-      {
-        name: '🎨 Prompt public',
-        value: [
-          `**Mode :** ${normalizeAnnouncementMode(support.promptMode)}`,
-          `**Titre :** ${formatTemplatePreview(support.promptTitre, 'par défaut')}`,
-          `**Message :** ${formatTemplatePreview(support.promptMessage, 'par défaut')}`,
-          `**Footer :** ${formatTemplatePreview(support.promptFooter, 'par défaut')}`,
-          `**Couleur :** ${support.promptCouleur || guildConfig.embedColor || '#5865F2'}`,
-          `**Image :** ${formatTemplatePreview(support.promptImageUrl, 'aucune')}`
-        ].join('\n'),
-        inline: false
-      },
-      {
-        name: '🧩 Variables',
-        value: '`{prefix}` • `{server}` • `{supportChannel}`',
-        inline: false
-      },
-      {
-        name: '⚡ Actions rapides',
-        value: [
-          `**Cible du prompt :** ${previewTarget}`,
-          `\`${prefix}support role @Staff\``,
-          `\`${prefix}support relay off\``,
-          `\`${prefix}support entry off\``
-        ].join('\n'),
-        inline: false
-      }
-    )
-    .setFooter({ text: 'DvL • panneau support' });
-  return embed;
+  const noValue = uiText(guildConfig, 'non défini', 'not set');
+  const none = uiText(guildConfig, 'aucun', 'none');
+  const channelMention = currentChannel?.id ? `${currentChannel}` : uiText(guildConfig, 'ce salon', 'this channel');
+  const previewTarget = support.entryChannelId ? `<#${support.entryChannelId}>` : (currentChannel?.isTextBased?.() ? channelMention : noValue);
+  const embed = polishGuildPanelEmbed(
+    baseEmbed(
+      guildConfig,
+      uiText(guildConfig, '📨 Panneau support', '📨 Support panel'),
+      uiText(guildConfig, 'Un endroit propre pour régler le support sans empiler quinze commandes quasi identiques.', 'A clean place to configure support without stacking fifteen near-identical commands.')
+    ),
+    guild,
+    uiText(guildConfig, 'Support', 'Support')
+  ).addFields(
+    {
+      name: uiText(guildConfig, '📍 Routage', '📍 Routing'),
+      value: [
+        `**${uiText(guildConfig, 'Relais', 'Relay')} :** ${uiState(support.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))}`,
+        `**${uiText(guildConfig, 'Salon relais', 'Relay channel')} :** ${uiChannel(support.channelId, noValue)}`,
+        `**${uiText(guildConfig, 'Salon membre', 'Member channel')} :** ${uiChannel(support.entryChannelId, noValue)}`,
+        `**${uiText(guildConfig, 'Limiter au salon membre', 'Restrict to member channel')} :** ${uiBool(support.restrictToEntry, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no'))}`,
+        `**${uiText(guildConfig, 'Rôle ping', 'Ping role')} :** ${uiRole(support.pingRoleId, none)}`
+      ].join('\n'),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '🎨 Prompt public', '🎨 Public prompt'),
+      value: [
+        `**${uiText(guildConfig, 'Mode', 'Mode')} :** ${normalizeAnnouncementMode(support.promptMode)}`,
+        `**${uiText(guildConfig, 'Titre', 'Title')} :** ${formatTemplatePreview(support.promptTitle, uiText(guildConfig, 'par défaut', 'default'))}`,
+        `**${uiText(guildConfig, 'Message', 'Message')} :** ${formatTemplatePreview(support.promptMessage, uiText(guildConfig, 'par défaut', 'default'))}`,
+        `**Footer :** ${formatTemplatePreview(support.promptFooter, uiText(guildConfig, 'par défaut', 'default'))}`,
+        `**${uiText(guildConfig, 'Couleur', 'Color')} :** ${support.promptColor || guildConfig.embedColor || '#5865F2'}`,
+        `**${uiText(guildConfig, 'Image', 'Image')} :** ${formatTemplatePreview(support.promptImageUrl, uiText(guildConfig, 'aucune', 'none'))}`
+      ].join('\n'),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '🧩 Variables', '🧩 Variables'),
+      value: '`{prefix}` • `{server}` • `{supportChannel}`',
+      inline: true
+    },
+    {
+      name: uiText(guildConfig, '⚡ Actions rapides', '⚡ Quick actions'),
+      value: [
+        `**${uiText(guildConfig, 'Cible du prompt', 'Prompt target')} :** ${previewTarget}`,
+        `\`${prefix}support role @Staff\``,
+        `\`${prefix}supportchannel here\``,
+        `\`${prefix}supportmemberchannel here\``
+      ].join('\n'),
+      inline: true
+    }
+  ).setFooter({ text: uiText(guildConfig, 'DvL • panneau support', 'DvL • support panel') });
+  return translateEmbedForUi(guildConfig, embed);
 }
 
-function createSupportPanelComponents() {
+function createSupportPanelComponents(guildConfig = null) {
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('supportpanel:toggle').setLabel('Relais').setEmoji('📨').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('supportpanel:relayhere').setLabel('Relais ici').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:entryhere').setLabel('Salon support').setEmoji('📍').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:restrict').setLabel('Restreindre').setEmoji('🚧').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:refresh').setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('supportpanel:toggle').setLabel(uiText(guildConfig, 'Relais', 'Relay')).setEmoji('📨').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('supportpanel:relayhere').setLabel(uiText(guildConfig, 'Relais ici', 'Relay here')).setEmoji('🧾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:entryhere').setLabel(uiText(guildConfig, 'Salon membre', 'Member channel')).setEmoji('📍').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:restrict').setLabel(uiText(guildConfig, 'Restreindre', 'Restrict')).setEmoji('🚧').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:refresh').setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('supportpanel:mode').setLabel('Mode').setEmoji('🎨').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('supportpanel:edit:title').setLabel('Titre').setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:edit:message').setLabel('Message').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:mode').setLabel(uiText(guildConfig, 'Mode', 'Mode')).setEmoji('🎨').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('supportpanel:edit:title').setLabel(uiText(guildConfig, 'Titre', 'Title')).setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:edit:message').setLabel(uiText(guildConfig, 'Message', 'Message')).setEmoji('💬').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('supportpanel:edit:footer').setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:send').setLabel('Envoyer').setEmoji('📤').setStyle(ButtonStyle.Success)
+      new ButtonBuilder().setCustomId('supportpanel:send').setLabel(uiText(guildConfig, 'Envoyer', 'Send')).setEmoji('📤').setStyle(ButtonStyle.Success)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('supportpanel:edit:color').setLabel('Couleur').setEmoji('🌈').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:edit:image').setLabel('Image').setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:clear:entry').setLabel('Retirer salon').setEmoji('🧹').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:clear:relay').setLabel('Retirer relais').setEmoji('🧹').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('supportpanel:reset').setLabel('Reset').setEmoji('♻️').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('supportpanel:edit:color').setLabel(uiText(guildConfig, 'Couleur', 'Color')).setEmoji('🌈').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:edit:image').setLabel(uiText(guildConfig, 'Image', 'Image')).setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:clear:entry').setLabel(uiText(guildConfig, 'Retirer salon', 'Clear member channel')).setEmoji('🧹').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:clear:relay').setLabel(uiText(guildConfig, 'Retirer relais', 'Clear relay')).setEmoji('🧹').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('supportpanel:reset').setLabel(uiText(guildConfig, 'Réinitialiser', 'Reset')).setEmoji('♻️').setStyle(ButtonStyle.Danger)
     )
   ];
 }
@@ -2514,55 +2670,64 @@ function buildSetupHubEmbed(guildConfig, prefix = '+') {
   const welcome = guildConfig.welcome || {};
   const leave = guildConfig.leave || {};
   const boost = guildConfig.boost || {};
-  return baseEmbed(guildConfig, '🧩 Setup hub', 'Main entry point to configure the bot cleanly without hunting for old commands.')
-    .addFields(
-      {
-        name: 'Recommended order',
-        value: [
-          `1. \`${prefix}config\``,
-          `2. \`${prefix}system\``,
-          `3. \`${prefix}logs setup\``,
-          `4. \`${prefix}texts\``,
-          `5. \`${prefix}tracking\``,
-          `6. \`${prefix}support\``,
-          `7. \`${prefix}roles view\``
-        ].join('\n'),
-        inline: true
-      },
-      {
-        name: 'Quick jumps',
-        value: [
-          `\`${prefix}setup check\``,
-          `\`${prefix}setup logs\``,
-          `\`${prefix}setup texts\``,
-          `\`${prefix}setup tracking\``,
-          `\`${prefix}setup security\``
-        ].join('\n'),
-        inline: true
-      },
-      {
-        name: 'Current status',
-        value: [
-          `**Logs:** ${logs.enabled ? 'on' : 'off'} • ${(logs.channels?.default || logs.channelId) ? `<#${logs.channels?.default || logs.channelId}>` : 'no route'}`,
-          `**Welcome:** ${welcome.enabled ? 'on' : 'off'} • ${welcome.channelId ? `<#${welcome.channelId}>` : 'no channel'}`,
-          `**Leave:** ${leave.enabled ? 'on' : 'off'} • ${leave.channelId ? `<#${leave.channelId}>` : 'no channel'}`,
-          `**Boost text:** ${boost.enabled ? 'on' : 'off'} • ${boost.channelId ? `<#${boost.channelId}>` : 'no channel'}`,
-          `**Support:** ${support.enabled ? 'on' : 'off'} • ${support.channelId ? `<#${support.channelId}>` : 'no channel'}`,
-          `**Stats:** ${stats.enabled ? 'on' : 'off'} • ${stats.categoryId ? `<#${stats.categoryId}>` : 'no category'}`
-        ].join('\n').slice(0, 1024),
-        inline: false
-      },
-      {
-        name: 'Useful hubs',
-        value: [
-          `\`${prefix}system\` • \`${prefix}dashboard\` • \`${prefix}configpanel\``,
-          `\`${prefix}logs\` • \`${prefix}texts\` • \`${prefix}tracking\``,
-          `\`${prefix}support\` • \`${prefix}roles view\` • \`${prefix}voice\``,
-          `\`${prefix}security\` • \`${prefix}automation\` • \`${prefix}backup\``
-        ].join('\n'),
-        inline: false
-      }
-    );
+  const noChannel = uiText(guildConfig, 'non défini', 'not set');
+  const noCategory = uiText(guildConfig, 'aucune', 'none');
+  return baseEmbed(
+    guildConfig,
+    uiText(guildConfig, '🧩 Hub setup', '🧩 Setup hub'),
+    uiText(
+      guildConfig,
+      'Point de départ propre pour configurer le bot sans courir après les anciennes commandes.',
+      'Clean starting point to configure the bot without chasing old commands.'
+    )
+  ).addFields(
+    {
+      name: uiText(guildConfig, '🚀 Ordre conseillé', '🚀 Recommended order'),
+      value: [
+        `1. \`${prefix}config\``,
+        `2. \`${prefix}language ${isFrenchUi(guildConfig) ? 'fr' : 'en'}\``,
+        `3. \`${prefix}logs\``,
+        `4. \`${prefix}texts\``,
+        `5. \`${prefix}support\``,
+        `6. \`${prefix}stats setup\``,
+        `7. \`${prefix}roles view\``
+      ].join('\n'),
+      inline: true
+    },
+    {
+      name: uiText(guildConfig, '⚡ Raccourcis', '⚡ Quick jumps'),
+      value: [
+        `\`${prefix}setup check\``,
+        `\`${prefix}panel\``,
+        `\`${prefix}dashboard\``,
+        `\`${prefix}support panel\``,
+        `\`${prefix}help start\``
+      ].join('\n'),
+      inline: true
+    },
+    {
+      name: uiText(guildConfig, '📍 État actuel', '📍 Current state'),
+      value: [
+        `**Logs :** ${uiState(logs.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(logs.channels?.default || logs.channelId, noChannel)}`,
+        `**Welcome :** ${uiState(welcome.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(welcome.channelId, noChannel)}`,
+        `**Leave :** ${uiState(leave.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(leave.channelId, noChannel)}`,
+        `**Boost :** ${uiState(boost.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(boost.channelId, noChannel)}`,
+        `**Support :** ${uiState(support.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(support.channelId, noChannel)}`,
+        `**Stats :** ${uiState(stats.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${stats.categoryId ? `<#${stats.categoryId}>` : noCategory}`
+      ].join('\n').slice(0, 1024),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '🧭 Hubs utiles', '🧭 Useful hubs'),
+      value: [
+        `\`${prefix}system\` • \`${prefix}dashboard\` • \`${prefix}panel\``,
+        `\`${prefix}logs\` • \`${prefix}texts\` • \`${prefix}tracking\``,
+        `\`${prefix}support\` • \`${prefix}voice\` • \`${prefix}security\``,
+        `\`${prefix}automation\` • \`${prefix}backup\` • \`${prefix}help\``
+      ].join('\n'),
+      inline: false
+    }
+  );
 }
 
 
@@ -2570,115 +2735,156 @@ function buildVoiceHubEmbed(guildConfig, prefix = '+') {
   const voice = guildConfig.voice || {};
   const temp = voice.temp || {};
   const moderation = voice.moderation || {};
-  return baseEmbed(guildConfig, '🔊 Voice hub', 'Temp voice, panels and voice moderation in one place.')
-    .addFields(
-      {
-        name: 'Temp voice',
-        value: [
-          `**Hub channel:** ${temp.hubChannelId ? `<#${temp.hubChannelId}>` : 'not set'}`,
-          `**Hub category:** ${temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : 'not set'}`,
-          `**Panels posted:** ${Object.keys(temp.panels || {}).length}`,
-          `**Saved temp channels:** ${Object.keys(temp.channels || {}).length}`
-        ].join('\n'),
-        inline: true
-      },
-      {
-        name: 'Moderation',
-        value: [
-          `**Mute role:** ${moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : 'not set'}`,
-          `**Ban role:** ${moderation.banRoleId ? `<@&${moderation.banRoleId}>` : 'not set'}`,
-          `**Panel command:** \`${prefix}voice panel\``,
-          `**Hub command:** \`${prefix}voice create\``
-        ].join('\n'),
-        inline: true
-      },
-      {
-        name: 'Commandes utiles',
-        value: [
-          `\`${prefix}voice create\` • create or register the temp voice hub`,
-          `\`${prefix}voice panel\` • post the control panel`,
-          `\`${prefix}voice muterole @Role\` • save the voice mute role`,
-          `\`${prefix}voice banrole @Role\` • save the voice ban role`
-        ].join('\n'),
-        inline: false
-      }
-    );
+  const notSet = uiText(guildConfig, 'non défini', 'not set');
+  return baseEmbed(
+    guildConfig,
+    uiText(guildConfig, '🔊 Hub vocal', '🔊 Voice hub'),
+    uiText(guildConfig, 'Temp voice, panneau vocal et rôles de modération réunis au même endroit.', 'Temp voice, voice panel and moderation roles in one place.')
+  ).addFields(
+    {
+      name: uiText(guildConfig, '🧩 Temp voice', '🧩 Temp voice'),
+      value: [
+        `**${uiText(guildConfig, 'Salon hub', 'Hub channel')} :** ${temp.hubChannelId ? `<#${temp.hubChannelId}>` : notSet}`,
+        `**${uiText(guildConfig, 'Catégorie hub', 'Hub category')} :** ${temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : notSet}`,
+        `**${uiText(guildConfig, 'Panels postés', 'Panels posted')} :** ${Object.keys(temp.panels || {}).length}`,
+        `**${uiText(guildConfig, 'Vocaux temporaires gardés', 'Saved temp channels')} :** ${Object.keys(temp.channels || {}).length}`
+      ].join('\n'),
+      inline: true
+    },
+    {
+      name: uiText(guildConfig, '🛡️ Modération vocale', '🛡️ Voice moderation'),
+      value: [
+        `**${uiText(guildConfig, 'Rôle mute voc', 'Voice mute role')} :** ${moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : notSet}`,
+        `**${uiText(guildConfig, 'Rôle ban voc', 'Voice ban role')} :** ${moderation.banRoleId ? `<@&${moderation.banRoleId}>` : notSet}`,
+        `**${uiText(guildConfig, 'Panel vocal', 'Voice panel')} :** \`${prefix}voice panel\``,
+        `**${uiText(guildConfig, 'Créer le hub', 'Create the hub')} :** \`${prefix}voice create\``
+      ].join('\n'),
+      inline: true
+    },
+    {
+      name: uiText(guildConfig, '⚡ Flow conseillé', '⚡ Recommended flow'),
+      value: [
+        `1. \`${prefix}voice create\``,
+        `2. \`${prefix}voice panel\``,
+        `3. \`${prefix}voice muterole @Role\``,
+        `4. \`${prefix}voice banrole @Role\``
+      ].join('\n'),
+      inline: false
+    }
+  );
 }
+
 
 function buildSecurityHubEmbed(guildConfig, prefix = '+') {
   const mod = guildConfig.automod || {};
   const ghost = mod.ghostPing || { enabled: false, channelId: null };
+  const whitelistUsers = Array.isArray(mod.whitelistUserIds) ? mod.whitelistUserIds.length : 0;
+  const whitelistRoles = Array.isArray(mod.whitelistRoleIds) ? mod.whitelistRoleIds.length : 0;
+  const ignoredChannels = Array.isArray(mod.ignoredSalons) ? mod.ignoredSalons.length : 0;
+  const picOnlyChannels = Array.isArray(mod.picOnlySalons) ? mod.picOnlySalons.length : 0;
   const enabledCount = ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => mod[key]?.enabled).length;
-  return baseEmbed(guildConfig, '🚨 Security hub', 'Presets, ghost ping and the main AutoMod toggles.')
-    .addFields(
-      {
-        name: 'Status',
-        value: [
-          `**Main filters on:** ${enabledCount}`,
-          `**Ghost ping:** ${ghost.enabled ? 'on' : 'off'}${ghost.channelId ? ` • <#${ghost.channelId}>` : ''}`,
-          `**Anti spam:** ${mod.antiSpam?.enabled ? 'on' : 'off'}`,
-          `**Anti invite:** ${mod.antiInvite?.enabled ? 'on' : 'off'}`,
-          `**Anti caps:** ${mod.antiCaps?.enabled ? 'on' : 'off'}`,
-          `**Raid mode:** ${mod.raidMode?.enabled ? 'on' : 'off'}`
-        ].join('\n'),
-        inline: false
-      },
-      {
-        name: 'Fast setup',
-        value: [
-          `\`${prefix}security preset balanced\``,
-          `\`${prefix}security ghostping here\``,
-          `\`${prefix}security ghostping test\``
-        ].join('\n'),
-        inline: true
-      },
-      {
-        name: 'Advanced',
-        value: [
-          `\`${prefix}setantispam 6 5 delete\``,
-          `\`${prefix}setantimention 5 delete\``,
-          `\`${prefix}setanticaps 10 80 delete\``,
-          `\`${prefix}automodconfig\``
-        ].join('\n'),
-        inline: true
-      }
-    );
+  return baseEmbed(
+    guildConfig,
+    uiText(guildConfig, '🚨 Hub sécurité', '🚨 Security hub'),
+    uiText(guildConfig, 'Preset global, ghost ping, whitelist et protections AutoMod dans une seule vue propre.', 'Global preset, ghost ping, whitelist and AutoMod protections in one clean view.')
+  ).addFields(
+    {
+      name: uiText(guildConfig, '🚨 Vue rapide', '🚨 Quick view'),
+      value: [
+        `**${uiText(guildConfig, 'Filtres actifs', 'Active filters')} :** ${enabledCount}`,
+        `**Ghost ping :** ${uiState(ghost.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))}${ghost.channelId ? ` • <#${ghost.channelId}>` : ''}`,
+        `**${uiText(guildConfig, 'Whitelist users', 'Whitelist users')} :** ${whitelistUsers}`,
+        `**${uiText(guildConfig, 'Whitelist rôles', 'Whitelist roles')} :** ${whitelistRoles}`,
+        `**${uiText(guildConfig, 'Salons image only', 'Pic-only channels')} :** ${picOnlyChannels}`,
+        `**${uiText(guildConfig, 'Salons ignorés', 'Ignored channels')} :** ${ignoredChannels}`
+      ].join('\n'),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '🛡️ Protections', '🛡️ Protections'),
+      value: [
+        `**Anti-spam :** ${automodRuleLabel(mod.antiSpam, 'delete')}`,
+        `**Anti-invite :** ${automodRuleLabel(mod.antiInvite, 'delete')}`,
+        `**Anti-mention :** ${automodRuleLabel(mod.antiMention, 'delete')}`,
+        `**Anti-caps :** ${automodRuleLabel(mod.antiCaps, 'delete')}`,
+        `**Anti-emoji :** ${automodRuleLabel(mod.antiEmojiSpam, 'delete')}`,
+        `**Raid mode :** ${automodRuleLabel(mod.raidMode, 'kick')}`
+      ].join('\n').slice(0, 1024),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '⚡ Setup conseillé', '⚡ Recommended setup'),
+      value: [
+        `• \`${prefix}security preset balanced\``,
+        `• \`${prefix}security ghostping here\``,
+        `• \`${prefix}whitelistlist\``,
+        `• \`${prefix}piconlylist\``,
+        `• \`${prefix}automodconfig\``
+      ].join('\n'),
+      inline: true
+    },
+    {
+      name: uiText(guildConfig, '🧭 Réglages avancés', '🧭 Advanced controls'),
+      value: [
+        `\`${prefix}setantispam 6 5 delete\``,
+        `\`${prefix}setantimention 5 delete\``,
+        `\`${prefix}setanticaps 10 80 delete\``,
+        `\`${prefix}setantiemoji 8 delete\``,
+        `\`${prefix}automodignore #channel\``
+      ].join('\n'),
+      inline: true
+    }
+  );
 }
+
 
 function buildAutomationHubEmbed(guildConfig, prefix = '+') {
   const stickyEntries = Object.entries(guildConfig.sticky || {});
   const reactEntries = Object.entries(guildConfig.autoReact?.channels || {});
-  return baseEmbed(guildConfig, '⚡ Automation hub', 'Sticky messages, auto-react and small quality-of-life automations.')
-    .addFields(
-      {
-        name: 'Status',
-        value: [
-          `**Sticky channels:** ${stickyEntries.length}`,
-          `**Auto-react channels:** ${reactEntries.length}`,
-          `**Status role:** ${guildConfig.roles?.statusRole?.enabled ? 'on' : 'off'}`,
-          `**Ghost ping:** ${guildConfig.automod?.ghostPing?.enabled ? 'on' : 'off'}`
-        ].join('\n'),
-        inline: false
-      },
-      {
-        name: 'Sticky',
-        value: [
-          `\`${prefix}stickyset <message>\``,
-          `\`${prefix}stickyconfig\``,
-          `\`${prefix}stickyoff\``
-        ].join('\n'),
-        inline: true
-      },
-      {
-        name: 'Auto-react',
-        value: [
-          `\`${prefix}autoreact config\``,
-          `\`${prefix}autoreact add 😀\``,
-          `\`${prefix}autoreact preset #general hype\``
-        ].join('\n'),
-        inline: true
-      }
-    );
+  const statusRole = guildConfig.roles?.statusRole || {};
+  return baseEmbed(
+    guildConfig,
+    uiText(guildConfig, '⚡ Hub automation', '⚡ Automation hub'),
+    uiText(guildConfig, 'Sticky, auto-react et petits systèmes utiles regroupés dans une seule vue.', 'Sticky messages, auto-react and useful small systems grouped in one view.')
+  ).addFields(
+    {
+      name: uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'),
+      value: [
+        `**Sticky :** ${stickyEntries.length}`,
+        `**Auto-react :** ${reactEntries.length}`,
+        `**${uiText(guildConfig, 'Rôle de statut', 'Status role')} :** ${uiState(statusRole.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))}`,
+        `**Ghost ping :** ${uiState(guildConfig.automod?.ghostPing?.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))}`
+      ].join('\n'),
+      inline: false
+    },
+    {
+      name: '📌 Sticky',
+      value: [
+        `\`${prefix}stickyset <message>\``,
+        `\`${prefix}stickyconfig\``,
+        `\`${prefix}stickyoff\``
+      ].join('\n'),
+      inline: true
+    },
+    {
+      name: '😄 Auto-react',
+      value: [
+        `\`${prefix}autoreact config\``,
+        `\`${prefix}autoreact add 😀\``,
+        `\`${prefix}autoreact preset #general hype\``
+      ].join('\n'),
+      inline: true
+    },
+    {
+      name: uiText(guildConfig, '🧭 Autre automation', '🧭 Other automation'),
+      value: [
+        `\`${prefix}statusroleconfig\``,
+        `\`${prefix}ghostping config\``,
+        `\`${prefix}panel automation\``
+      ].join('\n'),
+      inline: false
+    }
+  );
 }
 
 function buildGiveawayHubEmbed(guildConfig, prefix = '+') {
@@ -2759,42 +2965,46 @@ function buildTikTokHubEmbed(guildConfig, prefix = '+') {
     );
 }
 
+
 function buildTrackingHubEmbed(guildConfig, prefix = '+') {
   const stats = guildConfig.stats || {};
   const inviteEntries = Object.entries(guildConfig.invites?.stats || {});
   const totalInvites = inviteEntries.reduce((sum, [, data]) => sum + (data?.count || 0), 0);
   const topInvite = inviteEntries.sort((a, b) => (b[1]?.count || 0) - (a[1]?.count || 0))[0] || null;
-  return baseEmbed(guildConfig, '📈 Tracking hub', 'Counters, invite tracking and refresh helpers.')
-    .addFields(
-      {
-        name: 'Status',
-        value: [
-          `**Stats counters:** ${stats.enabled ? 'on' : 'off'} • ${Object.values(stats.channels || {}).filter(Boolean).length} channel(s)`,
-          `**Stats category:** ${stats.categoryId ? `<#${stats.categoryId}>` : 'not set'}`,
-          `**Tracked inviters:** ${inviteEntries.length}`,
-          `**Total stored invites:** ${formatStatNumber(totalInvites)}`,
-          `**Top inviter:** ${topInvite ? `<@${topInvite[0]}> • ${topInvite[1]?.count || 0}` : 'none'}`
-        ].join('\n').slice(0, 1024),
-        inline: false
-      },
-      {
-        name: 'Stats setup',
-        value: [
-          `\`${prefix}stats view\``,
-          `\`${prefix}stats setup\``,
-          `\`${prefix}stats refresh\``
-        ].join('\n'),
-        inline: true
-      },
-      {
-        name: 'Invites',
-        value: [
-          `\`${prefix}invites @member\``,
-          `\`${prefix}inviteleaderboard\``
-        ].join('\n'),
-        inline: true
-      }
-    );
+  return baseEmbed(
+    guildConfig,
+    uiText(guildConfig, '📈 Hub tracking', '📈 Tracking hub'),
+    uiText(guildConfig, 'Compteurs, invitations et raccourcis de refresh dans une seule vue.', 'Counters, invites and refresh shortcuts in one view.')
+  ).addFields(
+    {
+      name: uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'),
+      value: [
+        `**${uiText(guildConfig, 'Compteurs stats', 'Stats counters')} :** ${uiState(stats.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${Object.values(stats.channels || {}).filter(Boolean).length} ${uiText(guildConfig, 'salon(s)', 'channel(s)')}`,
+        `**${uiText(guildConfig, 'Catégorie stats', 'Stats category')} :** ${stats.categoryId ? `<#${stats.categoryId}>` : uiText(guildConfig, 'non définie', 'not set')}`,
+        `**${uiText(guildConfig, 'Inviteurs suivis', 'Tracked inviters')} :** ${inviteEntries.length}`,
+        `**${uiText(guildConfig, 'Invites stockées', 'Stored invites')} :** ${formatStatNumber(totalInvites)}`,
+        `**${uiText(guildConfig, 'Top inviteur', 'Top inviter')} :** ${topInvite ? `<@${topInvite[0]}> • ${topInvite[1]?.count || 0}` : uiText(guildConfig, 'aucun', 'none')}`
+      ].join('\n').slice(0, 1024),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '📊 Stats', '📊 Stats'),
+      value: [
+        `\`${prefix}stats view\``,
+        `\`${prefix}stats setup\``,
+        `\`${prefix}stats refresh\``
+      ].join('\n'),
+      inline: true
+    },
+    {
+      name: uiText(guildConfig, '📨 Invites', '📨 Invites'),
+      value: [
+        `\`${prefix}invites @member\``,
+        `\`${prefix}inviteleaderboard\``
+      ].join('\n'),
+      inline: true
+    }
+  );
 }
 
 function buildModerationHubEmbed(guildConfig, prefix = '+') {
@@ -3113,36 +3323,40 @@ function formatPermissionLabel(permission) {
   return raw.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/Guild/g, 'Server').trim();
 }
 
-function formatCommandAccess(command) {
-  const scope = command.guildOnly ? 'Serveur uniquement' : (command.dmAllowed ? 'MP + serveur' : 'Serveur par défaut');
-  const perms = command.userPermissions?.length ? command.userPermissions.map(formatPermissionLabel).join(', ') : 'Aucune permission spéciale';
+function formatCommandAccess(command, guildConfig = null) {
+  const scope = command.guildOnly
+    ? uiText(guildConfig, 'Serveur uniquement', 'Server only')
+    : (command.dmAllowed ? uiText(guildConfig, 'MP + serveur', 'DM + server') : uiText(guildConfig, 'Serveur par défaut', 'Server by default'));
+  const perms = command.userPermissions?.length
+    ? command.userPermissions.map(formatPermissionLabel).join(', ')
+    : uiText(guildConfig, 'Aucune permission spéciale', 'No special permission');
   return { scope, perms };
 }
 
 function createCommandHelpEmbed(client, guildConfig, command) {
   const prefix = guildConfig?.prefix || '+';
-  const access = formatCommandAccess(command);
-  const slashText = command.slash ? `\`/${command.slash.root} ${command.slash.sub}\`` : 'Aucune version slash';
+  const access = formatCommandAccess(command, guildConfig);
+  const slashText = command.slash ? `\`/${command.slash.root} ${command.slash.sub}\`` : uiText(guildConfig, 'Aucune version slash', 'No slash version');
   const usage = `\`${prefix}${command.usage || command.name}\``;
-  const aliases = command.aliases?.length ? command.aliases.map((alias) => `\`${prefix}${alias}\``).join(', ') : 'Aucun';
+  const aliases = command.aliases?.length ? command.aliases.map((alias) => `\`${prefix}${alias}\``).join(', ') : uiText(guildConfig, 'Aucun', 'None');
   const examples = quickExamplesForCommand(command, prefix).slice(0, 3).map((line) => `\`${line}\``).join('\n');
   return new EmbedBuilder()
     .setColor(ensureHexColor(guildConfig?.embedColor))
-    .setTitle(`📘 Commande • ${prefix}${command.name}`)
+    .setTitle(uiText(guildConfig, `📘 Commande • ${prefix}${command.name}`, `📘 Command • ${prefix}${command.name}`))
     .setDescription([
-      command.description || 'Aucune description.',
+      command.description || uiText(guildConfig, 'Aucune description.', 'No description.'),
       '',
-      `**Catégorie :** ${CATEGORY_META[command.category]?.emoji || '•'} ${command.category}`,
-      `**Accès :** ${access.scope}`,
-      `**Permissions :** ${access.perms}`
+      `**${uiText(guildConfig, 'Catégorie', 'Category')} :** ${CATEGORY_META[command.category]?.emoji || '•'} ${command.category}`,
+      `**${uiText(guildConfig, 'Accès', 'Access')} :** ${access.scope}`,
+      `**${uiText(guildConfig, 'Permissions', 'Permissions')} :** ${access.perms}`
     ].join('\n'))
     .addFields(
-      { name: 'Syntaxe principale', value: usage, inline: false },
-      { name: 'Exemples rapides', value: examples, inline: false },
+      { name: uiText(guildConfig, 'Syntaxe principale', 'Main syntax'), value: usage, inline: false },
+      { name: uiText(guildConfig, 'Exemples rapides', 'Quick examples'), value: examples, inline: false },
       { name: 'Alias', value: aliases, inline: false },
       { name: 'Slash', value: slashText, inline: false }
     )
-    .setFooter({ text: 'DvL • aide commande' })
+    .setFooter({ text: uiText(guildConfig, 'DvL • aide commande', 'DvL • command help') })
     .setTimestamp();
 }
 
@@ -3152,16 +3366,18 @@ function chunkLines(lines, size = 12) {
   return chunks.length ? chunks : [[]];
 }
 
-function buildHelpLine(prefix, cmd, category = null) {
+function buildHelpLine(prefix, cmd, category = null, guildConfig = null) {
   const aliasList = cmd.aliases || [];
   const aliasPreview = aliasList.slice(0, category === 'All' ? 1 : 2);
   const usage = String(cmd.usage || cmd.name || '').trim();
   const usageText = usage ? `\`${prefix}${usage}\`` : `\`${prefix}${cmd.name}\``;
-  const aliasText = aliasPreview.length ? `
-↳ alias : ${aliasPreview.map((a) => `\`${prefix}${a}\``).join(', ')}${aliasList.length > aliasPreview.length ? ' …' : ''}` : '';
+  const aliasText = aliasPreview.length
+    ? `
+↳ ${uiText(guildConfig, 'alias', 'aliases')} : ${aliasPreview.map((a) => `\`${prefix}${a}\``).join(', ')}${aliasList.length > aliasPreview.length ? ' …' : ''}`
+    : '';
   const categoryText = category === 'All' ? ` • ${CATEGORY_META[cmd.category]?.emoji || '•'} ${cmd.category}` : '';
   return `**\`${prefix}${cmd.name}\`**${categoryText}
-↳ syntaxe : ${usageText}${aliasText}`;
+↳ ${uiText(guildConfig, 'syntaxe', 'syntax')} : ${usageText}${aliasText}`;
 }
 
 function getSetupHelpPages() {
@@ -3183,61 +3399,64 @@ const HELP_SPECIAL_PAGES = {
   member: 'members',
   user: 'members',
   users: 'members',
-  fix: 'repair',
-  repair: 'repair',
-  doctor: 'repair'
+  health: 'health',
+  status: 'health',
+  sante: 'health',
+  fix: 'health',
+  repair: 'health',
+  doctor: 'health'
 };
 
 function createSpecialHelpEmbed(guildConfig, kind = 'start') {
   const prefix = guildConfig?.prefix || '+';
   if (kind === 'start') {
-    return baseEmbed(guildConfig, '🚀 Aide • Démarrage rapide', [
-      'Commence par les bases propres, puis affine le reste.',
+    return baseEmbed(guildConfig, uiText(guildConfig, '🚀 Aide • Démarrage rapide', '🚀 Help • Quick start'), [
+      uiText(guildConfig, 'Commence par les bases propres, puis affine le reste.', 'Set up the clean essentials first, then polish the rest.'),
       '',
-      `1. \`${prefix}logs here\` ou \`${prefix}logs panel\``,
+      `1. \`${prefix}logs here\` ${uiText(guildConfig, 'ou', 'or')} \`${prefix}logs panel\``,
       `2. \`${prefix}support panel\``,
-      `3. \`${prefix}welcome\` et \`${prefix}leave\``,
-      `4. \`${prefix}stats setup\` si tu veux les compteurs`,
+      `3. \`${prefix}welcome\` ${uiText(guildConfig, 'et', 'and')} \`${prefix}leave\``,
+      `4. \`${prefix}stats setup\` ${uiText(guildConfig, 'si tu veux les compteurs', 'if you want live counters')}`,
       '',
-      '**Raccourcis utiles**',
+      `**${uiText(guildConfig, 'Raccourcis utiles', 'Useful shortcuts')}**`,
       `• \`${prefix}setup check\``,
       `• \`${prefix}panel\``,
       `• \`${prefix}dashboard\``
     ].join('\n'));
   }
   if (kind === 'staff') {
-    return baseEmbed(guildConfig, '🛠️ Aide • Staff', [
-      '**Routine utile**',
+    return baseEmbed(guildConfig, uiText(guildConfig, '🛠️ Aide • Staff', '🛠️ Help • Staff'), [
+      `**${uiText(guildConfig, 'Routine utile', 'Useful routine')}**`,
       `• Logs : \`${prefix}logs view\` • \`${prefix}logs panel\``,
       `• Support : \`${prefix}support panel\` • \`${prefix}reply\``,
-      `• Sécurité : \`${prefix}security\` • \`${prefix}wl list\``,
+      `• ${uiText(guildConfig, 'Sécurité', 'Security')} : \`${prefix}security\` • \`${prefix}wl list\``,
       `• Tracking : \`${prefix}stats\` • \`${prefix}tracking\``,
       '',
-      '**Contrôles rapides**',
+      `**${uiText(guildConfig, 'Contrôles rapides', 'Fast checks')}**`,
       `• \`${prefix}setup check\``,
       `• \`${prefix}backup list\``,
       `• \`${prefix}dashboard\``
     ].join('\n'));
   }
   if (kind === 'members') {
-    return baseEmbed(guildConfig, '👥 Aide • Membres', [
-      `Besoin du staff ? Utilise \`${prefix}support ton message\` dans le serveur ou envoie un MP au bot.`,
-      'Les boutons de rôles se trouvent sur le role panel si le serveur en utilise un.',
-      'Les contrôles voc temporaires sont sur le voice panel si activé.',
+    return baseEmbed(guildConfig, uiText(guildConfig, '👥 Aide • Membres', '👥 Help • Members'), [
+      uiText(guildConfig, `Besoin du staff ? Utilise \`${prefix}support ton message\` dans le serveur ou envoie un MP au bot.`, `Need the staff? Use \`${prefix}support your message\` in the server or DM the bot.`),
+      uiText(guildConfig, 'Les boutons de rôles se trouvent sur le role panel si le serveur en utilise un.', 'Role buttons live on the role panel if the server uses one.'),
+      uiText(guildConfig, 'Les contrôles voc temporaires sont sur le voice panel si activé.', 'Temp voice controls are on the voice panel if enabled.'),
       '',
-      '**Commandes simples**',
+      `**${uiText(guildConfig, 'Commandes simples', 'Simple commands')}**`,
       `• \`${prefix}help\``,
       `• \`${prefix}invite\``,
       `• \`${prefix}serverinfo\``,
       `• \`${prefix}userinfo\``
     ].join('\n'));
   }
-  return baseEmbed(guildConfig, '🩺 Aide • Santé', [
-    'La plupart des erreurs de setup sont corrigées automatiquement.',
+  return baseEmbed(guildConfig, uiText(guildConfig, '🩺 Aide • Santé', '🩺 Help • Health'), [
+    uiText(guildConfig, 'La plupart des erreurs de setup sont corrigées automatiquement.', 'Most setup mistakes are auto-corrected now.'),
     '',
-    `Utilise \`${prefix}setup check\` pour un contrôle clair.`,
-    `Utilise \`${prefix}panel\` pour modifier logs, textes, support et automation.`,
-    `Utilise \`${prefix}stats refresh\` seulement si tu veux forcer les compteurs.`
+    `\`${prefix}setup check\` ${uiText(guildConfig, 'pour un contrôle clair', 'for a clean overview')}.`,
+    `\`${prefix}panel\` ${uiText(guildConfig, 'pour modifier logs, textes, support et automation', 'to tweak logs, texts, support and automation')}.`,
+    `\`${prefix}stats refresh\` ${uiText(guildConfig, 'seulement si tu veux forcer les compteurs', 'only if you want to force the counters')}.`
   ].join('\n'));
 }
 
@@ -3282,7 +3501,7 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
   const embed = new EmbedBuilder()
     .setColor(ensureHexColor(guildConfig?.embedColor))
     .setTimestamp()
-    .setFooter({ text: 'DvL • aide' });
+    .setFooter({ text: uiText(guildConfig, 'DvL • aide', 'DvL • help') });
 
   const commands = client.commandRegistry.filter((cmd) => !cmd.hidden);
   const info = getHelpTargetInfo(client, target);
@@ -3295,21 +3514,21 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
   if (category === 'Home') {
     const configCount = new Set(Object.values(CONFIG_HELP_GROUPS).flat()).size;
     embed
-      .setTitle('✨ Centre d’aide DvL')
+      .setTitle(uiText(guildConfig, '✨ Centre d’aide DvL', '✨ DvL help center'))
       .setDescription([
-        'Les hubs principaux sont ici : aide, panel, dashboard, support et setup.',
+        uiText(guildConfig, 'Les hubs principaux sont ici : aide, panel, dashboard, support et setup.', 'Main hubs are here: help, panel, dashboard, support and setup.'),
         '',
-        `**Préfixe :** \`${prefix}\``,
-        `**Commandes visibles :** **${commands.length}**`,
+        `**${uiText(guildConfig, 'Préfixe', 'Prefix')} :** \`${prefix}\``,
+        `**${uiText(guildConfig, 'Commandes visibles', 'Visible commands')} :** **${commands.length}**`,
         `**Alias :** **${commands.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}**`,
         '',
-        `**Exemples :** \`${prefix}help logs\` • \`${prefix}help support\` • \`${prefix}help +ban\` • \`${prefix}panel\``
+        `**${uiText(guildConfig, 'Exemples', 'Examples')} :** \`${prefix}help logs\` • \`${prefix}help support\` • \`${prefix}help +ban\` • \`${prefix}panel\``
       ].join('\n'))
       .addFields(
-        { name: '🧩 Setup', value: `**${configCount}** commande(s) de configuration`, inline: true },
-        { name: '📂 Catégories', value: 'Parcours propre par famille de commandes.', inline: true },
-        { name: '📚 Liste complète', value: `\`${prefix}help all\``, inline: true },
-        { name: '🚀 Démarrage', value: `\`${prefix}help start\``, inline: true },
+        { name: '🧩 Setup', value: uiText(guildConfig, `**${configCount}** commande(s) de configuration`, `**${configCount}** setup command(s)`), inline: true },
+        { name: uiText(guildConfig, '📂 Catégories', '📂 Categories'), value: uiText(guildConfig, 'Parcours propre par famille de commandes.', 'Clean browse by command family.'), inline: true },
+        { name: uiText(guildConfig, '📚 Liste complète', '📚 Full list'), value: `\`${prefix}help all\``, inline: true },
+        { name: uiText(guildConfig, '🚀 Démarrage', '🚀 Start'), value: `\`${prefix}help start\``, inline: true },
         { name: '🛠️ Staff', value: `\`${prefix}help staff\``, inline: true },
         { name: '📨 Support', value: `\`${prefix}help support\``, inline: true }
       );
@@ -3323,15 +3542,15 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     const pages = chunkLines(visibleCategories, 10);
     const current = pages[safePage - 1] || [];
     embed
-      .setTitle('📂 Catégories')
+      .setTitle(uiText(guildConfig, '📂 Catégories', '📂 Categories'))
       .setDescription([
-        `Page **${safePage}/${pages.length}** • choisis une famille avec les boutons dessous.`,
-        `Tu peux aussi chercher directement une commande avec \`${prefix}help +commande\`.`
+        uiText(guildConfig, `Page **${safePage}/${pages.length}** • choisis une famille avec les boutons dessous.`, `Page **${safePage}/${pages.length}** • choose a family with the buttons below.`),
+        uiText(guildConfig, `Tu peux aussi chercher directement une commande avec \`${prefix}help +commande\`.`, `You can also search directly for one command with \`${prefix}help +command\`.`)
       ].join('\n'));
     current.forEach((name) => {
       embed.addFields({
-        name: `${CATEGORY_META[name]?.emoji || '•'} ${name}`,
-        value: [`**${grouped[name] || 0}** commande(s)`, CATEGORY_BLURBS[name] || ''].filter(Boolean).join('\n'),
+        name: `${CATEGORY_META[name]?.emoji || '•'} ${categoryLabelFor(guildConfig, name)}` ,
+        value: [uiText(guildConfig, `**${grouped[name] || 0}** commande(s)`, `**${grouped[name] || 0}** command(s)`), categoryBlurbFor(guildConfig, name)].filter(Boolean).join('\n'),
         inline: true
       });
     });
@@ -3342,10 +3561,10 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     const setupPages = getSetupHelpPages();
     const currentGroups = setupPages[safePage - 1] || [];
     embed
-      .setTitle('🧩 Centre setup')
+      .setTitle(uiText(guildConfig, '🧩 Centre setup', '🧩 Setup center'))
       .setDescription([
-        'Vue propre pour configurer le serveur sans te perdre dans les anciennes commandes.',
-        `Raccourcis : \`${prefix}setup\` • \`${prefix}system\` • \`${prefix}logs\` • \`${prefix}help tracking\` • \`${prefix}help support\``,
+        uiText(guildConfig, 'Vue propre pour configurer le serveur sans te perdre dans les anciennes commandes.', 'Clean overview to configure the server without getting lost in old commands.'),
+        uiText(guildConfig, `Raccourcis : \`${prefix}setup\` • \`${prefix}system\` • \`${prefix}logs\` • \`${prefix}help tracking\` • \`${prefix}help support\``, `Shortcuts: \`${prefix}setup\` • \`${prefix}system\` • \`${prefix}logs\` • \`${prefix}help tracking\` • \`${prefix}help support\``),
         `Page **${safePage}/${setupPages.length}**`
       ].join('\n'));
 
@@ -3354,49 +3573,52 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
         .map((name) => client.commandRegistry.find((cmd) => cmd.name === name))
         .filter(Boolean)
         .map((cmd) => {
-          const aliasText = cmd.aliases?.length ? ` • alias : ${cmd.aliases.slice(0, 2).map((a) => `\`${prefix}${a}\``).join(', ')}` : '';
+          const aliasText = cmd.aliases?.length ? ` • ${uiText(guildConfig, 'alias', 'aliases')} : ${cmd.aliases.slice(0, 2).map((a) => `\`${prefix}${a}\``).join(', ')}` : '';
           return `**\`${prefix}${cmd.name}\`** — \`${prefix}${cmd.usage || cmd.name}\`${aliasText}`;
         });
       const chunks = chunkLines(lines, 4);
       chunks.forEach((chunk, index) => {
-        if (chunk.length) embed.addFields({ name: index === 0 ? groupName : `${groupName} (suite)`, value: chunk.join('\n').slice(0, 1024), inline: false });
+        if (chunk.length) {
+          const setupLabel = setupGroupLabelFor(guildConfig, groupName);
+          embed.addFields({ name: index === 0 ? setupLabel : uiText(guildConfig, `${setupLabel} (suite)`, `${setupLabel} (cont.)`), value: chunk.join('\n').slice(0, 1024), inline: false });
+        }
       });
     }
 
-    if (!currentGroups.length) embed.addFields({ name: 'Setup', value: 'Aucun groupe trouvé.', inline: false });
+    if (!currentGroups.length) embed.addFields({ name: 'Setup', value: uiText(guildConfig, 'Aucun groupe trouvé.', 'No setup group found.'), inline: false });
     return embed;
   }
 
   const selectedCommands = commands
     .filter((cmd) => category === 'All' ? true : cmd.category === category)
     .sort((a, b) => category === 'All' ? (a.category.localeCompare(b.category) || a.name.localeCompare(b.name)) : a.name.localeCompare(b.name));
-  const selected = selectedCommands.map((cmd) => buildHelpLine(prefix, cmd, category));
+  const selected = selectedCommands.map((cmd) => buildHelpLine(prefix, cmd, category, guildConfig));
   const pages = chunkLines(selected, 5);
   const currentLines = pages[safePage - 1] || [];
 
-  embed.setTitle(`${CATEGORY_META[category]?.emoji || '•'} ${category}`);
+  embed.setTitle(`${CATEGORY_META[category]?.emoji || '•'} ${categoryLabelFor(guildConfig, category)}`);
 
   const intro = [];
-  intro.push(`Page **${safePage}/${pages.length}** • **${selectedCommands.length}** commande(s).`);
-  intro.push(`Utilise \`${prefix}help +<commande>\` pour une fiche détaillée.`);
-  if (category === 'All') intro.push('Liste complète découpée en pages pour rester lisible.');
+  intro.push(uiText(guildConfig, `Page **${safePage}/${pages.length}** • **${selectedCommands.length}** commande(s).`, `Page **${safePage}/${pages.length}** • **${selectedCommands.length}** command(s).`));
+  intro.push(uiText(guildConfig, `Utilise \`${prefix}help +<commande>\` pour une fiche détaillée.`, `Use \`${prefix}help +<command>\` for a detailed card.`));
+  if (category === 'All') intro.push(uiText(guildConfig, 'Liste complète découpée en pages pour rester lisible.', 'Full list split into pages to stay readable.'));
   if (category === 'System') intro.push(`Tout ce qui touche à \`${prefix}dashboard\`, \`${prefix}panel\`, \`${prefix}modules\` et \`${prefix}setupcheck\`.`);
-  if (category === 'Tracking') intro.push('Compteurs, invites et refresh sont regroupés ici.');
-  if (category === 'Support') intro.push(`Membres : \`${prefix}support <message>\` • Staff : \`${prefix}reply @user <texte>\`.`);
+  if (category === 'Tracking') intro.push(uiText(guildConfig, 'Compteurs, invites et refresh sont regroupés ici.', 'Counters, invites and refresh tools are grouped here.'));
+  if (category === 'Support') intro.push(uiText(guildConfig, `Membres : \`${prefix}support <message>\` • Staff : \`${prefix}reply @user <texte>\`.`, `Members: \`${prefix}support <message>\` • Staff: \`${prefix}reply @user <text>\`.`));
   if (category === 'Permissions') intro.push(`Niveaux : \`${prefix}permrole 1 @Role\` • commandes : \`${prefix}permcmd 1 add timeout\`.`);
-  if (category === 'Voice') intro.push('Déplacements voc, temp voice et modération voc.');
+  if (category === 'Voice') intro.push(uiText(guildConfig, 'Déplacements voc, temp voice et modération voc.', 'Voice moves, temp voice and voice moderation.'));
   if (category === 'Logs') intro.push(`Utilise \`${prefix}logs view\`, \`${prefix}logs types\` ou \`${prefix}logs panel\`.`);
-  if (category === 'Security') intro.push('Ghost ping, anti-spam et presets sécurité sont regroupés ici.');
-  if (category === 'Automation') intro.push('Sticky, auto-react et automatisations pratiques.');
-  if (category === 'Progress') intro.push('Trophées, milestones et progression serveur.');
+  if (category === 'Security') intro.push(uiText(guildConfig, 'Ghost ping, anti-spam et presets sécurité sont regroupés ici.', 'Ghost ping, anti-spam and security presets are grouped here.'));
+  if (category === 'Automation') intro.push(uiText(guildConfig, 'Sticky, auto-react et automatisations pratiques.', 'Sticky, auto-react and practical automations.'));
+  if (category === 'Progress') intro.push(uiText(guildConfig, 'Trophées, milestones et progression serveur.', 'Trophies, milestones and server progress.'));
   embed.setDescription(intro.join('\n'));
 
   const fieldChunks = chunkLines(currentLines, 3);
   if (!currentLines.length) {
-    embed.addFields({ name: 'Commandes', value: 'Aucune commande ici.', inline: false });
+    embed.addFields({ name: uiText(guildConfig, 'Commandes', 'Commands'), value: uiText(guildConfig, 'Aucune commande ici.', 'No commands here.'), inline: false });
   } else {
     fieldChunks.forEach((chunk, idx) => embed.addFields({
-      name: idx === 0 ? 'Commandes' : 'Suite',
+      name: idx === 0 ? uiText(guildConfig, 'Commandes', 'Commands') : uiText(guildConfig, 'Suite', 'More'),
       value: chunk.join('\n').slice(0, 1024),
       inline: false
     }));
@@ -3404,19 +3626,19 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
   return embed;
 }
 
-function createHelpComponents(current = 'Home', page = 1, totalPages = 1) {
+function createHelpComponents(current = 'Home', page = 1, totalPages = 1, guildConfig = null) {
   const rows = [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('help:Home:1').setLabel('🏠 Accueil').setStyle(current === 'Home' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('help:Home:1').setLabel(uiText(guildConfig, '🏠 Accueil', '🏠 Home')).setStyle(current === 'Home' ? ButtonStyle.Success : ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('help:Setup:1').setLabel('🧩 Setup').setStyle(current === 'Setup' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('help:Categories:1').setLabel('📂 Catégories').setStyle(current === 'Categories' ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('help:All:1').setLabel('📚 Tout').setStyle(current === 'All' ? ButtonStyle.Success : ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('help:Categories:1').setLabel(uiText(guildConfig, '📂 Catégories', '📂 Categories')).setStyle(current === 'Categories' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('help:All:1').setLabel(uiText(guildConfig, '📚 Tout', '📚 All')).setStyle(current === 'All' ? ButtonStyle.Success : ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('help:start:1').setLabel('🚀 Début').setStyle(current === 'start' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:start:1').setLabel(uiText(guildConfig, '🚀 Début', '🚀 Start')).setStyle(current === 'start' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('help:staff:1').setLabel('🛠️ Staff').setStyle(current === 'staff' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('help:members:1').setLabel('👥 Membres').setStyle(current === 'members' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('help:Support:1').setLabel('📨 Support').setStyle(current === 'Support' ? ButtonStyle.Success : ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('help:members:1').setLabel(uiText(guildConfig, '👥 Membres', '👥 Members')).setStyle(current === 'members' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:health:1').setLabel(uiText(guildConfig, '🩺 Santé', '🩺 Health')).setStyle(current === 'health' ? ButtonStyle.Success : ButtonStyle.Secondary)
     )
   ];
 
@@ -3427,8 +3649,8 @@ function createHelpComponents(current = 'Home', page = 1, totalPages = 1) {
     const currentChunk = visibleCategories.slice((safePage - 1) * 10, safePage * 10);
     if (visibleCategories.length > 10) {
       rows.push(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.max(1, safePage - 1)}`).setLabel('⬅️ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(safePage <= 1),
-        new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.min(totalCategoryPages, safePage + 1)}`).setLabel('Suivant ➡️').setStyle(ButtonStyle.Secondary).setDisabled(safePage >= totalCategoryPages)
+        new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.max(1, safePage - 1)}`).setLabel(uiText(guildConfig, '⬅️ Précédent', '⬅️ Prev')).setStyle(ButtonStyle.Secondary).setDisabled(safePage <= 1),
+        new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.min(totalCategoryPages, safePage + 1)}`).setLabel(uiText(guildConfig, 'Suivant ➡️', 'Next ➡️')).setStyle(ButtonStyle.Secondary).setDisabled(safePage >= totalCategoryPages)
       ));
     }
     for (let i = 0; i < currentChunk.length; i += 5) {
@@ -3436,7 +3658,7 @@ function createHelpComponents(current = 'Home', page = 1, totalPages = 1) {
       rows.push(new ActionRowBuilder().addComponents(
         ...chunk.map((category) => new ButtonBuilder()
           .setCustomId(`help:${category}:1`)
-          .setLabel(`${CATEGORY_META[category]?.emoji || '•'} ${category}`)
+          .setLabel(`${CATEGORY_META[category]?.emoji || '•'} ${categoryLabelFor(guildConfig, category)}`)
           .setStyle(ButtonStyle.Secondary))
       ));
     }
@@ -3445,16 +3667,16 @@ function createHelpComponents(current = 'Home', page = 1, totalPages = 1) {
 
   if (current === 'Setup' && totalPages > 1) {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`helpnav:Setup:${Math.max(1, page - 1)}`).setLabel('⬅️ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(page <= 1),
-      new ButtonBuilder().setCustomId(`helpnav:Setup:${Math.min(totalPages, page + 1)}`).setLabel('Suivant ➡️').setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages)
+      new ButtonBuilder().setCustomId(`helpnav:Setup:${Math.max(1, page - 1)}`).setLabel(uiText(guildConfig, '⬅️ Précédent', '⬅️ Prev')).setStyle(ButtonStyle.Secondary).setDisabled(page <= 1),
+      new ButtonBuilder().setCustomId(`helpnav:Setup:${Math.min(totalPages, page + 1)}`).setLabel(uiText(guildConfig, 'Suivant ➡️', 'Next ➡️')).setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages)
     ));
     return rows;
   }
 
   if (totalPages > 1) {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`helpnav:${current}:${Math.max(1, page - 1)}`).setLabel('⬅️ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(page <= 1),
-      new ButtonBuilder().setCustomId(`helpnav:${current}:${Math.min(totalPages, page + 1)}`).setLabel('Suivant ➡️').setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages)
+      new ButtonBuilder().setCustomId(`helpnav:${current}:${Math.max(1, page - 1)}`).setLabel(uiText(guildConfig, '⬅️ Précédent', '⬅️ Prev')).setStyle(ButtonStyle.Secondary).setDisabled(page <= 1),
+      new ButtonBuilder().setCustomId(`helpnav:${current}:${Math.min(totalPages, page + 1)}`).setLabel(uiText(guildConfig, 'Suivant ➡️', 'Next ➡️')).setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages)
     ));
   }
   return rows;
@@ -3493,7 +3715,7 @@ function createLogsPanelComponents(guildConfig, page = 1) {
       new ButtonBuilder().setCustomId(`logpanel:master:${logs.enabled ? 'off' : 'on'}:${safePage}`).setLabel(logs.enabled ? 'Disable logs' : 'Enable logs').setStyle(logs.enabled ? ButtonStyle.Danger : ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`logpanel:setdefault:${safePage}`).setLabel('Set Default Here').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`logpanel:setroute:${group.key}:${safePage}`).setLabel(`Set ${group.key}`).setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId(`logpanel:refresh:${safePage}`).setLabel('Actualiser').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId(`logpanel:refresh:${safePage}`).setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setStyle(ButtonStyle.Secondary)
     )
   ];
   for (let i = 0; i < group.types.length; i += 4) {
@@ -3525,14 +3747,14 @@ function createVoicePanelEmbed(guildConfig) {
   ].join('\n'));
 }
 
-function createVoicePanelComponents() {
+function createVoicePanelComponents(guildConfig = null) {
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('voicehub:create').setLabel('Create / Join').setEmoji('🔊').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('voicectl:claim').setLabel('Claim Crown').setEmoji('👑').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('voicectl:rename').setLabel('Rename').setEmoji('✏️').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('voicectl:delete').setLabel('Delete').setEmoji('🗑️').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('voicectl:refresh').setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('voicectl:refresh').setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('voicectl:lock').setLabel('Lock').setEmoji('🔒').setStyle(ButtonStyle.Secondary),
@@ -3569,6 +3791,42 @@ function buildSlashCommands(commands) {
   return [...roots.values()].map((builder) => builder.toJSON());
 }
 
+function buildRolesHubEmbed(guildConfig, prefix = '+') {
+  const roles = guildConfig.roles || {};
+  const render = (ids) => Array.isArray(ids) && ids.length ? ids.map((roleId) => `<@&${roleId}>`).join(', ') : uiText(guildConfig, 'aucun', 'none');
+  const statusRole = roles.statusRole || {};
+  return baseEmbed(
+    guildConfig,
+    uiText(guildConfig, '🎭 Hub rôles', '🎭 Roles hub'),
+    uiText(guildConfig, 'Vue propre pour les auto-rôles, les panels de rôles et le rôle de statut.', 'Clean view for auto roles, role panels and the status role.')
+  ).addFields(
+    {
+      name: uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'),
+      value: [
+        `**${uiText(guildConfig, 'Auto-rôles (tous)', 'Auto roles (all)')} :** ${render(roles.autoRoles || [])}`,
+        `**${uiText(guildConfig, 'Auto-rôles (humains)', 'Auto roles (humans)')} :** ${render(roles.autoRolesHumans || [])}`,
+        `**${uiText(guildConfig, 'Auto-rôles (bots)', 'Auto roles (bots)')} :** ${render(roles.autoRolesBots || [])}`,
+        `**${uiText(guildConfig, 'Rôle de statut', 'Status role')} :** ${statusRole.roleId ? `<@&${statusRole.roleId}>` : uiText(guildConfig, 'désactivé', 'off')}${statusRole.matchText ? ` • ${uiText(guildConfig, 'texte', 'match')} \`${statusRole.matchText}\`` : ''}`,
+        `**${uiText(guildConfig, 'Panels boutons', 'Button panels')} :** ${Object.keys(roles.rolePanels || {}).length}`,
+        `**${uiText(guildConfig, 'Panels réactions', 'Reaction panels')} :** ${Object.keys(roles.reactionRoles || {}).length}`
+      ].join('\n').slice(0, 1024),
+      inline: false
+    },
+    {
+      name: uiText(guildConfig, '⚡ Actions rapides', '⚡ Quick actions'),
+      value: [
+        `\`${prefix}roles user @user\``,
+        `\`${prefix}roles add @user @role\``,
+        `\`${prefix}roles remove @user @role\``,
+        `\`${prefix}roles mass add @Role humans\``,
+        `\`${prefix}autorole add @Member\``
+      ].join('\n'),
+      inline: false
+    }
+  );
+}
+
+
 function createCommands() {
   const commands = [
     makeSimpleCommand({
@@ -3601,7 +3859,7 @@ function createCommands() {
         const info = getHelpTargetInfo(ctx.client, lookup);
         const current = info.category || 'Home';
         const safePage = Math.min(Math.max(1, page), info.totalPages || 1);
-        await ctx.reply({ embeds: [createHelpEmbed(ctx.client, ctx.guildConfig, lookup, safePage)], components: createHelpComponents(current, safePage, info.totalPages || 1) });
+        await ctx.reply({ embeds: [createHelpEmbed(ctx.client, ctx.guildConfig, lookup, safePage)], components: createHelpComponents(current, safePage, info.totalPages || 1, ctx.guildConfig) });
       }
     }),
     makeSimpleCommand({
@@ -3731,7 +3989,7 @@ function createCommands() {
       async execute(ctx) {
         const raw = String(ctx.getText('page', 0) || ctx.args[0] || 'home').toLowerCase();
         const page = ['home', 'setup', 'logs', 'security', 'voice', 'automation', 'progress'].includes(raw) ? raw : 'home';
-        await ctx.reply({ embeds: [createDashboardEmbed(ctx.guildConfig, ctx.guild, page)], components: createDashboardComponents(page) });
+        await ctx.reply({ embeds: [createDashboardEmbed(ctx.guildConfig, ctx.guild, page)], components: createDashboardComponents(page, ctx.guildConfig) });
       }
     }),
 
@@ -3767,7 +4025,7 @@ function createCommands() {
         const section = String(ctx.getText('section', 0) || ctx.args[0] || 'view').toLowerCase();
         if (['view', 'home', 'guide', 'start'].includes(section)) return ctx.reply({ embeds: [buildSetupHubEmbed(ctx.guildConfig, ctx.prefix)] });
         if (section === 'system') return ctx.reply({ embeds: [buildSystemHubEmbed(ctx.guildConfig, ctx.prefix)] });
-        if (section === 'check') return ctx.reply({ embeds: [createSetupCheckEmbed(ctx.guildConfig, ctx.guild)], components: createDashboardComponents('setup') });
+        if (section === 'check') return ctx.reply({ embeds: [createSetupCheckEmbed(ctx.guildConfig, ctx.guild)], components: createDashboardComponents('setup', ctx.guildConfig) });
         if (section === 'doctor' || section === 'repair') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🩺 Setup • Health', [
           'Most setup fixes are automatic now.',
           `Use \`${ctx.prefix}setup check\` for a readable overview.`,
@@ -3870,13 +4128,13 @@ function createCommands() {
       async execute(ctx) {
         const action = String(ctx.args[0] || 'view').toLowerCase();
         if (['view', 'config', 'show', 'list', 'home', 'status'].includes(action)) return ctx.reply({ embeds: [buildSystemHubEmbed(ctx.guildConfig, ctx.prefix)] });
-        if (['dashboard', 'dash'].includes(action)) return ctx.reply({ embeds: [createDashboardEmbed(ctx.guildConfig, ctx.guild, 'home')], components: createDashboardComponents('home') });
-        if (['panel', 'configpanel'].includes(action)) return ctx.reply({ embeds: [createConfigPanelEmbed(ctx.guildConfig, ctx.guild, 'home', ctx.channel)], components: createConfigPanelComponents('home', ctx.channel?.id) });
+        if (['dashboard', 'dash'].includes(action)) return ctx.reply({ embeds: [createDashboardEmbed(ctx.guildConfig, ctx.guild, 'home')], components: createDashboardComponents('home', ctx.guildConfig) });
+        if (['panel', 'configpanel'].includes(action)) return ctx.reply({ embeds: [createConfigPanelEmbed(ctx.guildConfig, ctx.guild, 'home', ctx.channel)], components: createConfigPanelComponents('home', ctx.channel?.id, ctx.guildConfig) });
         if (action === 'modules') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧩 System • Modules', [
           `Use \`${ctx.prefix}modules\` for the complete module overview.`,
           `Fast path: \`${ctx.prefix}modules\``
         ].join('\n'))] });
-        if (['check', 'setupcheck', 'diagnostic'].includes(action)) return ctx.reply({ embeds: [createSetupCheckEmbed(ctx.guildConfig, ctx.guild)], components: createDashboardComponents('setup') });
+        if (['check', 'setupcheck', 'diagnostic'].includes(action)) return ctx.reply({ embeds: [createSetupCheckEmbed(ctx.guildConfig, ctx.guild)], components: createDashboardComponents('setup', ctx.guildConfig) });
         if (['backup', 'backups'].includes(action)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 System • Backups', [
           `Use \`${ctx.prefix}backup create\` to save the server state.`,
           `Use \`${ctx.prefix}backup list\` to browse saved backups.`
@@ -3944,7 +4202,7 @@ function createCommands() {
               reason: `Voice hub created by ${ctx.user.tag}`
             }).catch(() => null);
           }
-          if (!channel) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔊 Voice hub', 'I could not create the temp voice hub channel.')] });
+          if (!channel) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🔊 Hub vocal', '🔊 Voice hub'), uiText(ctx.guildConfig, 'Je n’ai pas pu créer le salon hub vocal temporaire.', 'I could not create the temp voice hub channel.'))] });
           ctx.store.updateGuild(ctx.guild.id, (guild) => {
             guild.voice = guild.voice || { temp: { panels: {}, channels: {}, defaultLimit: 0, defaultBitrate: null }, moderation: { muteRoleId: null, banRoleId: null } };
             guild.voice.temp = guild.voice.temp || { panels: {}, channels: {}, defaultLimit: 0, defaultBitrate: null };
@@ -3952,9 +4210,9 @@ function createCommands() {
             guild.voice.temp.hubCategoryId = channel.parentId || null;
             return guild;
           });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔊 Voice hub ready', [
-            `Hub channel: ${channel}`,
-            `Use \`${ctx.prefix}voice panel\` in a text channel to post the control panel.`
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🔊 Hub vocal prêt', '🔊 Voice hub ready'), [
+            `${uiText(ctx.guildConfig, 'Salon hub', 'Hub channel')}: ${channel}`,
+            uiText(ctx.guildConfig, `Utilise \`${ctx.prefix}voice panel\` dans un salon texte pour poster le panel vocal.`, `Use \`${ctx.prefix}voice panel\` in a text channel to post the control panel.`)
           ].join('\n'))] });
         }
         if (action === 'muterole' || action === 'banrole') {
@@ -3968,7 +4226,7 @@ function createCommands() {
             else guild.voice.moderation.banRoleId = clear ? null : role.id;
             return guild;
           });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, action === 'muterole' ? '🔇 Voice mute role' : '⛔ Voice ban role', clear ? 'Role cleared.' : `${role} saved.`)] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, action === 'muterole' ? uiText(ctx.guildConfig, '🔇 Rôle mute vocal', '🔇 Voice mute role') : uiText(ctx.guildConfig, '⛔ Rôle ban vocal', '⛔ Voice ban role'), clear ? uiText(ctx.guildConfig, 'Rôle retiré.', 'Role cleared.') : uiText(ctx.guildConfig, `${role} enregistré.`, `${role} saved.`))] });
         }
         return ctx.invalidUsage(`Examples: \`${ctx.prefix}voice\`, \`${ctx.prefix}voice create\`, \`${ctx.prefix}voice panel\`, \`${ctx.prefix}voice muterole @MutedVC\`.`);
       }
@@ -4010,15 +4268,14 @@ function createCommands() {
             mod.raidMode = { ...mod.raidMode, enabled: strictness >= 1, joinAgeMinutes: strictness === 2 ? 20160 : 10080 };
             return guild;
           });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚨 Security preset', `Preset **${preset}** applied.`)] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🚨 Preset sécurité', '🚨 Security preset'), uiText(ctx.guildConfig, `Preset **${preset}** appliqué.`, `Preset **${preset}** applied.`))] });
         }
         if (action === 'ghostping') {
           const sub = String(ctx.args[1] || '').toLowerCase();
           const pickedChannel = await ctx.getChannel('channel', 1);
           if (!sub || sub === 'config') return ctx.reply({ embeds: [buildSecurityHubEmbed(ctx.guildConfig, ctx.prefix)] });
-          if (sub === 'check') return ctx.reply({ embeds: [createLogsOverviewEmbed(ctx.guildConfig, ctx.prefix)] });
+          if (sub === 'check') return ctx.reply({ embeds: [buildSecurityHubEmbed(ctx.guildConfig, ctx.prefix)] });
 
-        if (sub === 'check') return ctx.reply({ embeds: [buildSupportModuleEmbed(ctx.guildConfig, ctx.prefix)] });
 
         if (sub === 'test') {
             const rule = ctx.guildConfig.automod?.ghostPing || { enabled: false, channelId: null };
@@ -4038,7 +4295,7 @@ function createCommands() {
               guild.automod.ghostPing.enabled = sub === 'on';
               return guild;
             });
-            return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👻 Ghost ping', `Ghost ping is now **${sub}**.`)] });
+            return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '👻 Ghost ping', '👻 Ghost ping'), uiText(ctx.guildConfig, `Ghost ping est maintenant **${sub === 'on' ? 'actif' : 'inactif'}**.`, `Ghost ping is now **${sub}**.`))] });
           }
           if (sub === 'here' || pickedChannel) {
             const channel = sub === 'here' ? ctx.channel : pickedChannel;
@@ -4048,7 +4305,7 @@ function createCommands() {
               guild.automod.ghostPing.enabled = true;
               return guild;
             });
-            return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👻 Ghost ping', `Joining members will be pinged in ${channel}.`)] });
+            return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '👻 Ghost ping', '👻 Ghost ping'), uiText(ctx.guildConfig, `Les nouveaux membres seront mentionnés dans ${channel}.`, `Joining members will be pinged in ${channel}.`))] });
           }
           return ctx.invalidUsage(`Examples: \`${ctx.prefix}security ghostping on\`, \`${ctx.prefix}security ghostping here\`, \`${ctx.prefix}security ghostping test\`.`);
         }
@@ -4105,12 +4362,12 @@ function createCommands() {
         if (['view', 'config', 'show', 'list', 'status', 'setup'].includes(action)) return ctx.reply({ embeds: [buildAutomationHubEmbed(ctx.guildConfig, ctx.prefix)] });
         if (['sticky', 'stickies'].includes(action)) {
           const entries = Object.entries(ctx.guildConfig.sticky || {});
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📌 Automation • Sticky', entries.length ? entries.map(([channelId, entry]) => `**<#${channelId}>**\n${clipText(entry.message, 140)}`).join('\n\n') : `No sticky messages set. Use \`${ctx.prefix}stickyset <message>\` in the target channel.`)] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '📌 Automation • Sticky', '📌 Automation • Sticky'), entries.length ? entries.map(([channelId, entry]) => `**<#${channelId}>**\n${clipText(entry.message, 140)}`).join('\n\n') : uiText(ctx.guildConfig, `Aucun sticky configuré. Utilise \`${ctx.prefix}stickyset <message>\` dans le salon cible.`, `No sticky messages set. Use \`${ctx.prefix}stickyset <message>\` in the target channel.`))] });
         }
         if (['autoreact', 'react'].includes(action)) {
           const entries = Object.entries(ctx.guildConfig.autoReact?.channels || {});
-          const lines = entries.length ? entries.slice(0, 10).map(([channelId, entry]) => `• <#${channelId}> • ${entry.enabled === false ? 'off' : 'on'} • mode ${entry.mode || 'all'} • count ${entry.count || 1}`) : [`No auto-react channels set. Use \`${ctx.prefix}autoreact config\`.`];
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '😄 Automation • Auto-react', lines.join('\n'))] });
+          const lines = entries.length ? entries.slice(0, 10).map(([channelId, entry]) => `• <#${channelId}> • ${entry.enabled === false ? uiText(ctx.guildConfig, 'off', 'off') : uiText(ctx.guildConfig, 'on', 'on')} • mode ${entry.mode || 'all'} • count ${entry.count || 1}`) : [uiText(ctx.guildConfig, `Aucun salon auto-react. Utilise \`${ctx.prefix}autoreact config\`.`, `No auto-react channels set. Use \`${ctx.prefix}autoreact config\`.`)];
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '😄 Automation • Auto-react', '😄 Automation • Auto-react'), lines.join('\n'))] });
         }
         return ctx.invalidUsage(`Examples: \`${ctx.prefix}automation\`, \`${ctx.prefix}automation sticky\`, \`${ctx.prefix}automation autoreact\`.`);
       }
@@ -4266,7 +4523,7 @@ URL: ${preferredUrl}`)] });
         if (sub === 'setup') {
           const categoryName = ctx.args.slice(1).join(' ').trim() || '🧾 Logs';
           const result = await setupLogsBundle(ctx, categoryName);
-          if (!result) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧾 Logs setup', 'I could not create the logs category or channels. Check my channel permissions.')] });
+          if (!result) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🧾 Setup logs', '🧾 Logs setup'), uiText(ctx.guildConfig, 'Je n’ai pas pu créer la catégorie logs ou ses salons. Vérifie mes permissions salon.', 'I could not create the logs category or channels. Check my channel permissions.'))] });
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧾 Logs ready', [
             `Category: ${result.category}`,
             `Default: ${result.channels.default || 'not created'}`,
@@ -4294,7 +4551,7 @@ URL: ${preferredUrl}`)] });
             guild.logs.enabled = sub === 'on';
             return guild;
           });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧾 Logs updated', `Logs are now **${sub}**.`)] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🧾 Logs mis à jour', '🧾 Logs updated'), uiText(ctx.guildConfig, `Les logs sont maintenant **${sub === 'on' ? 'actifs' : 'inactifs'}**.`, `Logs are now **${sub}**.`))] });
         }
 
         if (['enable', 'disable'].includes(sub)) {
@@ -4321,7 +4578,6 @@ ${types.map((type) => `• ${getLogTypeLabel(type)}`).join('\n')}`)] });
 
         if (sub === 'check') return ctx.reply({ embeds: [createLogsOverviewEmbed(ctx.guildConfig, ctx.prefix)] });
 
-        if (sub === 'check') return ctx.reply({ embeds: [buildSupportModuleEmbed(ctx.guildConfig, ctx.prefix)] });
 
         if (sub === 'test') {
           const wanted = String(ctx.args[1] || 'all').toLowerCase();
@@ -4526,7 +4782,8 @@ Route resolved to ${channel}.`)] }).catch(() => null);
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧾 Log test', results.join('\n'))] });
       }
     }),
-    makeSimpleCommand({
+    
+makeSimpleCommand({
       name: 'roles',
       aliases: ['rolehub', 'rolesetup', 'roleshelp'],
       category: 'Roles',
@@ -4539,24 +4796,11 @@ Route resolved to ${channel}.`)] }).catch(() => null);
         const render = (ids) => ids.length ? ids.map((roleId) => `<@&${roleId}>`).join(', ') : 'none';
 
         if (['view', 'list', 'show', 'help', 'status'].includes(sub)) {
-          const statusRole = ctx.guildConfig.roles?.statusRole || {};
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎭 Roles hub', [
-            `**Auto roles (all):** ${render(ctx.guildConfig.roles?.autoRoles || [])}`,
-            `**Auto roles (humans):** ${render(ctx.guildConfig.roles?.autoRolesHumans || [])}`,
-            `**Auto roles (bots):** ${render(ctx.guildConfig.roles?.autoRolesBots || [])}`,
-            `**Status role:** ${statusRole.roleId ? `<@&${statusRole.roleId}>` : 'off'}${statusRole.matchText ? ` • matches \`${statusRole.matchText}\`` : ''}`,
-            '',
-            `Quick examples:`,
-            `• \`${ctx.prefix}roles user @user\``,
-            `• \`${ctx.prefix}roles add @user @role\``,
-            `• \`${ctx.prefix}roles remove @user @role\``,
-            `• \`${ctx.prefix}roles mass add @Event humans\``,
-            `• \`${ctx.prefix}autorole add @Member\``
-          ].join('\n'))] });
+          return ctx.reply({ embeds: [buildRolesHubEmbed(ctx.guildConfig, ctx.prefix)] });
         }
 
         if (sub === 'autorole') {
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎭 Auto role shortcuts', [
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🎭 Raccourcis auto-rôles', '🎭 Auto role shortcuts'), [
             `• \`${ctx.prefix}autorole view\``,
             `• \`${ctx.prefix}autorole add @Member\``,
             `• \`${ctx.prefix}autorole humans add @Member\``,
@@ -4567,7 +4811,7 @@ Route resolved to ${channel}.`)] }).catch(() => null);
         if (sub === 'panels') {
           const buttonPanels = Object.keys(ctx.guildConfig.roles?.rolePanels || {}).length;
           const reactionPanels = Object.keys(ctx.guildConfig.roles?.reactionRoles || {}).length;
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎭 Role panels', [
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🎭 Panels de rôles', '🎭 Role panels'), [
             `**Button panels:** ${buttonPanels}`,
             `**Reaction panels:** ${reactionPanels}`,
             '',
@@ -4578,7 +4822,7 @@ Route resolved to ${channel}.`)] }).catch(() => null);
 
         if (sub === 'statusrole') {
           const statusRole = ctx.guildConfig.roles?.statusRole || {};
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎭 Status role', [
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🎭 Rôle de statut', '🎭 Status role'), [
             `**Enabled:** ${statusRole.enabled ? 'on' : 'off'}`,
             `**Role:** ${statusRole.roleId ? `<@&${statusRole.roleId}>` : 'not set'}`,
             `**Match text:** ${statusRole.matchText ? `\`${statusRole.matchText}\`` : 'not set'}`,
@@ -5246,9 +5490,9 @@ You can now run \`${ctx.prefix}backup load ${entry.id}\` on any server where the
         const draftId = crypto.randomBytes(8).toString('hex');
         const preview = new EmbedBuilder()
           .setColor(ensureHexColor(ctx.guildConfig.embedColor))
-          .setTitle('✦ Studio embed')
-          .setDescription('Crée un embed propre, copie un embed existant ou envoie ton message quand tout est prêt.')
-          .setFooter({ text: 'DvL • studio embed' })
+          .setTitle(uiText(ctx.guildConfig, '✦ Studio embed', '✦ Embed studio'))
+          .setDescription(uiText(ctx.guildConfig, 'Crée un embed propre, copie un embed existant ou envoie ton message quand tout est prêt.', 'Create a clean embed, copy an existing one or send your message when everything is ready.'))
+          .setFooter({ text: uiText(ctx.guildConfig, 'DvL • studio embed', 'DvL • embed studio') })
           .setTimestamp();
 
         ctx.client.embedDrafts.set(draftId, {
@@ -5257,24 +5501,24 @@ You can now run \`${ctx.prefix}backup load ${entry.id}\` on any server where the
           channelId: ctx.channel.id,
           embed: {
             color: ctx.guildConfig.embedColor,
-            title: '✦ Studio embed',
-            description: 'Crée un embed propre, copie un embed existant ou envoie ton message quand tout est prêt.'
+            title: uiText(ctx.guildConfig, '✦ Studio embed', '✦ Embed studio'),
+            description: uiText(ctx.guildConfig, 'Crée un embed propre, copie un embed existant ou envoie ton message quand tout est prêt.', 'Create a clean embed, copy an existing one or send your message when everything is ready.')
           }
         });
 
         const row1 = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId(`embed:title:${draftId}`).setLabel('Titre').setEmoji('🏷️').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId(`embed:description:${draftId}`).setLabel('Texte').setEmoji('📝').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId(`embed:author:${draftId}`).setLabel('Auteur').setEmoji('👤').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`embed:title:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Titre', 'Title')).setEmoji('🏷️').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(`embed:description:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Texte', 'Text')).setEmoji('📝').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId(`embed:author:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Auteur', 'Author')).setEmoji('👤').setStyle(ButtonStyle.Secondary),
           new ButtonBuilder().setCustomId(`embed:footer:${draftId}`).setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId(`embed:color:${draftId}`).setLabel('Couleur').setEmoji('🌈').setStyle(ButtonStyle.Secondary)
+          new ButtonBuilder().setCustomId(`embed:color:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Couleur', 'Color')).setEmoji('🌈').setStyle(ButtonStyle.Secondary)
         );
         const row2 = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId(`embed:image:${draftId}`).setLabel('Image').setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId(`embed:thumbnail:${draftId}`).setLabel('Miniature').setEmoji('🪄').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId(`embed:copy:${draftId}`).setLabel('Copier').setEmoji('📥').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId(`embed:send:${draftId}`).setLabel('Envoyer').setEmoji('📤').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId(`embed:cancel:${draftId}`).setLabel('Fermer').setEmoji('✖️').setStyle(ButtonStyle.Danger)
+          new ButtonBuilder().setCustomId(`embed:image:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Image', 'Image')).setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`embed:thumbnail:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Miniature', 'Thumbnail')).setEmoji('🪄').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`embed:copy:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Copier', 'Copy')).setEmoji('📥').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId(`embed:send:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Envoyer', 'Send')).setEmoji('📤').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`embed:cancel:${draftId}`).setLabel(uiText(ctx.guildConfig, 'Fermer', 'Close')).setEmoji('✖️').setStyle(ButtonStyle.Danger)
         );
 
         await ctx.reply({ embeds: [preview], components: [row1, row2] });
@@ -7493,7 +7737,7 @@ ${clipText(warn.reason, 220)}`)
       usage: 'setupcheck',
       guildOnly: true,
       async execute(ctx) {
-        await ctx.reply({ embeds: [createSetupCheckEmbed(ctx.guildConfig, ctx.guild)], components: createDashboardComponents('setup') });
+        await ctx.reply({ embeds: [createSetupCheckEmbed(ctx.guildConfig, ctx.guild)], components: createDashboardComponents('setup', ctx.guildConfig) });
       }
     }),
 
@@ -9082,7 +9326,7 @@ Matched: **${result.matched}**.`)] });
         if (panelAliases.includes(sub)) {
           return ctx.reply({
             embeds: [createSupportPanelEmbed(ctx.guildConfig, ctx.guild, ctx.prefix, ctx.channel)],
-            components: createSupportPanelComponents()
+            components: createSupportPanelComponents(ctx.guildConfig)
           });
         }
 
@@ -9178,7 +9422,7 @@ Matched: **${result.matched}**.`)] });
           if (!textSub || ['config', 'panel', 'buttons', 'edit'].includes(textSub)) {
             return ctx.reply({
               embeds: [createSupportPanelEmbed(ctx.guildConfig, ctx.guild, ctx.prefix, ctx.channel)],
-              components: createSupportPanelComponents()
+              components: createSupportPanelComponents(ctx.guildConfig)
             });
           }
           if (textSub === 'send') {
@@ -10022,6 +10266,28 @@ ${value.slice(0, 1800)}`)] });
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, 'Bot avatar failed', code(error.message || error))] });
       }
     }),
+    ownerBase('botbanner', 'Change or remove the bot banner', 'botbanner <url|off>', ['setbotbanner', 'setbanner'], [{ type: 'string', name: 'url', description: 'Banner URL or off', required: false }, { type: 'attachment', name: 'image', description: 'Banner image', required: false }], async (ctx) => {
+      const raw = (ctx.getText('url', 0) || '').trim();
+      const slashAttachment = ctx.interaction?.options?.getAttachment?.('image') || null;
+      const attachmentUrl = slashAttachment?.url || null;
+      const imageUrl = attachmentUrl || raw || getCommandImageUrl(ctx);
+      if (['off', 'remove', 'reset', 'clear', 'none'].includes(raw.toLowerCase())) {
+        try {
+          await ctx.client.user.setBanner(null);
+          await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, '👑 Bot banner removed', 'The bot banner was removed.')] });
+        } catch (error) {
+          await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, 'Bot banner failed', code(error.message || error))] });
+        }
+        return;
+      }
+      if (!imageUrl) return ctx.invalidUsage('Use `+botbanner <image url>`, attach an image with `+botbanner`, or use `+botbanner off`.');
+      try {
+        await ctx.client.user.setBanner(imageUrl);
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, '👑 Bot banner updated', 'The bot banner was updated.').setImage(imageUrl)] });
+      } catch (error) {
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, 'Bot banner failed', code(error.message || error))] });
+      }
+    }),
     ownerBase('guilds', 'List connected guilds', 'guilds', ['servers'], [], async (ctx) => {
       const list = ctx.client.guilds.cache.map((guild) => `• **${guild.name}** — ${guild.id}`).join('\n').slice(0, 3900);
       await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig || { embedColor: '#5865F2' }, '👑 Guilds', list || 'No guilds.')] });
@@ -10272,235 +10538,230 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
   const autoReactEntries = Object.entries(g.autoReact?.channels || {});
   const autoReactActive = autoReactEntries.filter(([, entry]) => normalizeAutoReactEntry(entry).enabled && normalizeAutoReactEntry(entry).emojis.length).length;
   const stickyCount = Object.keys(g.sticky || {}).length;
-  const embed = polishGuildPanelEmbed(baseEmbed(g, '🧭 DvL Dashboard', 'Vue claire du serveur : état, modules, setup et raccourcis utiles.'), guild, 'Dashboard');
+  const noValue = uiText(g, 'non défini', 'not set');
+  const defaultRoute = uiText(g, 'défaut', 'default');
+  const done = uiText(g, 'terminé', 'done');
+  const embed = polishGuildPanelEmbed(
+    baseEmbed(g, uiText(g, '🧭 Dashboard DvL', '🧭 DvL dashboard'), uiText(g, 'Vue claire du serveur : état, modules, setup et raccourcis utiles.', 'Clear server overview: status, modules, setup and useful shortcuts.')),
+    guild,
+    uiText(g, 'Dashboard', 'Dashboard')
+  );
 
   if (safePage === 'home') {
     embed
-      .setDescription('Le hub principal du serveur. Passe d’une page à l’autre avec les boutons dessous.')
+      .setDescription(uiText(g, 'Le hub principal du serveur. Passe d’une page à l’autre avec les boutons dessous.', 'The main server hub. Move between pages with the buttons below.'))
       .addFields(
         {
-          name: '📊 Vue rapide',
+          name: uiText(g, '📊 Vue rapide', '📊 Quick view'),
           value: [
-            `**Membres :** ${formatStatNumber(memberCount)}`,
-            `**En ligne :** ${formatStatNumber(onlineCount)}`,
-            `**En vocal :** ${formatStatNumber(voiceCount)}`,
+            `**${uiText(g, 'Membres', 'Members')} :** ${formatStatNumber(memberCount)}`,
+            `**${uiText(g, 'En ligne', 'Online')} :** ${formatStatNumber(onlineCount)}`,
+            `**${uiText(g, 'En vocal', 'In voice')} :** ${formatStatNumber(voiceCount)}`,
             `**Boosts :** ${formatStatNumber(boostCount)}`
           ].join('\n'),
           inline: true
         },
         {
-          name: '🧩 Modules',
+          name: uiText(g, '🧩 Modules', '🧩 Modules'),
           value: [
-            `**Logs :** ${uiState(g.logs?.enabled)}`,
-            `**Welcome :** ${uiState(g.welcome?.enabled)}`,
-            `**Support :** ${uiState(g.support?.enabled)}`,
-            `**Stats :** ${uiState(g.stats?.enabled)}`,
-            `**Trophy :** ${uiState(g.progress?.enabled)}`,
-            `**Auto-react :** **${autoReactActive}** salon(s)`
+            `**Logs :** ${uiState(g.logs?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**Welcome :** ${uiState(g.welcome?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**Support :** ${uiState(g.support?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**Stats :** ${uiState(g.stats?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**Trophy :** ${uiState(g.progress?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**Auto-react :** **${autoReactActive}** ${uiText(g, 'salon(s)', 'channel(s)')}`
           ].join('\n'),
           inline: true
         },
         {
-          name: '⚡ Raccourcis utiles',
-          value: '`+logs` • `+panel` • `+support panel` • `+stats setup` • `+trophychannel here`',
+          name: uiText(g, '⚡ Raccourcis utiles', '⚡ Useful shortcuts'),
+          value: `\`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}panel\` • \`${g.prefix || '+'}support panel\` • \`${g.prefix || '+'}stats setup\` • \`${g.prefix || '+'}trophychannel here\``,
           inline: false
         }
       );
-  }
-
-  if (safePage === 'setup') {
+  } else if (safePage === 'setup') {
     embed
-      .setTitle('🧩 Dashboard • Setup')
-      .setDescription('Progression du setup global et prochains réglages conseillés.')
+      .setTitle(uiText(g, '🧩 Dashboard • Setup', '🧩 Dashboard • Setup'))
+      .setDescription(uiText(g, 'Progression du setup global et prochains réglages conseillés.', 'Overall setup progress and the next recommended steps.'))
       .addFields(
         {
-          name: '🛠️ Base',
+          name: uiText(g, '🛠️ Base', '🛠️ Base'),
           value: [
-            `**Préfixe :** \`${g.prefix || '+'}\``,
-            `**Couleur :** \`${g.embedColor || '#5865F2'}\``,
-            `**Langue :** **${g.language || 'en'}**`,
-            `**Niveau :** **${snapshot.setupTier}**`,
-            `**Progression :** **${snapshot.completionPercent}%**`
+            `**${uiText(g, 'Préfixe', 'Prefix')} :** \`${g.prefix || '+'}\``,
+            `**${uiText(g, 'Couleur', 'Color')} :** \`${g.embedColor || '#5865F2'}\``,
+            `**${uiText(g, 'Langue', 'Language')} :** **${g.language || 'en'}**`,
+            `**${uiText(g, 'Niveau', 'Tier')} :** **${snapshot.setupTier}**`,
+            `**${uiText(g, 'Progression', 'Progress')} :** **${snapshot.completionPercent}%**`
           ].join('\n'),
           inline: true
         },
         {
-          name: '✅ Modules configurés',
+          name: uiText(g, '✅ Modules configurés', '✅ Configured modules'),
           value: snapshot.modules.map(([label, ok]) => `${ok ? '✅' : '⬜'} ${label}`).join('\n').slice(0, 1024),
           inline: true
         },
         {
-          name: '➡️ Suite logique',
-          value: '`+setup` • `+setup check` • `+logs` • `+panel` • `+dashboard automation`',
+          name: uiText(g, '➡️ Suite logique', '➡️ Next steps'),
+          value: `\`${g.prefix || '+'}setup\` • \`${g.prefix || '+'}setup check\` • \`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}panel\` • \`${g.prefix || '+'}dashboard automation\``,
           inline: false
         }
       );
-  }
-
-  if (safePage === 'logs') {
+  } else if (safePage === 'logs') {
     const routes = g.logs?.channels || {};
     embed
-      .setTitle('🧾 Dashboard • Logs')
-      .setDescription('Routage principal des logs et vue rapide des salons utilisés.')
+      .setTitle(uiText(g, '🧾 Dashboard • Logs', '🧾 Dashboard • Logs'))
+      .setDescription(uiText(g, 'Routage principal des logs et vue rapide des salons utilisés.', 'Main log routing and a quick view of the channels in use.'))
       .addFields(
         {
-          name: '📍 Routage',
+          name: uiText(g, '📍 Routage', '📍 Routing'),
           value: [
-            `**Master :** ${uiState(g.logs?.enabled)}`,
-            `**Défaut :** ${routes.default ? `<#${routes.default}>` : (g.logs?.channelId ? `<#${g.logs.channelId}>` : 'non défini')}`,
-            `**Messages :** ${routes.messages ? `<#${routes.messages}>` : 'défaut'}`,
-            `**Membres :** ${routes.members ? `<#${routes.members}>` : 'défaut'}`,
-            `**Modération :** ${routes.moderation ? `<#${routes.moderation}>` : 'défaut'}`,
-            `**Vocal :** ${routes.voice ? `<#${routes.voice}>` : 'défaut'}`,
-            `**Serveur :** ${routes.server ? `<#${routes.server}>` : 'défaut'}`,
-            `**Social :** ${routes.social ? `<#${routes.social}>` : 'défaut'}`
+            `**Master :** ${uiState(g.logs?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**${uiText(g, 'Défaut', 'Default')} :** ${routes.default ? `<#${routes.default}>` : (g.logs?.channelId ? `<#${g.logs.channelId}>` : noValue)}`,
+            `**${uiText(g, 'Messages', 'Messages')} :** ${routes.messages ? `<#${routes.messages}>` : defaultRoute}`,
+            `**${uiText(g, 'Membres', 'Members')} :** ${routes.members ? `<#${routes.members}>` : defaultRoute}`,
+            `**${uiText(g, 'Modération', 'Moderation')} :** ${routes.moderation ? `<#${routes.moderation}>` : defaultRoute}`,
+            `**${uiText(g, 'Vocal', 'Voice')} :** ${routes.voice ? `<#${routes.voice}>` : defaultRoute}`,
+            `**${uiText(g, 'Serveur', 'Server')} :** ${routes.server ? `<#${routes.server}>` : defaultRoute}`,
+            `**Social :** ${routes.social ? `<#${routes.social}>` : defaultRoute}`
           ].join('\n'),
           inline: false
         },
         {
-          name: '⚙️ Commandes utiles',
-          value: '`+logs` • `+setlogchannel #logs` • `+setlogchannel messages #msg-logs` • `+logconfig`',
+          name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'),
+          value: `\`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}setlogchannel #logs\` • \`${g.prefix || '+'}setlogchannel messages #msg-logs\` • \`${g.prefix || '+'}logconfig\``,
           inline: false
         }
       );
-  }
-
-  if (safePage === 'security') {
+  } else if (safePage === 'security') {
     const mod = g.automod || {};
     embed
-      .setTitle('🚨 Dashboard • Sécurité')
-      .setDescription('État des protections AutoMod, ghost ping et filtres principaux.')
+      .setTitle(uiText(g, '🚨 Dashboard • Sécurité', '🚨 Dashboard • Security'))
+      .setDescription(uiText(g, 'État des protections AutoMod, ghost ping et filtres principaux.', 'Status of AutoMod protections, ghost ping and the main filters.'))
       .addFields(
-        { name: '🛡️ Filtres', value: [
+        { name: uiText(g, '🛡️ Filtres', '🛡️ Filters'), value: [
           `**Anti-spam :** ${automodRuleLabel(mod.antiSpam)}`,
-          `**Anti-lien :** ${automodRuleLabel(mod.antiLink)}`,
-          `**Anti-invite :** ${automodRuleLabel(mod.antiInvite)}`,
-          `**Ghost ping :** ${uiState(mod.ghostPing?.enabled)}${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`
+          `**${uiText(g, 'Anti-lien', 'Anti-link')} :** ${automodRuleLabel(mod.antiLink)}`,
+          `**${uiText(g, 'Anti-invite', 'Anti-invite')} :** ${automodRuleLabel(mod.antiInvite)}`,
+          `**Ghost ping :** ${uiState(mod.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`
         ].join('\n'), inline: false },
-        { name: '🚧 Protection', value: [
-          `**Mentions :** ${automodRuleLabel(mod.antiMention)}`,
+        { name: uiText(g, '🚧 Protection', '🚧 Protection'), value: [
+          `**${uiText(g, 'Mentions', 'Mentions')} :** ${automodRuleLabel(mod.antiMention)}`,
           `**Caps :** ${automodRuleLabel(mod.antiCaps)}`,
-          `**Spam emojis :** ${automodRuleLabel(mod.antiEmojiSpam)}`,
+          `**${uiText(g, 'Spam emojis', 'Emoji spam')} :** ${automodRuleLabel(mod.antiEmojiSpam)}`,
           `**Raid mode :** ${automodRuleLabel(mod.raidMode, 'delete')}`,
-          `**Mots bloqués :** ${uiState(mod.badWordsEnabled)} • ${mod.badWords?.length || 0} mot(s)`
+          `**${uiText(g, 'Mots bloqués', 'Blocked words')} :** ${uiState(mod.badWordsEnabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))} • ${mod.badWords?.length || 0} ${uiText(g, 'mot(s)', 'word(s)')}`
         ].join('\n'), inline: false },
-        { name: '⚙️ Commandes utiles', value: '`+securitypreset balanced` • `+setantispam 6 6 timeout` • `+ghostping test` • `+automodignore #channel`', inline: false }
+        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}securitypreset balanced\` • \`${g.prefix || '+'}setantispam 6 6 timeout\` • \`${g.prefix || '+'}ghostping test\` • \`${g.prefix || '+'}automodignore #channel\``, inline: false }
       );
-  }
-
-  if (safePage === 'voice') {
+  } else if (safePage === 'voice') {
     const temp = g.voice?.temp || {};
     const moderation = g.voice?.moderation || {};
     embed
-      .setTitle('🔊 Dashboard • Vocal')
-      .setDescription('Temp voice, panel voc et modération voc en un seul endroit.')
+      .setTitle(uiText(g, '🔊 Dashboard • Vocal', '🔊 Dashboard • Voice'))
+      .setDescription(uiText(g, 'Temp voice, panel voc et modération voc en un seul endroit.', 'Temp voice, voice panel and voice moderation in one place.'))
       .addFields(
-        { name: '🎛️ Temp voice', value: [
-          `**Hub :** ${temp.hubChannelId ? `<#${temp.hubChannelId}>` : 'non défini'}`,
-          `**Panel :** ${temp.panelChannelId ? `<#${temp.panelChannelId}>` : 'non défini'}`,
-          `**Catégorie :** ${temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : 'non défini'}`,
-          `**Limite par défaut :** ${temp.defaultLimit || 0}`
+        { name: uiText(g, '🎛️ Temp voice', '🎛️ Temp voice'), value: [
+          `**Hub :** ${temp.hubChannelId ? `<#${temp.hubChannelId}>` : noValue}`,
+          `**${uiText(g, 'Panel', 'Panel')} :** ${temp.panelChannelId ? `<#${temp.panelChannelId}>` : noValue}`,
+          `**${uiText(g, 'Catégorie', 'Category')} :** ${temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : noValue}`,
+          `**${uiText(g, 'Limite par défaut', 'Default limit')} :** ${temp.defaultLimit || 0}`
         ].join('\n'), inline: true },
-        { name: '🔨 Modération voc', value: [
-          `**Rôle mute :** ${moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : 'non défini'}`,
-          `**Rôle ban :** ${moderation.banRoleId ? `<@&${moderation.banRoleId}>` : 'non défini'}`,
-          `**Stats panel :** ${uiState(g.stats?.enabled)}`,
-          `**Utilisateurs en vocal :** ${formatStatNumber(voiceCount)}`
+        { name: uiText(g, '🔨 Modération voc', '🔨 Voice moderation'), value: [
+          `**${uiText(g, 'Rôle mute', 'Mute role')} :** ${moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : noValue}`,
+          `**${uiText(g, 'Rôle ban', 'Ban role')} :** ${moderation.banRoleId ? `<@&${moderation.banRoleId}>` : noValue}`,
+          `**Stats panel :** ${uiState(g.stats?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+          `**${uiText(g, 'Utilisateurs en vocal', 'Users in voice')} :** ${formatStatNumber(voiceCount)}`
         ].join('\n'), inline: true },
-        { name: '⚙️ Commandes utiles', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+stats setup`', inline: false }
+        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}voicepanel\` • \`${g.prefix || '+'}createvoc\` • \`${g.prefix || '+'}setvoicemuterole @role\` • \`${g.prefix || '+'}setvoicebanrole @role\` • \`${g.prefix || '+'}stats setup\``, inline: false }
       );
-  }
-
-  if (safePage === 'automation') {
+  } else if (safePage === 'automation') {
     embed
-      .setTitle('⚡ Dashboard • Automation')
-      .setDescription('Auto-react, sticky, rôles auto et petits systèmes utiles.')
+      .setTitle(uiText(g, '⚡ Dashboard • Automation', '⚡ Dashboard • Automation'))
+      .setDescription(uiText(g, 'Auto-react, sticky, rôles auto et petits systèmes utiles.', 'Auto-react, sticky posts, auto roles and useful automations.'))
       .addFields(
         {
-          name: '✨ Auto-react',
+          name: uiText(g, '✨ Auto-react', '✨ Auto-react'),
           value: [
-            `**Salons configurés :** ${autoReactEntries.length}`,
-            `**Salons actifs :** ${autoReactActive}`,
-            `**Exemple :** \`+autoreact add #general 🔥 😂\``,
-            `**Preset :** \`+autoreact preset #general hype\``
+            `**${uiText(g, 'Salons configurés', 'Configured channels')} :** ${autoReactEntries.length}`,
+            `**${uiText(g, 'Salons actifs', 'Active channels')} :** ${autoReactActive}`,
+            `**${uiText(g, 'Exemple', 'Example')} :** \`${g.prefix || '+'}autoreact add #general 🔥 😂\``,
+            `**Preset :** \`${g.prefix || '+'}autoreact preset #general hype\``
           ].join('\n'),
           inline: true
         },
         {
-          name: '📌 Autres automatisations',
+          name: uiText(g, '📌 Autres automatisations', '📌 Other automations'),
           value: [
-            `**Auto roles :** ${(g.roles?.autoRoles || []).length}`,
+            `**${uiText(g, 'Auto rôles', 'Auto roles')} :** ${(g.roles?.autoRoles || []).length}`,
             `**Sticky :** ${stickyCount}`,
-            `**Ghost ping :** ${uiState(g.automod?.ghostPing?.enabled)}`,
-            `**Status role :** ${uiState(g.roles?.statusRole?.enabled)}`
+            `**Ghost ping :** ${uiState(g.automod?.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**Status role :** ${uiState(g.roles?.statusRole?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`
           ].join('\n'),
           inline: true
         },
         {
-          name: '🎛️ Panneaux et annexes',
+          name: uiText(g, '🎛️ Panneaux et annexes', '🎛️ Panels and extras'),
           value: [
-            `**Support relay :** ${uiState(g.support?.enabled)}`,
+            `**Support relay :** ${uiState(g.support?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
             `**TikTok watchers :** ${(g.tiktok?.watchers || []).length}`,
             `**Role panels :** ${Object.keys(g.roles?.rolePanels || {}).length + Object.keys(g.roles?.reactionRoles || {}).length}`,
-            `**Config rapide :** \`+panel\``
+            `**${uiText(g, 'Config rapide', 'Quick config')} :** \`${g.prefix || '+'}panel\``
           ].join('\n'),
           inline: false
         },
         {
-          name: '⚙️ Commandes utiles',
-          value: '`+autoreact config` • `+autorolelist` • `+stickyconfig` • `+ghostping config` • `+panel`',
+          name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'),
+          value: `\`${g.prefix || '+'}autoreact config\` • \`${g.prefix || '+'}autorolelist\` • \`${g.prefix || '+'}stickyconfig\` • \`${g.prefix || '+'}ghostping config\` • \`${g.prefix || '+'}panel\``,
           inline: false
         }
       );
-  }
-
-  if (safePage === 'progress') {
+  } else if (safePage === 'progress') {
     embed
-      .setTitle('🏆 Dashboard • Progression')
-      .setDescription('Trophées, milestones et avancement du serveur.')
+      .setTitle(uiText(g, '🏆 Dashboard • Progression', '🏆 Dashboard • Progress'))
+      .setDescription(uiText(g, 'Trophées, milestones et avancement du serveur.', 'Trophies, milestones and overall server progress.'))
       .addFields(
-        { name: '📈 Progression', value: [
+        { name: uiText(g, '📈 Progression', '📈 Progress'), value: [
           `**Setup :** ${snapshot.completionPercent}%`,
-          `**Modules terminés :** ${snapshot.completedModules}/${snapshot.modules.length}`,
-          `**Trophées membres :** ${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}`,
-          `**Trophées boosts :** ${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}`,
-          `**Trophées voc :** ${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}`
+          `**${uiText(g, 'Modules terminés', 'Completed modules')} :** ${snapshot.completedModules}/${snapshot.modules.length}`,
+          `**${uiText(g, 'Trophées membres', 'Member trophies')} :** ${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}`,
+          `**${uiText(g, 'Trophées boosts', 'Boost trophies')} :** ${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}`,
+          `**${uiText(g, 'Trophées voc', 'Voice trophies')} :** ${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}`
         ].join('\n'), inline: true },
-        { name: '🥇 Board', value: [
-          `**Trophy board :** ${uiState(g.progress?.enabled)}`,
-          `**Salon :** ${g.progress?.channelId ? `<#${g.progress.channelId}>` : 'non défini'}`,
-          `**Prochain palier membres :** ${snapshot.nextGrowth || 'terminé'}`,
-          `**Prochain palier boosts :** ${snapshot.nextBoost || 'terminé'}`,
-          `**Prochain palier voc :** ${snapshot.nextVoice || 'terminé'}`
+        { name: uiText(g, '🥇 Board', '🥇 Board'), value: [
+          `**Trophy board :** ${uiState(g.progress?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+          `**${uiText(g, 'Salon', 'Channel')} :** ${g.progress?.channelId ? `<#${g.progress.channelId}>` : noValue}`,
+          `**${uiText(g, 'Prochain palier membres', 'Next member milestone')} :** ${snapshot.nextGrowth || done}`,
+          `**${uiText(g, 'Prochain palier boosts', 'Next boost milestone')} :** ${snapshot.nextBoost || done}`,
+          `**${uiText(g, 'Prochain palier voc', 'Next voice milestone')} :** ${snapshot.nextVoice || done}`
         ].join('\n'), inline: true },
-        { name: '⚙️ Commandes utiles', value: '`+trophy` • `+trophychannel here` • `+trophyrefresh` • `+dashboard`', inline: false }
+        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}trophy\` • \`${g.prefix || '+'}trophychannel here\` • \`${g.prefix || '+'}trophyrefresh\` • \`${g.prefix || '+'}dashboard\``, inline: false }
       );
   }
 
-  return embed.setFooter({ text: `DvL • dashboard • page: ${safePage}` });
+  embed.setFooter({ text: uiText(g, `DvL • dashboard • page : ${safePage}`, `DvL • dashboard • page: ${safePage}`) });
+  return translateEmbedForUi(guildConfig, embed);
 }
 
-function createDashboardComponents(current = 'home') {
+function createDashboardComponents(current = 'home', guildConfig = null) {
   const pages = ['home', 'setup', 'logs', 'security', 'voice', 'automation', 'progress'];
   const safePage = pages.includes(current) ? current : 'home';
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('dashboard:home').setLabel('Accueil').setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('dashboard:home').setLabel(uiText(guildConfig, 'Accueil', 'Home')).setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('dashboard:setup').setLabel('Setup').setEmoji('🧩').setStyle(safePage === 'setup' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('dashboard:logs').setLabel('Logs').setEmoji('🧾').setStyle(safePage === 'logs' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('dashboard:security').setLabel('Sécurité').setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('dashboard:voice').setLabel('Vocal').setEmoji('🔊').setStyle(safePage === 'voice' ? ButtonStyle.Success : ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('dashboard:security').setLabel(uiText(guildConfig, 'Sécurité', 'Security')).setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('dashboard:voice').setLabel(uiText(guildConfig, 'Vocal', 'Voice')).setEmoji('🔊').setStyle(safePage === 'voice' ? ButtonStyle.Success : ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('dashboard:automation').setLabel('Auto').setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('dashboard:progress').setLabel('Progression').setEmoji('🏆').setStyle(safePage === 'progress' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`dashboardquick:refresh:${safePage}`).setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('dashboardquick:help').setLabel('Aide').setEmoji('📂').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('dashboardquick:progress').setLabel('Trophée').setEmoji('🥇').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('dashboard:automation').setLabel(uiText(guildConfig, 'Automation', 'Automation')).setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('dashboard:progress').setLabel(uiText(guildConfig, 'Progression', 'Progress')).setEmoji('🏆').setStyle(safePage === 'progress' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`dashboardquick:refresh:${safePage}`).setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('dashboardquick:help').setLabel(uiText(guildConfig, 'Aide', 'Help')).setEmoji('📂').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('dashboardquick:progress').setLabel(uiText(guildConfig, 'Trophée', 'Trophy')).setEmoji('🥇').setStyle(ButtonStyle.Primary)
     )
   ];
 }
-
 
 const SMART_PANEL_THEMES = {
   default: { color: '#5865F2', label: 'Default' },
@@ -10781,7 +11042,7 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
   const focus = state.focus || 'welcome';
   const g = guildConfig || {};
   const targetChannel = channel && channel.id ? channel : null;
-  const channelMention = targetChannel ? `${targetChannel}` : 'this channel';
+  const channelMention = targetChannel ? `${targetChannel}` : uiText(g, 'ce salon', 'this channel');
   const ghostChannelId = g.automod?.ghostPing?.channelId || null;
   const autoEntry = targetChannel ? normalizeAutoReactEntry(g.autoReact?.channels?.[targetChannel.id] || {}) : null;
   const stats = g.stats || { channels: {}, labels: {} };
@@ -10790,48 +11051,55 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
   const whitelistUsers = Array.isArray(g.automod?.whitelistUserIds) ? g.automod.whitelistUserIds.length : 0;
   const whitelistRoles = Array.isArray(g.automod?.whitelistRoleIds) ? g.automod.whitelistRoleIds.length : 0;
   const enabledFilters = ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => g.automod?.[key]?.enabled).length;
+  const noValue = uiText(g, 'non défini', 'not set');
+  const none = uiText(g, 'aucun', 'none');
+  const defaultRoute = uiText(g, 'par défaut', 'default');
 
-  const embed = polishGuildPanelEmbed(baseEmbed(g, '🎛️ DvL Smart Panel', `Hub staff pour ${channelMention}. Un seul panel propre au lieu de courir après des commandes doublonnées.`), guild, 'Smart Panel');
+  const embed = polishGuildPanelEmbed(
+    baseEmbed(g, uiText(g, '🎛️ Smart Panel DvL', '🎛️ DvL smart panel'), uiText(g, `Hub staff pour ${channelMention}. Un seul panel propre au lieu de courir après des commandes doublonnées.`, `Staff hub for ${channelMention}. One clean panel instead of chasing duplicated commands.`)),
+    guild,
+    uiText(g, 'Smart Panel', 'Smart Panel')
+  );
 
   if (safePage === 'home') {
     const issues = getSmartPanelQuickIssues(g);
     embed.addFields(
       {
-        name: 'État actuel',
+        name: uiText(g, '📍 État actuel', '📍 Current state'),
         value: [
-          `**Texts:** welcome ${g.welcome?.enabled ? 'on' : 'off'} • leave ${g.leave?.enabled ? 'on' : 'off'} • boost ${g.boost?.enabled ? 'on' : 'off'}`,
-          `**Logs:** ${logs.enabled ? 'on' : 'off'}${logs.channels?.default ? ` • <#${logs.channels.default}>` : ''}`,
-          `**Support:** ${support.enabled ? 'on' : 'off'}${support.channelId ? ` • relay <#${support.channelId}>` : ''}`,
-          `**Ghost ping:** ${g.automod?.ghostPing?.enabled ? 'on' : 'off'}${ghostChannelId ? ` • <#${ghostChannelId}>` : ''}`,
-          `**Auto-react:** ${targetChannel ? (autoEntry.enabled && autoEntry.emojis.length ? 'on' : 'off') : 'open in a text channel'}`,
-          `**Stats:** ${g.stats?.enabled ? 'on' : 'off'}`,
-          `**Theme:** ${SMART_PANEL_THEMES[g.panel?.theme || 'default']?.label || 'Custom'} • ${code(g.embedColor || '#5865F2')}`,
-          `**Current channel:** ${channelMention}`
+          `**Texts :** welcome ${g.welcome?.enabled ? 'on' : 'off'} • leave ${g.leave?.enabled ? 'on' : 'off'} • boost ${g.boost?.enabled ? 'on' : 'off'}`,
+          `**Logs :** ${logs.enabled ? 'on' : 'off'}${logs.channels?.default ? ` • <#${logs.channels.default}>` : ''}`,
+          `**Support :** ${support.enabled ? 'on' : 'off'}${support.channelId ? ` • relay <#${support.channelId}>` : ''}`,
+          `**Ghost ping :** ${g.automod?.ghostPing?.enabled ? 'on' : 'off'}${ghostChannelId ? ` • <#${ghostChannelId}>` : ''}`,
+          `**Auto-react :** ${targetChannel ? (autoEntry.enabled && autoEntry.emojis.length ? 'on' : 'off') : uiText(g, 'ouvre le panel dans un salon texte', 'open the panel in a text channel')}`,
+          `**Stats :** ${g.stats?.enabled ? 'on' : 'off'}`,
+          `**Theme :** ${SMART_PANEL_THEMES[g.panel?.theme || 'default']?.label || 'Custom'} • ${code(g.embedColor || '#5865F2')}`,
+          `**${uiText(g, 'Salon actuel', 'Current channel')} :** ${channelMention}`
         ].join('\n'),
         inline: false
       },
       {
-        name: 'Panel staff fixe',
+        name: uiText(g, '📌 Panel staff fixe', '📌 Persistent staff panel'),
         value: [
-          g.panel?.deployedChannelId ? `**Panel channel:** <#${g.panel.deployedChannelId}>` : '**Panel channel:** not deployed',
-          g.panel?.deployedMessageId ? `**Message id:** \`${g.panel.deployedMessageId}\`` : '**Message id:** none',
-          'Use **Déployer** once, then keep that message pinned for staff.'
+          g.panel?.deployedChannelId ? `**${uiText(g, 'Salon du panel', 'Panel channel')} :** <#${g.panel.deployedChannelId}>` : `**${uiText(g, 'Salon du panel', 'Panel channel')} :** ${uiText(g, 'non déployé', 'not deployed')}`,
+          g.panel?.deployedMessageId ? `**Message id :** \`${g.panel.deployedMessageId}\`` : `**Message id :** ${uiText(g, 'aucun', 'none')}`,
+          uiText(g, 'Utilise **Déployer** une fois, puis garde ce message épinglé pour le staff.', 'Use **Deploy** once, then keep that message pinned for staff.')
         ].join('\n'),
         inline: false
       },
       {
-        name: 'Points à vérifier',
-        value: issues.length ? issues.slice(0, 6).map((line) => `• ${line}`).join('\n') : 'No obvious issue detected.',
+        name: uiText(g, '🩺 Points à vérifier', '🩺 Things to check'),
+        value: issues.length ? issues.slice(0, 6).map((line) => `• ${line}`).join('\n') : uiText(g, 'Aucun souci évident détecté.', 'No obvious issue detected.'),
         inline: false
       },
       {
-        name: 'Pages à ouvrir d’abord',
+        name: uiText(g, '➡️ Pages à ouvrir d’abord', '➡️ Best pages to open first'),
         value: [
-          '• **Texts** for welcome / leave / boost style',
-          '• **Logs** for default log routing',
-          '• **Support** for the public support prompt + relay',
-          '• **Style** for the global visual theme',
-          '• **Salons** for logs and live counter bindings'
+          `• **Texts** ${uiText(g, 'pour le style welcome / leave / boost', 'for welcome / leave / boost style')}`,
+          `• **Logs** ${uiText(g, 'pour le routage principal', 'for default log routing')}`,
+          `• **Support** ${uiText(g, 'pour le prompt public + le relais', 'for the public prompt + relay')}`,
+          `• **Style** ${uiText(g, 'pour le thème global', 'for the global theme')}`,
+          `• **Salons** ${uiText(g, 'pour les logs et compteurs live', 'for logs and live counters')}`
         ].join('\n'),
         inline: false
       }
@@ -10840,26 +11108,26 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
     const meta = getSmartPanelTextMeta(focus);
     const source = meta.source(g);
     embed
-      .setDescription(`Modifie et teste **${meta.label}** directement avec les boutons. C’est la version rapide de \`${g.prefix || '+'}${meta.command} ...\`.`)
+      .setDescription(uiText(g, `Modifie et teste **${meta.label}** directement avec les boutons. C’est la version rapide de \`${g.prefix || '+'}${meta.command} ...\`.`, `Edit and test **${meta.label}** directly with the buttons. This is the quick version of \`${g.prefix || '+'}${meta.command} ...\`.`))
       .addFields(
         {
-          name: `${meta.label} state`,
+          name: uiText(g, `📝 ${meta.label} • état`, `📝 ${meta.label} • state`),
           value: buildSmartPanelTextState(g, focus).join('\n').slice(0, 1024),
           inline: false
         },
         {
-          name: 'Actions de cette page',
+          name: uiText(g, '⚡ Actions de cette page', '⚡ This page actions'),
           value: [
-            '• on/off',
-            meta.hasChannel ? '• bind the current channel' : '• toggle DM sending',
-            '• embed/plain mode',
-            '• edit title, message, footer, color, image',
-            '• test and reset'
+            `• ${uiText(g, 'on/off', 'on/off')}`,
+            meta.hasChannel ? `• ${uiText(g, 'lier le salon actuel', 'bind the current channel')}` : `• ${uiText(g, 'activer ou couper les MP', 'toggle DM sending')}`,
+            `• ${uiText(g, 'embed / texte simple', 'embed / plain text')}`,
+            `• ${uiText(g, 'modifier titre, message, footer, couleur, image', 'edit title, message, footer, color, image')}`,
+            `• ${uiText(g, 'tester et reset', 'test and reset')}`
           ].join('\n'),
           inline: true
         },
         {
-          name: 'Commandes utiles',
+          name: uiText(g, '🧭 Commandes utiles', '🧭 Useful commands'),
           value: [
             `\`${g.prefix || '+'}texts vars\``,
             `\`${g.prefix || '+'}${meta.command} example\``,
@@ -10869,211 +11137,197 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
           inline: true
         },
         {
-          name: 'Presets rapides',
+          name: uiText(g, '🎨 Presets rapides', '🎨 Quick presets'),
           value: '• clean\n• premium\n• minimal',
           inline: true
         }
       );
-    if (source?.[meta.imageKey] && /^https?:\/\//i.test(String(source[meta.imageKey]))) {
-      embed.setThumbnail(String(source[meta.imageKey]));
-    }
+    if (source?.[meta.imageKey] && /^https?:\/\//i.test(String(source[meta.imageKey]))) embed.setThumbnail(String(source[meta.imageKey]));
   } else if (safePage === 'logs') {
     const familyRoutes = Object.entries(logs.channels || {}).filter(([key, value]) => key !== 'default' && value).length;
     const specificRoutes = Object.values(logs.typeSalons || {}).filter(Boolean).length;
     const enabledTypes = Object.entries(logs.types || {}).filter(([, enabled]) => enabled !== false).length;
     embed
-      .setDescription(`Raccourcis logs pour ${channelMention}. Ouvre le panel logs complet si tu veux du routage plus précis.`)
+      .setDescription(uiText(g, `Raccourcis logs pour ${channelMention}. Ouvre le panel logs complet si tu veux du routage plus précis.`, `Log shortcuts for ${channelMention}. Open the full logs panel if you want more precise routing.`))
       .addFields(
         {
-          name: 'Vue d’ensemble',
+          name: uiText(g, '🧾 Vue d’ensemble', '🧾 Overview'),
           value: [
-            `**Master:** ${uiState(logs.enabled)}`,
-            `**Default route:** ${logs.channels?.default ? `<#${logs.channels.default}>` : 'not set'}`,
-            `**Family routes:** ${familyRoutes}`,
-            `**Specific type routes:** ${specificRoutes}`,
-            `**Enabled events:** ${enabledTypes}`
+            `**Master :** ${uiState(logs.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**${uiText(g, 'Route par défaut', 'Default route')} :** ${logs.channels?.default ? `<#${logs.channels.default}>` : noValue}`,
+            `**${uiText(g, 'Routes de familles', 'Family routes')} :** ${familyRoutes}`,
+            `**${uiText(g, 'Routes spécifiques', 'Specific routes')} :** ${specificRoutes}`,
+            `**${uiText(g, 'Événements actifs', 'Enabled events')} :** ${enabledTypes}`
           ].join('\n'),
           inline: false
         },
         {
-          name: 'Actions rapides',
+          name: uiText(g, '⚡ Actions rapides', '⚡ Quick actions'),
           value: [
-            '• enable / disable logs',
-            '• bind this channel as the default route',
-            '• jump into the full logs button panel',
-            '• keep ghost ping in the same channel if you want'
+            `• ${uiText(g, 'activer ou couper les logs', 'enable or disable logs')}`,
+            `• ${uiText(g, 'lier ce salon comme route par défaut', 'bind this channel as the default route')}`,
+            `• ${uiText(g, 'ouvrir le panel logs complet', 'jump into the full logs panel')}`,
+            `• ${uiText(g, 'garder ghost ping ici si tu veux', 'keep ghost ping in the same channel if you want')}`
           ].join('\n'),
           inline: false
         }
       );
   } else if (safePage === 'support') {
     embed
-      .setDescription(`Garde le support simple : un salon membre, un relais staff, un prompt propre.`)
+      .setDescription(uiText(g, 'Garde le support simple : un salon membre, un relais staff, un prompt propre.', 'Keep support simple: one member channel, one staff relay, one clean prompt.'))
       .addFields(
         {
-          name: 'Routage',
+          name: uiText(g, '📨 Routage', '📨 Routing'),
           value: [
-            `**Relay:** ${uiState(support.enabled)}`,
-            `**Relay channel:** ${support.channelId ? `<#${support.channelId}>` : 'not set'}`,
-            `**Member channel:** ${support.entryChannelId ? `<#${support.entryChannelId}>` : 'not set'}`,
-            `**Restrict to member channel:** ${uiState(support.restrictToEntry)}`,
-            `**Ping role:** ${support.pingRoleId ? `<@&${support.pingRoleId}>` : 'none'}`
+            `**${uiText(g, 'Relais', 'Relay')} :** ${uiState(support.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**${uiText(g, 'Salon relais', 'Relay channel')} :** ${uiChannel(support.channelId, noValue)}`,
+            `**${uiText(g, 'Salon membre', 'Member channel')} :** ${uiChannel(support.entryChannelId, noValue)}`,
+            `**${uiText(g, 'Restriction salon membre', 'Restrict to member channel')} :** ${uiBool(support.restrictToEntry, uiText(g, 'oui', 'yes'), uiText(g, 'non', 'no'))}`,
+            `**${uiText(g, 'Rôle ping', 'Ping role')} :** ${uiRole(support.pingRoleId, none)}`
           ].join('\n'),
           inline: false
         },
         {
-          name: 'Style du prompt',
+          name: uiText(g, '🎨 Style du prompt', '🎨 Prompt style'),
           value: [
-            `**Mode:** ${String(support.promptMode || 'embed').toLowerCase() === 'plain' ? '📝 plain' : '✨ embed'}`,
-            `**Titre:** ${formatTemplatePreview(support.promptTitre, 'default')}`,
-            `**Message:** ${formatTemplatePreview(support.promptMessage, 'default')}`,
-            `**Footer:** ${formatTemplatePreview(support.promptFooter, 'default')}`
+            `**${uiText(g, 'Mode', 'Mode')} :** ${String(support.promptMode || 'embed').toLowerCase() === 'plain' ? '📝 plain' : '✨ embed'}`,
+            `**${uiText(g, 'Titre', 'Title')} :** ${formatTemplatePreview(support.promptTitle, uiText(g, 'par défaut', 'default'))}`,
+            `**${uiText(g, 'Message', 'Message')} :** ${formatTemplatePreview(support.promptMessage, uiText(g, 'par défaut', 'default'))}`,
+            `**Footer :** ${formatTemplatePreview(support.promptFooter, uiText(g, 'par défaut', 'default'))}`
           ].join('\n'),
           inline: false
         },
         {
-          name: 'Cette page sert à',
+          name: uiText(g, '⚡ Cette page sert à', '⚡ This page is for'),
           value: [
-            '• relay on/off',
-            '• bind relay here',
-            '• bind support entry here',
-            '• restrict support to one channel',
-            '• open the full support text editor'
+            `• ${uiText(g, 'activer / couper le relais', 'relay on/off')}`,
+            `• ${uiText(g, 'lier le relais ici', 'bind relay here')}`,
+            `• ${uiText(g, 'lier le salon membre ici', 'bind member channel here')}`,
+            `• ${uiText(g, 'restreindre le support à un salon', 'restrict support to one channel')}`,
+            `• ${uiText(g, 'ouvrir l’éditeur complet', 'open the full text editor')}`
           ].join('\n'),
           inline: false
         }
       );
   } else if (safePage === 'security') {
     embed
-      .setDescription(`Vue rapide pour ghost ping, whitelist et protections principales.`)
+      .setDescription(uiText(g, 'Vue rapide pour ghost ping, whitelist et protections principales.', 'Quick view for ghost ping, whitelist and the main protections.'))
       .addFields(
         {
-          name: 'État sécurité',
+          name: uiText(g, '🚨 État sécurité', '🚨 Security state'),
           value: [
-            `**Main filters enabled:** ${enabledFilters}`,
-            `**Ghost ping:** ${uiState(g.automod?.ghostPing?.enabled)}${ghostChannelId ? ` • <#${ghostChannelId}>` : ''}`,
-            `**Whitelist users:** ${whitelistUsers}`,
-            `**Whitelist roles:** ${whitelistRoles}`,
-            `**Pic-only channels:** ${Array.isArray(g.automod?.picOnlySalons) ? g.automod.picOnlySalons.length : 0}`,
-            `**Ignored channels:** ${Array.isArray(g.automod?.ignoredSalons) ? g.automod.ignoredSalons.length : 0}`
+            `**${uiText(g, 'Filtres actifs', 'Main filters enabled')} :** ${enabledFilters}`,
+            `**Ghost ping :** ${uiState(g.automod?.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}${ghostChannelId ? ` • <#${ghostChannelId}>` : ''}`,
+            `**Whitelist users :** ${whitelistUsers}`,
+            `**Whitelist roles :** ${whitelistRoles}`,
+            `**${uiText(g, 'Salons image only', 'Pic-only channels')} :** ${Array.isArray(g.automod?.picOnlySalons) ? g.automod.picOnlySalons.length : 0}`,
+            `**${uiText(g, 'Salons ignorés', 'Ignored channels')} :** ${Array.isArray(g.automod?.ignoredSalons) ? g.automod.ignoredSalons.length : 0}`
           ].join('\n'),
           inline: false
         },
         {
-          name: 'Actions rapides',
+          name: uiText(g, '⚡ Actions rapides', '⚡ Quick actions'),
           value: [
-            '• toggle ghost ping',
-            '• bind ghost ping here',
-            '• run a ghost ping test',
-            '• open the security hub',
-            '• inspect the whitelist cleanly'
+            `• ${uiText(g, 'toggle ghost ping', 'toggle ghost ping')}`,
+            `• ${uiText(g, 'lier ghost ping ici', 'bind ghost ping here')}`,
+            `• ${uiText(g, 'lancer un test ghost ping', 'run a ghost ping test')}`,
+            `• ${uiText(g, 'ouvrir le hub sécurité', 'open the security hub')}`,
+            `• ${uiText(g, 'voir la whitelist proprement', 'inspect the whitelist cleanly')}`
           ].join('\n'),
           inline: false
         }
       );
   } else if (safePage === 'automation') {
     embed
-      .setDescription(`Outils automation pour ${channelMention}.`)
+      .setDescription(uiText(g, `Outils automation pour ${channelMention}.`, `Automation tools for ${channelMention}.`))
       .addFields(
         {
-          name: 'Auto-react',
+          name: uiText(g, '✨ Auto-react', '✨ Auto-react'),
           value: targetChannel ? [
-            `**Enabled:** ${uiBool(autoEntry.enabled && autoEntry.emojis.length)}`,
-            `**Mode:** ${formatAutoReactMode(autoEntry.mode)}`,
-            `**Count:** ${autoEntry.maxReactions}`,
-            `**Chance:** ${autoEntry.chance}%`,
-            `**Emojis:** ${autoEntry.emojis.length ? autoEntry.emojis.join(' ') : 'none'}`
-          ].join('\n') : 'Open this panel inside a text channel.',
+            `**${uiText(g, 'Actif', 'Enabled')} :** ${uiBool(autoEntry.enabled && autoEntry.emojis.length, uiText(g, 'oui', 'yes'), uiText(g, 'non', 'no'))}`,
+            `**Mode :** ${formatAutoReactMode(autoEntry.mode)}`,
+            `**${uiText(g, 'Nombre', 'Count')} :** ${autoEntry.maxReactions}`,
+            `**Chance :** ${autoEntry.chance}%`,
+            `**Emojis :** ${autoEntry.emojis.length ? autoEntry.emojis.join(' ') : none}`
+          ].join('\n') : uiText(g, 'Ouvre ce panel dans un salon texte.', 'Open this panel inside a text channel.'),
           inline: false
         },
         {
-          name: 'Autres automatisations',
+          name: uiText(g, '📌 Autres automatisations', '📌 Other automations'),
           value: [
-            `**Auto roles:** ${(g.roles?.autoRoles || []).length}`,
-            `**Sticky in this channel:** ${uiBool(targetChannel && g.sticky?.[targetChannel.id])}`,
-            `**Ghost ping:** ${uiState(g.automod?.ghostPing?.enabled)}`,
-            `**Status role:** ${uiState(g.roles?.statusRole?.enabled)}`
+            `**${uiText(g, 'Auto rôles', 'Auto roles')} :** ${(g.roles?.autoRoles || []).length}`,
+            `**Sticky ${uiText(g, 'dans ce salon', 'in this channel')} :** ${uiBool(targetChannel && g.sticky?.[targetChannel.id], uiText(g, 'oui', 'yes'), uiText(g, 'non', 'no'))}`,
+            `**Ghost ping :** ${uiState(g.automod?.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
+            `**Status role :** ${uiState(g.roles?.statusRole?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`
           ].join('\n'),
           inline: false
         }
       );
   } else if (safePage === 'channels') {
     embed
-      .setDescription(`Outils de salons pour ${channelMention}. Principalement pour logs, stats et liaisons rapides.`)
+      .setDescription(uiText(g, `Bindings rapides pour les compteurs et les routes de salons depuis ${channelMention}.`, `Quick binds for counters and channel routes from ${channelMention}.`))
       .addFields(
         {
-          name: 'Liaison des stats',
+          name: uiText(g, '📊 Stats', '📊 Stats'),
           value: [
-            `**Members counter:** ${stats.channels?.members ? `<#${stats.channels.members}>` : 'not set'}`,
-            `**Online counter:** ${stats.channels?.online ? `<#${stats.channels.online}>` : 'not set'}`,
-            `**Voice counter:** ${stats.channels?.voice ? `<#${stats.channels.voice}>` : 'not set'}`,
-            `**Tip:** use this page from inside a voice channel if you want to bind it as a stat counter.`
+            `**Members :** ${uiChannel(stats.channels?.members, noValue)}`,
+            `**Online :** ${uiChannel(stats.channels?.online, noValue)}`,
+            `**Voice :** ${uiChannel(stats.channels?.voice, noValue)}`,
+            `**${uiText(g, 'Catégorie stats', 'Stats category')} :** ${stats.categoryId ? `<#${stats.categoryId}>` : none}`
           ].join('\n'),
-          inline: false
+          inline: true
         },
         {
-          name: 'Labels',
+          name: uiText(g, '🧾 Logs', '🧾 Logs'),
           value: [
-            `**Members:** ${clipText(stats.labels?.members || '👥・Membres : {count}', 80)}`,
-            `**Online:** ${clipText(stats.labels?.online || '🌐・En ligne : {count}', 80)}`,
-            `**Voice:** ${clipText(stats.labels?.voice || '🔊・Vocal : {count}', 80)}`
+            `**${uiText(g, 'Route par défaut', 'Default route')} :** ${uiChannel(logs.channels?.default || logs.channelId, noValue)}`,
+            `**Messages :** ${uiChannel(logs.channels?.messages, defaultRoute)}`,
+            `**${uiText(g, 'Membres', 'Members')} :** ${uiChannel(logs.channels?.members, defaultRoute)}`,
+            `**${uiText(g, 'Vocal', 'Voice')} :** ${uiChannel(logs.channels?.voice, defaultRoute)}`
+          ].join('\n'),
+          inline: true
+        },
+        {
+          name: uiText(g, '⚡ Depuis cette page', '⚡ From this page'),
+          value: [
+            `• ${uiText(g, 'binder members / online / voice', 'bind members / online / voice')}`,
+            `• ${uiText(g, 'définir les logs par défaut ici', 'set default logs here')}`,
+            `• ${uiText(g, 'actualiser après un changement', 'refresh after a change')}`
           ].join('\n'),
           inline: false
         }
       );
   } else if (safePage === 'style') {
-    const currentTheme = g.panel?.theme || 'default';
     embed
-      .setDescription('Thème visuel global des embeds, du smart panel et des messages système principaux.')
+      .setDescription(uiText(g, 'Choisis un thème global propre pour les embeds et hubs principaux.', 'Pick a clean global theme for embeds and major hubs.'))
       .addFields(
         {
-          name: 'Thème actuel',
+          name: uiText(g, '🎨 Thème actuel', '🎨 Current theme'),
           value: [
-            `**Preset:** ${SMART_PANEL_THEMES[currentTheme]?.label || 'Custom'}`,
-            `**Embed color:** ${code(g.embedColor || '#5865F2')}`,
-            'Use a preset, then fine-tune module colors only when needed.'
+            `**${uiText(g, 'Thème', 'Theme')} :** ${SMART_PANEL_THEMES[g.panel?.theme || 'default']?.label || 'Custom'}`,
+            `**${uiText(g, 'Couleur globale', 'Global color')} :** ${code(g.embedColor || '#5865F2')}`,
+            `**${uiText(g, 'Usage', 'Usage')} :** ${uiText(g, 'dashboard, panel, support, help, embeds système', 'dashboard, panel, support, help, system embeds')}`
           ].join('\n'),
           inline: false
         },
         {
-          name: 'Presets disponibles',
-          value: formatSmartThemeLines(g).join('\n').slice(0, 1024),
-          inline: false
-        }
-      );
-  } else if (safePage === 'repair') {
-    embed
-      .setDescription('When something feels off, use this page instead of guessing which old config command to run.')
-      .addFields(
-        {
-          name: 'What gets checked',
+          name: uiText(g, '🧪 Conseils', '🧪 Tips'),
           value: [
-            '• text objects and modes',
-            '• log routes and invalid channel IDs',
-            '• support channels / roles / prompt config',
-            '• whitelist IDs and security lists',
-            '• stats category and missing counters'
-          ].join('\n'),
-          inline: false
-        },
-        {
-          name: 'Best use',
-          value: [
-            '• after deleting channels / roles',
-            '• after importing an old backup',
-            '• when stats stop updating',
-            '• when support relay points nowhere',
-            '• when logs feel half-configured'
+            `• ${uiText(g, 'Default = neutre et clean', 'Default = neutral and clean')}`,
+            `• ${uiText(g, 'Emerald = plus soft', 'Emerald = softer')}`,
+            `• ${uiText(g, 'Sunset = plus vif', 'Sunset = more vivid')}`,
+            `• ${uiText(g, 'Neon = plus premium', 'Neon = more premium')}`
           ].join('\n'),
           inline: false
         }
       );
   }
 
-  return embed.setFooter({ text: `DvL • smart panel • page: ${safePage}${safePage === 'texts' ? ` • module: ${focus}` : ''}` });
+  embed.setFooter({ text: uiText(g, `DvL • smart panel • page : ${safePage}`, `DvL • smart panel • page: ${safePage}`) });
+  return translateEmbedForUi(g, embed);
 }
 
-function createConfigPanelComponents(current = 'home', channelId = null) {
+function createConfigPanelComponents(current = 'home', channelId = null, guildConfig = null) {
   const state = getSmartPanelState(current);
   const safePage = state.page;
   const focus = state.focus || 'welcome';
@@ -11081,190 +11335,178 @@ function createConfigPanelComponents(current = 'home', channelId = null) {
 
   const rows = [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:page:home').setLabel('Home').setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel('Texts').setEmoji('📝').setStyle(safePage === 'texts' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:logs').setLabel('Logs').setEmoji('🧾').setStyle(safePage === 'logs' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:support').setLabel('Support').setEmoji('📨').setStyle(safePage === 'support' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel('Security').setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('cfgpanel:page:home').setLabel(uiText(guildConfig, 'Accueil', 'Home')).setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel(uiText(guildConfig, 'Textes', 'Texts')).setEmoji('📝').setStyle(safePage === 'texts' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:logs').setLabel(uiText(guildConfig, 'Logs', 'Logs')).setEmoji('🧾').setStyle(safePage === 'logs' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:support').setLabel(uiText(guildConfig, 'Support', 'Support')).setEmoji('📨').setStyle(safePage === 'support' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel(uiText(guildConfig, 'Sécurité', 'Security')).setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:page:automation').setLabel('Automation').setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:channels').setLabel('Salons').setEmoji('🧩').setStyle(safePage === 'channels' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:style').setLabel('Style').setEmoji('🎨').setStyle(safePage === 'style' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:refresh:${safePage}`).setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('cfgpanel:page:automation').setLabel(uiText(guildConfig, 'Automation', 'Automation')).setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:channels').setLabel(uiText(guildConfig, 'Salons', 'Channels')).setEmoji('🧩').setStyle(safePage === 'channels' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:style').setLabel(uiText(guildConfig, 'Style', 'Style')).setEmoji('🎨').setStyle(safePage === 'style' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:refresh:${safePage}`).setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     )
   ];
 
   if (safePage === 'home') {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel('Textes').setEmoji('📝').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel(uiText(guildConfig, 'Textes', 'Texts')).setEmoji('📝').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('cfgpanel:page:support').setLabel('Support').setEmoji('📨').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel('Sécurité').setEmoji('🚨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel(uiText(guildConfig, 'Sécurité', 'Security')).setEmoji('🚨').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:page:style').setLabel('Style').setEmoji('🎨').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:deploy').setLabel('Déployer').setEmoji('📌').setStyle(ButtonStyle.Success)
+      new ButtonBuilder().setCustomId('cfgpanel:deploy').setLabel(uiText(guildConfig, 'Déployer', 'Deploy')).setEmoji('📌').setStyle(ButtonStyle.Success)
     ));
   } else if (safePage === 'texts') {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:textview:welcome').setLabel('Welcome').setStyle(focus === 'welcome' ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('cfgpanel:textview:leave').setLabel('Leave').setStyle(focus === 'leave' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:textview:leave-dm').setLabel('MP leave').setStyle(focus === 'leave-dm' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:textview:boost').setLabel('Boost').setStyle(focus === 'boost' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:textvars').setLabel('Variables').setEmoji('🧩').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('cfgpanel:textview:welcome').setLabel(uiText(guildConfig, 'Welcome', 'Welcome')).setStyle(focus === 'welcome' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:leave').setLabel(uiText(guildConfig, 'Leave', 'Leave')).setStyle(focus === 'leave' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:leave-dm').setLabel(uiText(guildConfig, 'Leave MP', 'Leave DM')).setStyle(focus === 'leave-dm' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:boost').setLabel(uiText(guildConfig, 'Boost', 'Boost')).setStyle(focus === 'boost' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textvars').setLabel(uiText(guildConfig, 'Variables', 'Variables')).setEmoji('🧩').setStyle(ButtonStyle.Secondary)
     ));
     if (focus === 'leave-dm') {
       rows.push(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`cfgpanel:texttoggle:${focus}`).setLabel('MP on/off').setEmoji('📨').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId(`cfgpanel:textmode:${focus}`).setLabel('Embed/texte').setEmoji('🎨').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:title`).setLabel('Titre').setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:message`).setLabel('Message').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:texttoggle:${focus}`).setLabel(uiText(guildConfig, 'MP on/off', 'DM on/off')).setEmoji('📨').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textmode:${focus}`).setLabel(uiText(guildConfig, 'Embed/texte', 'Embed/plain')).setEmoji('🎨').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:title`).setLabel(uiText(guildConfig, 'Titre', 'Title')).setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:message`).setLabel(uiText(guildConfig, 'Message', 'Message')).setEmoji('💬').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:footer`).setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary)
       ));
     } else {
       rows.push(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`cfgpanel:texttoggle:${focus}`).setLabel('On/off').setEmoji('✅').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId(`cfgpanel:texthere:${focus}`).setLabel('Channel here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`cfgpanel:textmode:${focus}`).setLabel('Embed/texte').setEmoji('🎨').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:title`).setLabel('Titre').setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:message`).setLabel('Message').setEmoji('💬').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId(`cfgpanel:texttoggle:${focus}`).setLabel(uiText(guildConfig, 'On/off', 'On/off')).setEmoji('✅').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId(`cfgpanel:texthere:${focus}`).setLabel(uiText(guildConfig, 'Salon ici', 'Channel here')).setEmoji('📍').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textmode:${focus}`).setLabel(uiText(guildConfig, 'Embed/texte', 'Embed/plain')).setEmoji('🎨').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:title`).setLabel(uiText(guildConfig, 'Titre', 'Title')).setEmoji('🏷️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:message`).setLabel(uiText(guildConfig, 'Message', 'Message')).setEmoji('💬').setStyle(ButtonStyle.Secondary)
       ));
     }
     rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:footer`).setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:color`).setLabel('Couleur').setEmoji('🌈').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:image`).setLabel('Image').setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:texttest:${focus}`).setLabel('Tester').setEmoji('🧪').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`cfgpanel:textreset:${focus}`).setLabel('Reset').setEmoji('♻️').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:color`).setLabel(uiText(guildConfig, 'Couleur', 'Color')).setEmoji('🌈').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:textedit:${focus}:image`).setLabel(uiText(guildConfig, 'Image', 'Image')).setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:texttest:${focus}`).setLabel(uiText(guildConfig, 'Tester', 'Test')).setEmoji('🧪').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`cfgpanel:textreset:${focus}`).setLabel(uiText(guildConfig, 'Réinitialiser', 'Reset')).setEmoji('♻️').setStyle(ButtonStyle.Danger)
     ));
   } else if (safePage === 'logs') {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:logtoggle').setLabel('Logs on/off').setEmoji('🧾').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('cfgpanel:logshere').setLabel('Default here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:openlogs').setLabel('Panel logs').setEmoji('📋').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:ghosthere').setLabel('Ghost here').setEmoji('👻').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:refresh:logs').setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('cfgpanel:logtoggle').setLabel(uiText(guildConfig, 'Logs on/off', 'Logs on/off')).setEmoji('🧾').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:logshere').setLabel(uiText(guildConfig, 'Défaut ici', 'Default here')).setEmoji('📍').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:openlogs').setLabel(uiText(guildConfig, 'Panel logs', 'Logs panel')).setEmoji('📋').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:ghosthere').setLabel(uiText(guildConfig, 'Ghost ici', 'Ghost here')).setEmoji('👻').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:refresh:logs').setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     ));
   } else if (safePage === 'support') {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:supporttoggle').setLabel('Relay on/off').setEmoji('📨').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('cfgpanel:supportrelayhere').setLabel('Relay here').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:supportentryhere').setLabel('Support here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:supportrestrict').setLabel('Restrict').setEmoji('🚧').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:supportsend').setLabel('Send prompt').setEmoji('📤').setStyle(ButtonStyle.Success)
+      new ButtonBuilder().setCustomId('cfgpanel:supporttoggle').setLabel(uiText(guildConfig, 'Relais on/off', 'Relay on/off')).setEmoji('📨').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:supportrelayhere').setLabel(uiText(guildConfig, 'Relais ici', 'Relay here')).setEmoji('🧾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:supportentryhere').setLabel(uiText(guildConfig, 'Support ici', 'Support here')).setEmoji('📍').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:supportrestrict').setLabel(uiText(guildConfig, 'Restreindre', 'Restrict')).setEmoji('🚧').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:supportsend').setLabel(uiText(guildConfig, 'Envoyer prompt', 'Send prompt')).setEmoji('📤').setStyle(ButtonStyle.Success)
     ));
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:supportopen').setLabel('Open full panel').setEmoji('🎛️').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('cfgpanel:supportopen').setLabel(uiText(guildConfig, 'Ouvrir panel complet', 'Open full panel')).setEmoji('🎛️').setStyle(ButtonStyle.Secondary)
     ));
   } else if (safePage === 'security') {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:ghosttoggle').setLabel('Ghost on/off').setEmoji('👻').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('cfgpanel:ghosthere').setLabel('Ghost here').setEmoji('📍').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:ghosttest').setLabel('Ghost test').setEmoji('🧪').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:securityopen').setLabel('Security hub').setEmoji('🚨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:ghosttoggle').setLabel(uiText(guildConfig, 'Ghost on/off', 'Ghost on/off')).setEmoji('👻').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:ghosthere').setLabel(uiText(guildConfig, 'Ghost ici', 'Ghost here')).setEmoji('📍').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:ghosttest').setLabel(uiText(guildConfig, 'Test ghost', 'Ghost test')).setEmoji('🧪').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:securityopen').setLabel(uiText(guildConfig, 'Hub sécurité', 'Security hub')).setEmoji('🚨').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:whitelistview').setLabel('Whitelist').setEmoji('✅').setStyle(ButtonStyle.Secondary)
     ));
   } else if (safePage === 'automation') {
     rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`cfgpanel:artoggle:${cid}`).setLabel('Auto-react on/off').setEmoji('✨').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId(`cfgpanel:arhype:${cid}`).setLabel('Preset hype').setEmoji('🔥').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:stickyset:${cid}`).setLabel('Sticky set').setEmoji('📌').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:stickyoff:${cid}`).setLabel('Sticky off').setEmoji('🗑️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:refresh:automation').setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId(`cfgpanel:stickyset:${cid}`).setLabel(uiText(guildConfig, 'Définir sticky', 'Sticky set')).setEmoji('📌').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:stickyoff:${cid}`).setLabel(uiText(guildConfig, 'Retirer sticky', 'Sticky off')).setEmoji('🗑️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:refresh:automation').setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     ));
   } else if (safePage === 'channels') {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`cfgpanel:statsmembers:${cid}`).setLabel('Bind members').setEmoji('👥').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId(`cfgpanel:statsonline:${cid}`).setLabel('Bind online').setEmoji('🌐').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:statsvoice:${cid}`).setLabel('Bind voice').setEmoji('🔊').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:logshere').setLabel('Logs here').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:refresh:channels').setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId(`cfgpanel:statsmembers:${cid}`).setLabel(uiText(guildConfig, 'Lier membres', 'Bind members')).setEmoji('👥').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`cfgpanel:statsonline:${cid}`).setLabel(uiText(guildConfig, 'Lier online', 'Bind online')).setEmoji('🌐').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:statsvoice:${cid}`).setLabel(uiText(guildConfig, 'Lier vocal', 'Bind voice')).setEmoji('🔊').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:logshere').setLabel(uiText(guildConfig, 'Logs ici', 'Logs here')).setEmoji('🧾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:refresh:channels').setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     ));
   } else if (safePage === 'style') {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:theme:default').setLabel('Default').setEmoji('🟦').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:theme:default').setLabel(uiText(guildConfig, 'Défaut', 'Default')).setEmoji('🟦').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('cfgpanel:theme:emerald').setLabel('Emerald').setEmoji('🟩').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:theme:sunset').setLabel('Sunset').setEmoji('🟧').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:theme:neon').setLabel('Neon').setEmoji('🟪').setStyle(ButtonStyle.Secondary)
-    ));
-  } else if (safePage === 'repair') {
-    rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:repair:all').setLabel('Repair all').setEmoji('🧰').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('cfgpanel:repair:texts').setLabel('Texts').setEmoji('📝').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:repair:logs').setLabel('Logs').setEmoji('🧾').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:repair:support').setLabel('Support').setEmoji('📨').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:repair:stats').setLabel('Stats').setEmoji('📊').setStyle(ButtonStyle.Secondary)
-    ));
-    rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:repair:security').setLabel('Security').setEmoji('🚨').setStyle(ButtonStyle.Secondary)
     ));
   }
 
   return rows;
 }
 
-
 function createFallbackConfigPanelEmbed(guildConfig, guild, page = 'home', channel = null) {
   const state = getSmartPanelState(page);
   const safePage = state.page;
   const focus = state.focus || 'welcome';
-  const channelLabel = channel && channel.id ? `${channel}` : 'this channel';
+  const channelLabel = channel && channel.id ? `${channel}` : uiText(guildConfig, 'ce salon', 'this channel');
   const titleMap = {
-    home: '🏠 Panel home',
-    texts: '📝 Panel texts',
-    logs: '🧾 Panel logs',
-    support: '📨 Panel support',
-    security: '🚨 Panel security',
-    automation: '⚡ Panel automation',
-    channels: '🧩 Panel channels',
-    style: '🎨 Panel style'
+    home: uiText(guildConfig, '🏠 Panel accueil', '🏠 Panel home'),
+    texts: uiText(guildConfig, '📝 Panel textes', '📝 Panel texts'),
+    logs: uiText(guildConfig, '🧾 Panel logs', '🧾 Panel logs'),
+    support: uiText(guildConfig, '📨 Panel support', '📨 Panel support'),
+    security: uiText(guildConfig, '🚨 Panel sécurité', '🚨 Panel security'),
+    automation: uiText(guildConfig, '⚡ Panel automation', '⚡ Panel automation'),
+    channels: uiText(guildConfig, '🧩 Panel salons', '🧩 Panel channels'),
+    style: uiText(guildConfig, '🎨 Panel style', '🎨 Panel style')
   };
   const linesMap = {
     home: [
-      `Quick panel for ${channelLabel}.`,
-      'Use the buttons below to switch page.',
-      'If one page had a bad saved value, this fallback keeps the panel usable.'
+      uiText(guildConfig, `Panel rapide pour ${channelLabel}.`, `Quick panel for ${channelLabel}.`),
+      uiText(guildConfig, 'Utilise les boutons dessous pour changer de page.', 'Use the buttons below to switch page.'),
+      uiText(guildConfig, 'Si une page avait une mauvaise valeur enregistrée, ce mode secours garde le panel utilisable.', 'If one page had a bad saved value, this fallback keeps the panel usable.')
     ],
     texts: [
-      `Text module: **${focus}**`,
-      'Use the buttons below to switch text module or refresh.',
-      `Fast path: \`${guildConfig?.prefix || '+'}${focus === 'leave-dm' ? 'leave dm on' : `${focus} channel #channel`}\``
+      uiText(guildConfig, `Module texte : **${focus}**`, `Text module: **${focus}**`),
+      uiText(guildConfig, 'Utilise les boutons dessous pour changer de module texte ou actualiser.', 'Use the buttons below to switch text module or refresh.'),
+      uiText(guildConfig, `Raccourci : \`${guildConfig?.prefix || '+'}${focus === 'leave-dm' ? 'leave dm on' : `${focus} channel #channel`}\``, `Fast path: \`${guildConfig?.prefix || '+'}${focus === 'leave-dm' ? 'leave dm on' : `${focus} channel #channel`}\``)
     ],
-    logs: ['Logs panel opened in safe mode.', 'Use **Default here** or **Actualiser**.'],
-    support: ['Support panel opened in safe mode.', 'Use **Relay here** and **Support here**.'],
-    security: ['Security panel opened in safe mode.', 'Use **Ghost here** or **Whitelist**.'],
-    automation: ['Automation panel opened in safe mode.', 'Use **Auto-react** or **Sticky set**.'],
-    channels: ['Channel tools opened in safe mode.', 'Bind members / online / voice counters from here.'],
-    style: ['Style panel opened in safe mode.', 'Pick a theme preset then refresh.']
+    logs: [uiText(guildConfig, 'Panel logs ouvert en mode secours.', 'Logs panel opened in safe mode.'), uiText(guildConfig, 'Utilise **Défaut ici** ou **Actualiser**.', 'Use **Default here** or **Refresh**.')],
+    support: [uiText(guildConfig, 'Panel support ouvert en mode secours.', 'Support panel opened in safe mode.'), uiText(guildConfig, 'Utilise **Relais ici** et **Support ici**.', 'Use **Relay here** and **Support here**.')],
+    security: [uiText(guildConfig, 'Panel sécurité ouvert en mode secours.', 'Security panel opened in safe mode.'), uiText(guildConfig, 'Utilise **Ghost ici** ou **Whitelist**.', 'Use **Ghost here** or **Whitelist**.')],
+    automation: [uiText(guildConfig, 'Panel automation ouvert en mode secours.', 'Automation panel opened in safe mode.'), uiText(guildConfig, 'Utilise **Auto-react** ou **Sticky set**.', 'Use **Auto-react** or **Sticky set**.')],
+    channels: [uiText(guildConfig, 'Outils salons ouverts en mode secours.', 'Channel tools opened in safe mode.'), uiText(guildConfig, 'Bind members / online / voice depuis ici.', 'Bind members / online / voice counters from here.')],
+    style: [uiText(guildConfig, 'Panel style ouvert en mode secours.', 'Style panel opened in safe mode.'), uiText(guildConfig, 'Choisis un thème puis actualise.', 'Pick a theme preset then refresh.')]
   };
-  return baseEmbed(guildConfig || {}, titleMap[safePage] || '🎛️ Smart panel', linesMap[safePage].join('\n'))
-    .setFooter({ text: `DvL • smart panel safe mode • page: ${safePage}${safePage === 'texts' ? ` • module: ${focus}` : ''}` });
+  return baseEmbed(guildConfig || {}, titleMap[safePage] || uiText(guildConfig, '🎛️ Smart panel', '🎛️ Smart panel'), linesMap[safePage].join('\n'))
+    .setFooter({ text: uiText(guildConfig, `DvL • smart panel safe mode • page : ${safePage}${safePage === 'texts' ? ` • module : ${focus}` : ''}`, `DvL • smart panel safe mode • page: ${safePage}${safePage === 'texts' ? ` • module: ${focus}` : ''}`) });
 }
 
-function createFallbackConfigPanelComponents(current = 'home') {
+function createFallbackConfigPanelComponents(current = 'home', guildConfig = null) {
   const state = getSmartPanelState(current);
   const safePage = state.page;
   const focus = state.focus || 'welcome';
   const rows = [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:page:home').setLabel('Home').setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel('Texts').setEmoji('📝').setStyle(safePage === 'texts' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:logs').setLabel('Logs').setEmoji('🧾').setStyle(safePage === 'logs' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:support').setLabel('Support').setEmoji('📨').setStyle(safePage === 'support' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel('Security').setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('cfgpanel:page:home').setLabel(uiText(guildConfig, 'Accueil', 'Home')).setEmoji('🏠').setStyle(safePage === 'home' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel(uiText(guildConfig, 'Textes', 'Texts')).setEmoji('📝').setStyle(safePage === 'texts' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:logs').setLabel(uiText(guildConfig, 'Logs', 'Logs')).setEmoji('🧾').setStyle(safePage === 'logs' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:support').setLabel(uiText(guildConfig, 'Support', 'Support')).setEmoji('📨').setStyle(safePage === 'support' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel(uiText(guildConfig, 'Sécurité', 'Security')).setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Success : ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:page:automation').setLabel('Automation').setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:channels').setLabel('Salons').setEmoji('🧩').setStyle(safePage === 'channels' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:page:style').setLabel('Style').setEmoji('🎨').setStyle(safePage === 'style' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:refresh:${safePage}`).setLabel('Actualiser').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('cfgpanel:page:automation').setLabel(uiText(guildConfig, 'Automation', 'Automation')).setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:channels').setLabel(uiText(guildConfig, 'Salons', 'Channels')).setEmoji('🧩').setStyle(safePage === 'channels' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:page:style').setLabel(uiText(guildConfig, 'Style', 'Style')).setEmoji('🎨').setStyle(safePage === 'style' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:refresh:${safePage}`).setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     )
   ];
   if (safePage === 'texts') {
     rows.push(new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('cfgpanel:textview:welcome').setLabel('Welcome').setStyle(focus === 'welcome' ? ButtonStyle.Success : ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('cfgpanel:textview:leave').setLabel('Leave').setStyle(focus === 'leave' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:textview:leave-dm').setLabel('MP leave').setStyle(focus === 'leave-dm' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:textview:boost').setLabel('Boost').setStyle(focus === 'boost' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('cfgpanel:textvars').setLabel('Variables').setEmoji('🧩').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('cfgpanel:textview:welcome').setLabel(uiText(guildConfig, 'Welcome', 'Welcome')).setStyle(focus === 'welcome' ? ButtonStyle.Success : ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:leave').setLabel(uiText(guildConfig, 'Leave', 'Leave')).setStyle(focus === 'leave' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:leave-dm').setLabel(uiText(guildConfig, 'Leave MP', 'Leave DM')).setStyle(focus === 'leave-dm' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textview:boost').setLabel(uiText(guildConfig, 'Boost', 'Boost')).setStyle(focus === 'boost' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('cfgpanel:textvars').setLabel(uiText(guildConfig, 'Variables', 'Variables')).setEmoji('🧩').setStyle(ButtonStyle.Secondary)
     ));
   }
   return rows;
@@ -11275,13 +11517,13 @@ function buildSafeConfigPanelPayload(guildConfig, guild, page = 'home', channel 
   try {
     return {
       embeds: [createConfigPanelEmbed(guildConfig, guild, normalizedPage, channel)],
-      components: createConfigPanelComponents(normalizedPage, channel?.id)
+      components: createConfigPanelComponents(normalizedPage, channel?.id, guildConfig)
     };
   } catch (error) {
     console.error('[smart-panel-payload]', error);
     return {
       embeds: [createFallbackConfigPanelEmbed(guildConfig, guild, normalizedPage, channel)],
-      components: createFallbackConfigPanelComponents(normalizedPage)
+      components: createFallbackConfigPanelComponents(normalizedPage, guildConfig)
     };
   }
 }
