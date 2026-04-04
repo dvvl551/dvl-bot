@@ -23,7 +23,7 @@ const {
 } = require('discord.js');
 
 const { Store } = require('./core/store');
-const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, getHelpTargetInfo } = require('./core/commands');
+const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, getHelpTargetInfo, buildSafeConfigPanelPayload, normalizeConfigPanelPage } = require('./core/commands');
 const {
   ACTIVITY_TYPES,
   baseEmbed,
@@ -34,7 +34,9 @@ const {
   channelTypeName,
   parseChannelArgument,
   parseRoleArgument,
-  parseUserArgument
+  parseUserArgument,
+  translateText,
+  localizePayload
 } = require('./core/utils');
 const { checkTikTokWatchers } = require('./core/tiktok');
 const { DEFAULT_GUILD } = require('./core/defaults');
@@ -136,11 +138,13 @@ async function fetchEmbedSourceMessage(guild, raw, fallbackChannelId = null) {
 function buildEmbedDraftPreview(guildConfig, draft) {
   const preview = new EmbedBuilder()
     .setColor(ensureHexColor(draft.embed.color || '#5865F2'))
+    .setAuthor({ name: draft.embed.author || (String(guildConfig?.language || '').toLowerCase() === 'fr' ? '✦ Studio embed' : '✦ Embed studio') })
     .setTimestamp()
-    .setFooter({ text: draft.embed.footer || 'DvL embed builder' });
+    .setFooter({ text: draft.embed.footer || (String(guildConfig?.language || '').toLowerCase() === 'fr' ? 'Studio embed • aperçu' : 'Embed studio • preview') });
   if (draft.embed.title) preview.setTitle(draft.embed.title);
+  else preview.setTitle(String(guildConfig?.language || '').toLowerCase() === 'fr' ? 'Prévisualisation de l’embed' : 'Embed preview');
   if (draft.embed.description) preview.setDescription(draft.embed.description);
-  if (draft.embed.author) preview.setAuthor({ name: draft.embed.author });
+  else preview.setDescription(String(guildConfig?.language || '').toLowerCase() === 'fr' ? 'Crée un embed propre, copie un embed existant puis clique sur **Envoyer** quand tout est prêt.' : 'Add a title, text, image or thumbnail, then click **Send**.');
   if (draft.embed.image) preview.setImage(draft.embed.image);
   if (draft.embed.thumbnail) preview.setThumbnail(draft.embed.thumbnail);
   return preview;
@@ -148,18 +152,18 @@ function buildEmbedDraftPreview(guildConfig, draft) {
 
 function buildEmbedDraftComponents(draftId) {
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`embed:title:${draftId}`).setLabel('Title').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`embed:description:${draftId}`).setLabel('Description').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`embed:author:${draftId}`).setLabel('Author').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:footer:${draftId}`).setLabel('Footer').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:color:${draftId}`).setLabel('Color').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(`embed:title:${draftId}`).setLabel('Titre').setEmoji('🏷️').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`embed:description:${draftId}`).setLabel('Texte').setEmoji('📝').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`embed:author:${draftId}`).setLabel('Auteur').setEmoji('👤').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:footer:${draftId}`).setLabel('Footer').setEmoji('🧷').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:color:${draftId}`).setLabel('Couleur').setEmoji('🌈').setStyle(ButtonStyle.Secondary)
   );
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`embed:image:${draftId}`).setLabel('Image').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:thumbnail:${draftId}`).setLabel('Thumbnail').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:copy:${draftId}`).setLabel('Copy').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`embed:send:${draftId}`).setLabel('Send').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`embed:cancel:${draftId}`).setLabel('Cancel').setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId(`embed:image:${draftId}`).setLabel('Image').setEmoji('🖼️').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:thumbnail:${draftId}`).setLabel('Miniature').setEmoji('🪄').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:copy:${draftId}`).setLabel('Copier').setEmoji('📥').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`embed:send:${draftId}`).setLabel('Envoyer').setEmoji('📤').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`embed:cancel:${draftId}`).setLabel('Fermer').setEmoji('✖️').setStyle(ButtonStyle.Danger)
   );
   return [row1, row2];
 }
@@ -276,17 +280,17 @@ function createAnnouncementPayload(guildConfig, source, variables, options = {})
   const colorKey = options.colorKey || 'color';
   const imageKey = options.imageKey || 'imageUrl';
   const fallbackTitle = options.fallbackTitle || '';
-  const message = fillTemplate(source?.[messageKey] || '', variables).trim();
-  const title = fillTemplate(source?.[titleKey] || fallbackTitle, variables).trim();
+  const message = translateText(fillTemplate(source?.[messageKey] || '', variables).trim(), guildConfig);
+  const title = translateText(fillTemplate(source?.[titleKey] || fallbackTitle, variables).trim(), guildConfig);
   const footerRaw = source?.[footerKey];
-  const footer = footerRaw === null ? '' : fillTemplate(footerRaw ?? 'DvL', variables).trim();
+  const footer = footerRaw === null ? '' : translateText(fillTemplate(footerRaw ?? 'DvL', variables).trim(), guildConfig);
   const imageUrl = fillTemplate(source?.[imageKey] || '', variables).trim();
   const mode = normalizeAnnouncementMode(source?.[modeKey]);
   if (mode === 'plain') {
     const content = [title ? `**${title}**` : '', message, /^https?:\/\//i.test(imageUrl) ? imageUrl : '']
       .filter(Boolean)
       .join('\n');
-    return { content: content || 'No content.' };
+    return { content: content || translateText('No content.', guildConfig) };
   }
   const embed = new EmbedBuilder()
     .setColor(ensureHexColor(source?.[colorKey] || guildConfig?.embedColor || '#5865F2'))
@@ -603,13 +607,14 @@ async function handleConfigPanelInteraction(interaction) {
   const currentChannel = interaction.channel;
   const refreshPanel = async (page) => {
     const fresh = getGuildConfig(interaction.guild.id);
-    return interaction.message.edit({ embeds: [createConfigPanelEmbed(fresh, interaction.guild, page, currentChannel)], components: createConfigPanelComponents(page, currentChannel?.id) }).catch(() => null);
+    const payload = buildSafeConfigPanelPayload(fresh, interaction.guild, page, currentChannel);
+    return interaction.message.edit(payload).catch(() => null);
   };
   const sendEphemeral = (title, description) => interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), title, description)], ephemeral: true }).catch(() => null);
 
   if (action === 'page' || action === 'refresh') {
-    const page = arg || 'home';
-    return interaction.update({ embeds: [createConfigPanelEmbed(config, interaction.guild, page, currentChannel)], components: createConfigPanelComponents(page, currentChannel?.id) });
+    const page = normalizeConfigPanelPage(arg || 'home');
+    return interaction.update(buildSafeConfigPanelPayload(config, interaction.guild, page, currentChannel));
   }
 
   if (action === 'openlogs') {
@@ -639,7 +644,7 @@ async function handleConfigPanelInteraction(interaction) {
   if (action === 'repair') {
     const scope = ['all', 'texts', 'logs', 'support', 'stats', 'security'].includes(arg) ? arg : 'all';
     const report = await client.repairGuildConfiguration(interaction.guild, scope);
-    await sendEphemeral('🧰 Repair', [
+    await sendEphemeral('🩺 Recovery', [
       `**Scope:** ${report.scope}`,
       `**Fixed:** ${report.fixed.length}`,
       `**Cleared:** ${report.cleared.length}`,
@@ -649,7 +654,7 @@ async function handleConfigPanelInteraction(interaction) {
       ...report.cleared.slice(0, 6).map((line) => `• ${line}`),
       ...report.notes.slice(0, 6).map((line) => `• ${line}`)
     ].filter(Boolean).join('\n'));
-    return refreshPanel('repair');
+    return refreshPanel('home');
   }
 
   if (action === 'textvars') {
@@ -667,8 +672,8 @@ async function handleConfigPanelInteraction(interaction) {
   }
 
   if (action === 'textview') {
-    const page = arg || 'welcome';
-    return interaction.update({ embeds: [createConfigPanelEmbed(config, interaction.guild, page, currentChannel)], components: createConfigPanelComponents(page, currentChannel?.id) });
+    const page = normalizeConfigPanelPage(arg || 'welcome');
+    return interaction.update(buildSafeConfigPanelPayload(config, interaction.guild, page, currentChannel));
   }
 
   if (action === 'texttoggle' || action === 'texthere' || action === 'textmode' || action === 'texttest' || action === 'textreset' || action === 'textedit') {
@@ -2011,12 +2016,13 @@ function buildCtx(source, command) {
     lastReply: null,
     async reply(payload = {}) {
       let sent;
+      const localized = localizePayload(guildConfig, payload);
       if (interaction) {
-        const base = { ...payload };
+        const base = { ...localized };
         if (!interaction.replied && !interaction.deferred) sent = await interaction.reply({ ...base, fetchReply: true });
         else sent = await interaction.followUp(base);
       } else {
-        sent = await channel.send(payload);
+        sent = await channel.send(localized);
       }
       this.lastReply = sent || null;
       if (this.command?.name === 'embed' && sent) {
@@ -2105,6 +2111,17 @@ function resolveSlashCommand(interaction) {
   const root = interaction.commandName;
   const sub = interaction.options.getSubcommand(false);
   return client.commandRegistry.find((command) => command.slash?.root === root && command.slash?.sub === sub) || null;
+}
+
+function patchInteractionLocalization(interaction, guildConfig) {
+  if (!interaction || interaction.__dvlLocalized) return interaction;
+  for (const method of ['reply', 'update', 'followUp']) {
+    if (typeof interaction[method] !== 'function') continue;
+    const original = interaction[method].bind(interaction);
+    interaction[method] = (payload = {}) => original(localizePayload(guildConfig, payload));
+  }
+  interaction.__dvlLocalized = true;
+  return interaction;
 }
 
 async function runCommand(source, command) {
@@ -3269,6 +3286,7 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
+    if (interaction.guild) patchInteractionLocalization(interaction, getGuildConfig(interaction.guild.id));
     if (interaction.isChatInputCommand()) {
       const command = resolveSlashCommand(interaction);
       if (!command) return interaction.reply({ content: 'Command not found.', ephemeral: true }).catch(() => null);
@@ -3518,48 +3536,48 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.customId.startsWith('embed:')) {
         const [, field, draftId] = interaction.customId.split(':');
         const draft = client.embedDrafts.get(draftId);
-        if (!draft) return interaction.reply({ content: 'Draft not found.', ephemeral: true });
-        if (draft.ownerId !== interaction.user.id) return interaction.reply({ content: 'This builder is not yours.', ephemeral: true });
+        if (!draft) return interaction.reply({ content: 'Brouillon introuvable.', ephemeral: true });
+        if (draft.ownerId !== interaction.user.id) return interaction.reply({ content: 'Ce builder ne t’appartient pas.', ephemeral: true });
 
         if (field === 'send') {
           const channel = await client.channels.fetch(draft.channelId).catch(() => null);
-          if (!channel?.isTextBased?.()) return interaction.reply({ content: 'Channel not found.', ephemeral: true });
+          if (!channel?.isTextBased?.()) return interaction.reply({ content: 'Salon introuvable.', ephemeral: true });
           const embed = buildEmbedDraftPreview(getGuildConfig(interaction.guild.id), draft).setFooter({ text: draft.embed.footer || 'DvL' });
           await channel.send({ embeds: [embed] }).catch(() => null);
           client.embedDrafts.delete(draftId);
-          return interaction.update({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), 'Embed sent', 'Your embed was published.')], components: [] });
+          return interaction.update({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), 'Embed envoyé', 'Ton embed a bien été envoyé.')], components: [] });
         }
 
         if (field === 'cancel') {
           client.embedDrafts.delete(draftId);
-          return interaction.update({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), 'Embed cancelled', 'Builder closed.')], components: [] });
+          return interaction.update({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), 'Studio fermé', 'Le builder a été fermé.')], components: [] });
         }
 
         if (field === 'copy') {
-          const modal = new ModalBuilder().setCustomId(`embedmodal:copy:${draftId}`).setTitle('Copy an existing embed');
+          const modal = new ModalBuilder().setCustomId(`embedmodal:copy:${draftId}`).setTitle('Copier un embed');
           modal.addComponents(
             new ActionRowBuilder().addComponents(
               new TextInputBuilder()
                 .setCustomId('value')
-                .setLabel('Message ID or Discord message link')
+                .setLabel('ID du message ou lien Discord')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true)
-                .setPlaceholder('Same channel: 123...  |  Or paste a full message link')
+                .setPlaceholder('Même salon : 123...  |  ou colle un lien complet')
             )
           );
           return interaction.showModal(modal);
         }
 
         const labels = {
-          title: 'Title',
-          description: 'Description',
-          author: 'Author',
+          title: 'Titre',
+          description: 'Texte',
+          author: 'Auteur',
           footer: 'Footer',
-          color: 'Hex color',
-          image: 'Image URL',
-          thumbnail: 'Thumbnail URL'
+          color: 'Couleur hex',
+          image: 'URL de l’image',
+          thumbnail: 'URL de la miniature'
         };
-        const modal = new ModalBuilder().setCustomId(`embedmodal:${field}:${draftId}`).setTitle(`Edit ${labels[field] || field}`);
+        const modal = new ModalBuilder().setCustomId(`embedmodal:${field}:${draftId}`).setTitle(`Modifier ${labels[field] || field}`);
         modal.addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -3667,7 +3685,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
         const fresh = getGuildConfig(interaction.guild.id);
         if (interaction.message?.editable) {
-          await interaction.message.edit({ embeds: [createConfigPanelEmbed(fresh, interaction.guild, 'automation', interaction.channel)], components: createConfigPanelComponents('automation', interaction.channel?.id) }).catch(() => null);
+          await interaction.message.edit(buildSafeConfigPanelPayload(fresh, interaction.guild, 'automation', interaction.channel)).catch(() => null);
         }
         return interaction.reply({ embeds: [baseEmbed(fresh, '📌 Sticky', value ? `Sticky message saved for ${targetChannel}.` : `Sticky message removed from ${targetChannel}.`)], ephemeral: true }).catch(() => null);
       }
@@ -3696,7 +3714,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const fresh = getGuildConfig(interaction.guild.id);
         const currentChannel = interaction.channel;
         if (interaction.message?.editable) {
-          await interaction.message.edit({ embeds: [createConfigPanelEmbed(fresh, interaction.guild, moduleKey, currentChannel)], components: createConfigPanelComponents(moduleKey, currentChannel?.id) }).catch(() => null);
+          await interaction.message.edit(buildSafeConfigPanelPayload(fresh, interaction.guild, moduleKey, currentChannel)).catch(() => null);
         }
         return interaction.reply({ embeds: [baseEmbed(fresh, '📝 Smart panel', `${field} updated for ${moduleKey}.`)], ephemeral: true });
       }
@@ -3718,25 +3736,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.message?.editable) {
           await interaction.message.edit({ embeds: [createSupportPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents() }).catch(() => null);
         }
-        return interaction.reply({ embeds: [baseEmbed(fresh, '📨 Support prompt', `${field} updated.`)], ephemeral: true });
+        return interaction.reply({ embeds: [baseEmbed(fresh, '📨 Support prompt', `${field} mis à jour.`)], ephemeral: true });
       }
       if (interaction.customId.startsWith('embedmodal:')) {
         const [, field, draftId] = interaction.customId.split(':');
         const draft = client.embedDrafts.get(draftId);
-        if (!draft) return interaction.reply({ content: 'Draft not found.', ephemeral: true });
-        if (draft.ownerId !== interaction.user.id) return interaction.reply({ content: 'This builder is not yours.', ephemeral: true });
+        if (!draft) return interaction.reply({ content: 'Brouillon introuvable.', ephemeral: true });
+        if (draft.ownerId !== interaction.user.id) return interaction.reply({ content: 'Ce builder ne t’appartient pas.', ephemeral: true });
 
         if (field === 'copy') {
           const raw = interaction.fields.getTextInputValue('value').trim();
           const found = await fetchEmbedSourceMessage(interaction.guild, raw, interaction.channel?.id || draft.channelId);
-          if (!found) return interaction.reply({ content: 'Message not found. Use an embed message ID from this channel or a full Discord message link.', ephemeral: true });
+          if (!found) return interaction.reply({ content: 'Message introuvable. Utilise un ID du même salon ou un lien Discord complet.', ephemeral: true });
           const sourceEmbed = found.message.embeds?.[0];
-          if (!sourceEmbed) return interaction.reply({ content: 'That message has no embed to copy.', ephemeral: true });
+          if (!sourceEmbed) return interaction.reply({ content: 'Ce message n’a aucun embed à copier.', ephemeral: true });
           importEmbedIntoDraft(draft, sourceEmbed);
           const channel = await client.channels.fetch(draft.channelId).catch(() => null);
           const message = channel?.isTextBased?.() && draft.messageId ? await channel.messages.fetch(draft.messageId).catch(() => null) : null;
           if (message) await message.edit({ embeds: [buildEmbedDraftPreview(getGuildConfig(interaction.guild.id), draft)], components: buildEmbedDraftComponents(draftId) }).catch(() => null);
-          return interaction.reply({ content: `Embed copied from message \`${found.message.id}\`. Click **Send** to post it again.`, ephemeral: true });
+          return interaction.reply({ content: `Embed copié depuis le message \`${found.message.id}\`. Clique sur **Envoyer** pour le republier.`, ephemeral: true });
         }
 
         let value = interaction.fields.getTextInputValue('value').trim();
@@ -3747,7 +3765,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const message = channel?.isTextBased?.() && draft.messageId ? await channel.messages.fetch(draft.messageId).catch(() => null) : null;
 
         if (message) await message.edit({ embeds: [buildEmbedDraftPreview(getGuildConfig(interaction.guild.id), draft)], components: buildEmbedDraftComponents(draftId) }).catch(() => null);
-        return interaction.reply({ content: `${field} updated.`, ephemeral: true });
+        return interaction.reply({ content: `${field} mis à jour.`, ephemeral: true });
       }
     }
   } catch (error) {
