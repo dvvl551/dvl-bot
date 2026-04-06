@@ -1,56 +1,38 @@
-# DvL Bot v50 — Polished Final
+# DvL Bot v71 — Global cleanup
 
-This build is the big final clean pass meant to be **deployed and used**, not patched every hour.
+This build focuses on a cleaner package, a more practical tools flow, and fewer useless leftovers.
 
-## What was polished
+## Main changes
 
-- **Moderation upgraded**
-  - warn, warnings, clearwarnings, timeout, kick, ban, unban, nick
-  - cleaner staff embeds
-  - DM to the target when possible
-  - richer moderation logs with avatar, moderator, reason, duration and DM status
+- Removed dead `gifs` code that was not used by the live command registry
+- Added a direct `+tools` / `+outils` shortcut to open the tools dashboard
+- Improved finder examples so they show real keyword use cases instead of category duplicates
+- Kept the bot bilingual FR / EN
+- Prepared the package as a lighter source zip
 
-- **Logs more consistent**
-  - richer channel / role / invite update logs
-  - nickname change logs now include avatar + before / after
-  - moderation logs are much more detailed
-
-- **Stats / voice quality pass**
-  - stats channel binding now keeps the linked category when possible
-  - stats still auto-refresh and auto-repair missing counters
-
-- **New moderation hub**
-  - `+moderation`
-  - `+moderation warn`
-  - `+moderation timeout`
-  - `+moderation ban`
-  - `+moderation kick`
-
-- **Cleaner global embeds**
-  - base embeds now safely support array descriptions
-  - better clipping and more consistent footer behavior
-
-## Quick deploy
+## Quick install
 
 ```bash
 npm install
 npm run check
-npm start
+npm run dev
 ```
 
-## Practical commands
+## Useful commands
 
 ```txt
-+setup
-+panel
-+logs setup
-+moderation
-+warn @member reason
-+warnings @member
-+timeout @member 10m spam
-+ban @member reason
-+support panel
-+stats
-+voice
-+wl list
++tools
++dashboard tools
++find welcome
++find status
++find role
++help logs
++preset clean
++backup list
 ```
+
+## Notes
+
+- `+help <category>` is best to open a full section
+- `+find <keyword>` is best when you only know one word and not the right menu
+- This zip no longer includes `node_modules`, so run `npm install` once after extracting

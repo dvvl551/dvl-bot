@@ -20,6 +20,59 @@ const ACTIVITY_TYPE_LABELS = {
   competing: 'Competing'
 };
 
+const VISUAL_THEME_PALETTES = {
+  default: { base: '#5865F2', info: '#5865F2', success: '#22C55E', warning: '#F59E0B', error: '#EF4444' },
+  emerald: { base: '#10B981', info: '#10B981', success: '#22C55E', warning: '#F59E0B', error: '#EF4444' },
+  sunset: { base: '#F97316', info: '#F97316', success: '#22C55E', warning: '#FBBF24', error: '#EF4444' },
+  neon: { base: '#A855F7', info: '#A855F7', success: '#22C55E', warning: '#F59E0B', error: '#FB7185' }
+};
+
+function resolveVisualThemeKey(guildConfig = {}) {
+  const raw = String(guildConfig?.panel?.theme || '').trim().toLowerCase();
+  if (raw && VISUAL_THEME_PALETTES[raw]) return raw;
+  const embedColor = ensureHexColor(guildConfig?.embedColor, '#5865F2').toLowerCase();
+  const guessed = Object.entries(VISUAL_THEME_PALETTES).find(([, palette]) => String(palette.base).toLowerCase() === embedColor)?.[0];
+  return guessed || 'default';
+}
+
+function getVisualPalette(guildConfig = {}) {
+  const themeKey = resolveVisualThemeKey(guildConfig);
+  return VISUAL_THEME_PALETTES[themeKey] || VISUAL_THEME_PALETTES.default;
+}
+
+function pickVisualColor(guildConfig = {}, kind = 'info') {
+  const palette = getVisualPalette(guildConfig);
+  return palette[kind] || palette.base || ensureHexColor(guildConfig?.embedColor, '#5865F2');
+}
+
+function normalizeVisualTextBlock(text) {
+  return String(text || '')
+    .replace(/\r/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
+}
+
+function beautifyStructuredLines(text) {
+  const lines = String(text || '').split('\n');
+  const converted = lines.map((line) => {
+    const raw = String(line || '');
+    if (!raw.trim()) return '';
+    const compact = raw.trim();
+    const boldLabel = compact.match(/^\*\*([^*]+?)\s*:\*\*\s*(.+)$/);
+    if (boldLabel) return `• **${boldLabel[1].trim()}** → ${boldLabel[2].trim()}`;
+    const plainLabel = compact.match(/^\*\*([^*]+?)\*\*\s*:\s*(.+)$/);
+    if (plainLabel) return `• **${plainLabel[1].trim()}** → ${plainLabel[2].trim()}`;
+    const plainArrow = compact.match(/^([A-Za-zÀ-ÿ0-9#@&<>{} ._\-\/]+?)\s*:\s*(.+)$/);
+    if (plainArrow && !compact.startsWith('http') && !compact.startsWith('`')) return `• **${plainArrow[1].trim()}** → ${plainArrow[2].trim()}`;
+    if (/^(?:-|•|‣|▸)\s+/.test(compact)) return `• ${compact.replace(/^(?:-|•|‣|▸)\s+/, '')}`;
+    if (/^\d+\.\s+/.test(compact)) return compact;
+    if (/^\*\*.+\*\*$/.test(compact) && compact.length <= 80) return `### ${compact}`;
+    return raw;
+  });
+  return normalizeVisualTextBlock(converted.join('\n'));
+}
+
 function normalizeActivityType(input = '') {
   const raw = String(input).trim().toLowerCase();
   if (!raw) return null;
@@ -240,7 +293,89 @@ const FR_REPLACEMENTS = [
   [/Quick panel for/gi, 'Panel rapide pour'],
   [/safe mode/gi, 'mode sécurisé'],
   [/Continuation/gi, 'Suite'],
-  [/Browse/gi, 'Parcourir']
+  [/Browse/gi, 'Parcourir'],
+  [/Logs hub/gi, 'Hub logs'],
+  [/Log types/gi, 'Types de logs'],
+  [/Roles hub/gi, 'Hub rôles'],
+  [/Support prompt/gi, 'Prompt support'],
+  [/Quick view/gi, 'Vue rapide'],
+  [/Recommended setup/gi, 'Setup conseillé'],
+  [/Good to know/gi, 'À savoir'],
+  [/Families/gi, 'Familles'],
+  [/Direct per-type routes/gi, 'Routes par type'],
+  [/Disabled event types/gi, 'Types coupés'],
+  [/Voice Control Panel/gi, 'Panel vocal'],
+  [/Create hub/gi, 'Salon créateur'],
+  [/Owner tools/gi, 'Outils owner'],
+  [/Create \/ Join/gi, 'Créer / rejoindre'],
+  [/Claim Crown/gi, 'Récupérer la couronne'],
+  [/Transfer/gi, 'Transférer'],
+  [/Kick/gi, 'Expulser'],
+  [/Set Default Here/gi, 'Défaut ici'],
+  [/Set .* Here/gi, (m) => m],
+  [/Default route/gi, 'Route par défaut'],
+  [/This page route/gi, 'Route de cette page'],
+  [/using default route/gi, 'route par défaut utilisée'],
+  [/Enabled event types/gi, 'Types actifs'],
+  [/Direct per-type routes/gi, 'Routes par type'],
+  [/Main filters enabled/gi, 'Filtres actifs'],
+  [/Member channel/gi, 'Salon membre'],
+  [/Relay channel/gi, 'Salon relais'],
+  [/Restrict to member channel/gi, 'Limiter au salon membre'],
+  [/Ping role/gi, 'Rôle ping'],
+  [/Current channel/gi, 'Salon actuel'],
+  [/Panel channel/gi, 'Salon du panel'],
+  [/Theme/gi, 'Thème'],
+  [/Quick actions/gi, 'Actions rapides'],
+  [/Recommended flow/gi, 'Flow conseillé'],
+  [/Useful shortcuts/gi, 'Raccourcis utiles'],
+  [/Configured modules/gi, 'Modules configurés'],
+  [/Best pages to open first/gi, 'Pages à ouvrir d’abord'],
+  [/Things to check/gi, 'Points à vérifier'],
+  [/Enable logs/gi, 'Activer les logs'],
+  [/Disable logs/gi, 'Désactiver les logs'],
+  [/Enable/gi, 'Activer'],
+  [/Disable/gi, 'Désactiver'],
+  [/Reset/gi, 'Réinitialiser'],
+  [/Test/gi, 'Tester'],
+  [/Open/gi, 'Ouvrir'],
+  [/Overview/gi, 'Vue d’ensemble'],
+  [/Browse categories/gi, 'Parcourir les catégories'],
+  [/Role panels/gi, 'Panneaux de rôles'],
+  [/Auto roles/gi, 'Auto-rôles'],
+  [/Status role/gi, 'Rôle de statut'],
+  [/Temp voice/gi, 'Temp voice'],
+  [/Voice moderation/gi, 'Modération vocale'],
+  [/Restricted channels/gi, 'Salons restreints'],
+  [/Ignored channels/gi, 'Salons ignorés'],
+  [/Whitelist users/gi, 'Whitelist utilisateurs'],
+  [/Whitelist roles/gi, 'Whitelist rôles'],
+  [/Image-only channels/gi, 'Salons images uniquement'],
+  [/Main log routing/gi, 'Routage principal des logs'],
+  [/Main server hub/gi, 'Hub principal du serveur'],
+  [/Server overview/gi, 'Vue d’ensemble du serveur'],
+  [/Saved successfully/gi, 'Enregistré avec succès'],
+  [/Updated successfully/gi, 'Mis à jour avec succès'],
+  [/Created successfully/gi, 'Créé avec succès'],
+  [/Deleted successfully/gi, 'Supprimé avec succès'],
+  [/No result/gi, 'Aucun résultat'],
+  [/No results/gi, 'Aucun résultat'],
+  [/Use the buttons below/gi, 'Utilise les boutons ci-dessous'],
+  [/Use the menu below/gi, 'Utilise le menu ci-dessous'],
+  [/Choose an option/gi, 'Choisis une option'],
+  [/Select a channel/gi, 'Choisis un salon'],
+  [/Select a role/gi, 'Choisis un rôle'],
+  [/Select a member/gi, 'Choisis un membre'],
+  [/Choose the target/gi, 'Choisis la cible'],
+  [/Good to know/gi, 'À savoir'],
+  [/Next steps/gi, 'Étapes suivantes'],
+  [/Current route/gi, 'Route actuelle'],
+  [/Default route/gi, 'Route par défaut'],
+  [/Panel style/gi, 'Style du panel'],
+  [/Visual theme/gi, 'Thème visuel'],
+  [/Embed builder/gi, 'Studio embed'],
+  [/Copy from message/gi, 'Copier depuis un message'],
+  [/No obvious issue detected\./gi, 'Aucun souci évident détecté.']
 ];
 
 
@@ -251,7 +386,7 @@ const SYSTEM_NOTICE_KIND_PATTERNS = {
   info: /(ℹ️|info|information|config|setup|panel|dashboard|hub|status|state|overview|statut|vue d.?ensemble)/i
 };
 
-const PERSISTENT_NOTICE_PATTERNS = /(help|panel|dashboard|setup|hub|overview|cat[ée]gories|categories|leaderboard|watchers|warnings|list|liste|config|preview|studio|progress|security|s[ée]curit[ée]|logs types|role panel|voice panel|support panel|smart panel)/i;
+const PERSISTENT_NOTICE_PATTERNS = /(help|panel|dashboard|setup|hub|overview|cat[ée]gories|categories|leaderboard|watchers|warnings|list|liste|config|preview|example|examples|vars|variables|test|bind|studio|progress|trophy|security|s[ée]curit[ée]|logs types|role panel|voice panel|support panel|smart panel|welcome|leave|boost|stats)/i;
 
 function extractPayloadText(payload = {}) {
   return [
@@ -350,31 +485,46 @@ function normalizeSystemNoticePayload(payload = {}, guildConfig, options = {}) {
 
 
 function getVisualAuthorLabel(guildConfig) {
-  return isFrenchGuild(guildConfig) ? '✦ DvL • Gestion' : '✦ DvL • Management';
+  const themeKey = resolveVisualThemeKey(guildConfig);
+  const badge = { default: '✦', emerald: '✳️', sunset: '🌇', neon: '💠' }[themeKey] || '✦';
+  return isFrenchGuild(guildConfig) ? `${badge} DvL • Interface` : `${badge} DvL • Control`;
 }
 
 function getVisualFooterLabel(guildConfig) {
   const prefix = guildConfig?.prefix ? ` • ${guildConfig.prefix}` : '';
-  return isFrenchGuild(guildConfig) ? `DvL • Interface${prefix}` : `DvL • Control${prefix}`;
+  const themeKey = resolveVisualThemeKey(guildConfig);
+  const themeLabel = { default: 'Default', emerald: 'Emerald', sunset: 'Sunset', neon: 'Neon' }[themeKey] || 'Default';
+  return isFrenchGuild(guildConfig) ? `DvL • Interface serveur • ${themeLabel}${prefix}` : `DvL • Server control • ${themeLabel}${prefix}`;
 }
 
 function applyEmbedVisualStyle(embed, guildConfig) {
   if (!embed) return embed;
+  const palette = getVisualPalette(guildConfig);
   const applyRaw = (target) => {
     if (!target || typeof target !== 'object') return target;
-    if (!target.color) target.color = ensureHexColor(guildConfig?.embedColor);
+    if (!target.color) target.color = ensureHexColor(guildConfig?.embedColor, palette.base || '#5865F2');
     if (!target.author?.name) target.author = { ...(target.author || {}), name: getVisualAuthorLabel(guildConfig) };
     if (!target.footer?.text) target.footer = { ...(target.footer || {}), text: getVisualFooterLabel(guildConfig) };
     else if (/^DvL(?:\s|•|$)/i.test(String(target.footer.text))) target.footer = { ...(target.footer || {}), text: getVisualFooterLabel(guildConfig) };
+    if (typeof target.description === 'string') target.description = beautifyStructuredLines(target.description).slice(0, 4096);
+    if (Array.isArray(target.fields)) target.fields = target.fields.map((field) => ({ ...field, name: String(field?.name || '•').trim().slice(0, 256), value: beautifyStructuredLines(field?.value || '—').slice(0, 1024) }));
     if (!target.timestamp) target.timestamp = new Date().toISOString();
     return target;
   };
 
   if (embed?.data) {
-    if (!embed.data.color) embed.setColor(ensureHexColor(guildConfig?.embedColor));
+    if (!embed.data.color) embed.setColor(ensureHexColor(guildConfig?.embedColor, palette.base || '#5865F2'));
     if (!embed.data.author?.name) embed.setAuthor({ ...(embed.data.author || {}), name: getVisualAuthorLabel(guildConfig) });
     if (!embed.data.footer?.text || /^DvL(?:\s|•|$)/i.test(String(embed.data.footer.text))) {
       embed.setFooter({ ...(embed.data.footer || {}), text: getVisualFooterLabel(guildConfig) });
+    }
+    if (typeof embed.data.description === 'string') embed.setDescription(beautifyStructuredLines(embed.data.description).slice(0, 4096));
+    if (Array.isArray(embed.data.fields) && embed.data.fields.length) {
+      embed.setFields(embed.data.fields.map((field) => ({
+        ...field,
+        name: String(field?.name || '•').trim().slice(0, 256),
+        value: beautifyStructuredLines(field?.value || '—').slice(0, 1024)
+      })));
     }
     if (!embed.data.timestamp) embed.setTimestamp();
     return embed;
@@ -454,15 +604,40 @@ function localizePayload(guildConfig, payload = {}) {
   return next;
 }
 
+
+function applyGuildPayloadBranding(payload = {}, guild, guildConfig = {}) {
+  if (!payload || typeof payload !== 'object' || !Array.isArray(payload.embeds) || !guild) return payload;
+  const iconURL = guild.iconURL?.({ size: 256 }) || guild.iconURL?.() || null;
+  if (!iconURL) return payload;
+  const embeds = payload.embeds.map((input) => {
+    let embed;
+    try { embed = EmbedBuilder.from(input); } catch { embed = new EmbedBuilder(input || {}); }
+    const author = embed.data?.author || {};
+    if (!author.iconURL && !author.icon_url) {
+      embed.setAuthor({ ...author, name: author.name || getVisualAuthorLabel(guildConfig), iconURL });
+    }
+    const descLen = String(embed.data?.description || '').length;
+    const fieldCount = Array.isArray(embed.data?.fields) ? embed.data.fields.length : 0;
+    const title = String(embed.data?.title || '').toLowerCase();
+    const isHub = /(help|aide|panel|dashboard|hub|config|setup|logs|support|security|sécurité|voice|vocal|roles|rôles|embed)/i.test(title);
+    if (!embed.data?.thumbnail && !embed.data?.image && (isHub || fieldCount >= 2 || descLen >= 180)) {
+      embed.setThumbnail(iconURL);
+    }
+    return embed;
+  });
+  return { ...payload, embeds };
+}
+
 function resolveBaseEmbedColor(guildConfig, title, description) {
-  const fallback = ensureHexColor(guildConfig?.embedColor);
+  const palette = getVisualPalette(guildConfig);
+  const brandColor = ensureHexColor(guildConfig?.embedColor, palette.base || '#5865F2');
   const resolved = Array.isArray(description) ? description.filter(Boolean).join('\n') : String(description || '');
   const sample = `${String(title || '')}\n${resolved}`.toLowerCase();
-  if (/(✅|success|done|saved|sent|created|enabled|updated|restored|successfully|terminé|envoyé|créé|activé|mis à jour|rétabli)/i.test(sample)) return '#22C55E';
-  if (/(⚠️|warning|warn|careful|attention|avertissement)/i.test(sample)) return '#F59E0B';
-  if (/(❌|🚫|⛔|error|failed|failure|forbidden|denied|missing|invalid|refused|permission|owner only|unable|introuvable|erreur|échec|refus|interdit|invalide|impossible)/i.test(sample)) return '#EF4444';
-  if (/(ℹ️|info|information|config|setup|panel|dashboard|hub|statut|status)/i.test(sample)) return '#5865F2';
-  return fallback;
+  if (/(✅|success|done|saved|sent|created|enabled|updated|restored|successfully|terminé|envoyé|créé|activé|mis à jour|rétabli)/i.test(sample)) return palette.success || '#22C55E';
+  if (/(⚠️|warning|warn|careful|attention|avertissement)/i.test(sample)) return palette.warning || '#F59E0B';
+  if (/(❌|🚫|⛔|error|failed|failure|forbidden|denied|missing|invalid|refused|permission|owner only|unable|introuvable|erreur|échec|refus|interdit|invalide|impossible)/i.test(sample)) return palette.error || '#EF4444';
+  if (/(ℹ️|info|information|config|setup|panel|dashboard|hub|statut|status)/i.test(sample)) return brandColor;
+  return brandColor;
 }
 
 function baseEmbed(guildConfig, title, description) {
@@ -551,12 +726,16 @@ module.exports = {
   randomOf,
   clamp,
   ensureHexColor,
+  resolveVisualThemeKey,
+  getVisualPalette,
+  pickVisualColor,
   parseDuration,
   formatDuration,
   translateText,
   applyEmbedVisualStyle,
   localizePayload,
   normalizeSystemNoticePayload,
+  applyGuildPayloadBranding,
   baseEmbed,
   fillTemplate,
   parseUserArgument,

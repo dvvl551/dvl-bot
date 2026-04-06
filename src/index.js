@@ -23,7 +23,7 @@ const {
 } = require('discord.js');
 
 const { Store } = require('./core/store');
-const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, getHelpTargetInfo, buildSafeConfigPanelPayload, normalizeConfigPanelPage } = require('./core/commands');
+const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, createConfessionPanelEmbed, createConfessionPanelComponents, buildCustomizationPayload, getHelpTargetInfo, buildSafeConfigPanelPayload, normalizeConfigPanelPage } = require('./core/commands');
 const {
   ACTIVITY_TYPES,
   baseEmbed,
@@ -37,7 +37,8 @@ const {
   parseUserArgument,
   translateText,
   localizePayload,
-  normalizeSystemNoticePayload
+  normalizeSystemNoticePayload,
+  applyGuildPayloadBranding
 } = require('./core/utils');
 const { checkTikTokWatchers } = require('./core/tiktok');
 const { DEFAULT_GUILD } = require('./core/defaults');
@@ -117,6 +118,7 @@ client.ghostPingDeleteSeen = new Map();
 client.progressRefreshTimers = new Map();
 client.autoReactCooldowns = new Map();
 client.autoReactRotation = new Map();
+client.voiceStatsRefreshTimers = new Map();
 
 function ownerCheck(userId) {
   return OWNER_IDS.has(userId);
@@ -293,6 +295,59 @@ function normalizeAnnouncementMode(value) {
   return String(value || 'embed').toLowerCase() === 'plain' ? 'plain' : 'embed';
 }
 
+function buildAnnouncementRenderContext(guildConfig, variables = {}, options = {}) {
+  return {
+    moduleKey: options.moduleKey || 'generic',
+    avatarUrl: String(variables.avatarUrl || '').trim(),
+    serverIconUrl: String(variables.serverIconUrl || '').trim(),
+    serverName: String(variables.server || '').trim(),
+    userTag: String(variables.userTag || '').trim(),
+    displayName: String(variables.displayName || '').trim(),
+    memberCount: Number(variables.memberCount || 0),
+    createdAgo: String(variables.createdAgo || '').trim(),
+    joinedAgo: String(variables.joinedAgo || '').trim(),
+    daysInServer: String(variables.daysInServer || '').trim(),
+    joinedDuration: String(variables.joinedDuration || '').trim()
+  };
+}
+
+function applyRichAnnouncementStyle(guildConfig, embed, render = {}) {
+  const moduleKey = String(render.moduleKey || 'generic');
+  const avatarUrl = /^https?:\/\//i.test(render.avatarUrl || '') ? render.avatarUrl : null;
+  const serverIconUrl = /^https?:\/\//i.test(render.serverIconUrl || '') ? render.serverIconUrl : null;
+  const serverName = render.serverName || uiLangText(guildConfig, 'Serveur', 'Server');
+  const tag = render.userTag || render.displayName || null;
+  const fields = [];
+
+  if (moduleKey === 'welcome') {
+    if (serverIconUrl || serverName) embed.setAuthor({ name: uiLangText(guildConfig, `Bienvenue • ${serverName}`, `Welcome • ${serverName}`), iconURL: serverIconUrl || undefined });
+    if (avatarUrl) embed.setThumbnail(avatarUrl);
+    if (render.memberCount) fields.push({ name: uiLangText(guildConfig, 'Membre', 'Member'), value: `#${render.memberCount}`, inline: true });
+    if (render.createdAgo) fields.push({ name: uiLangText(guildConfig, 'Compte', 'Account'), value: render.createdAgo, inline: true });
+    if (render.joinedAgo) fields.push({ name: uiLangText(guildConfig, 'Arrivée', 'Joined'), value: render.joinedAgo, inline: true });
+  } else if (moduleKey === 'leave') {
+    if (serverIconUrl || serverName) embed.setAuthor({ name: uiLangText(guildConfig, `Départ • ${serverName}`, `Leave • ${serverName}`), iconURL: serverIconUrl || undefined });
+    if (avatarUrl) embed.setThumbnail(avatarUrl);
+    if (render.joinedAgo) fields.push({ name: uiLangText(guildConfig, 'Arrivé', 'Joined'), value: render.joinedAgo, inline: true });
+    if (render.joinedDuration || render.daysInServer) fields.push({ name: uiLangText(guildConfig, 'Présence', 'Stayed'), value: render.joinedDuration || `${render.daysInServer}d`, inline: true });
+    if (render.memberCount) fields.push({ name: uiLangText(guildConfig, 'Membres', 'Members'), value: String(render.memberCount), inline: true });
+  } else if (moduleKey === 'welcome-dm') {
+    if (serverIconUrl || serverName) embed.setAuthor({ name: serverName, iconURL: serverIconUrl || undefined });
+    if (serverIconUrl) embed.setThumbnail(serverIconUrl);
+    else if (avatarUrl) embed.setThumbnail(avatarUrl);
+    if (tag) fields.push({ name: uiLangText(guildConfig, 'Profil', 'Profile'), value: tag, inline: true });
+    if (render.memberCount) fields.push({ name: uiLangText(guildConfig, 'Membres', 'Members'), value: String(render.memberCount), inline: true });
+  } else if (moduleKey === 'leave-dm') {
+    if (serverIconUrl || serverName) embed.setAuthor({ name: serverName, iconURL: serverIconUrl || undefined });
+    if (serverIconUrl) embed.setThumbnail(serverIconUrl);
+    else if (avatarUrl) embed.setThumbnail(avatarUrl);
+    if (tag) fields.push({ name: uiLangText(guildConfig, 'Profil', 'Profile'), value: tag, inline: true });
+    if (render.memberCount) fields.push({ name: uiLangText(guildConfig, 'Membres', 'Members'), value: String(render.memberCount), inline: true });
+  }
+
+  if (fields.length) embed.addFields(fields.slice(0, 3));
+}
+
 function createAnnouncementPayload(guildConfig, source, variables, options = {}) {
   const titleKey = options.titleKey || 'title';
   const messageKey = options.messageKey || 'message';
@@ -318,14 +373,14 @@ function createAnnouncementPayload(guildConfig, source, variables, options = {})
     .setTimestamp();
   if (title) embed.setTitle(title);
   if (message) embed.setDescription(message);
+  applyRichAnnouncementStyle(guildConfig, embed, buildAnnouncementRenderContext(guildConfig, variables, options));
   if (footer) embed.setFooter({ text: footer });
   if (/^https?:\/\//i.test(imageUrl)) embed.setImage(imageUrl);
   return { embeds: [embed] };
 }
 
-
 function getPanelTextMeta(moduleKey = 'welcome') {
-  const safe = ['welcome', 'leave', 'leave-dm', 'boost'].includes(moduleKey) ? moduleKey : 'welcome';
+  const safe = ['welcome', 'welcome-dm', 'leave', 'leave-dm', 'boost'].includes(moduleKey) ? moduleKey : 'welcome';
   const map = {
     welcome: {
       key: 'welcome',
@@ -341,6 +396,21 @@ function getPanelTextMeta(moduleKey = 'welcome') {
       colorKey: 'color',
       imageKey: 'imageUrl',
       hasChannel: true
+    },
+    'welcome-dm': {
+      key: 'welcome-dm',
+      label: 'Welcome DM',
+      fallbackTitle: '👋 Welcome to {server}',
+      rootKey: 'welcome',
+      enabledKey: 'dmEnabled',
+      channelKey: null,
+      titleKey: 'dmTitle',
+      messageKey: 'dmMessage',
+      modeKey: 'dmMode',
+      footerKey: 'dmFooter',
+      colorKey: 'dmColor',
+      imageKey: 'dmImageUrl',
+      hasChannel: false
     },
     leave: {
       key: 'leave',
@@ -391,14 +461,30 @@ function getPanelTextMeta(moduleKey = 'welcome') {
   return map[safe];
 }
 
-function getPanelTextVariables(guild, user) {
+function getPanelTextVariables(guild, member) {
+  const user = member?.user || member;
+  const createdTimestamp = user?.createdTimestamp || 0;
+  const joinedTimestamp = member?.joinedTimestamp || 0;
+  const daysInServer = joinedTimestamp ? Math.max(0, Math.floor((Date.now() - joinedTimestamp) / 86400000)) : 0;
   return {
-    user: user ? `<@${user.id}>` : '<@0>',
+    user: member?.id ? `<@${member.id}>` : (user?.id ? `<@${user.id}>` : '<@0>'),
     userTag: user?.tag || 'Unknown#0000',
+    username: user?.username || user?.tag?.split('#')?.[0] || 'Unknown',
+    displayName: member?.displayName || user?.displayName || user?.username || 'Unknown',
     server: guild?.name || 'Server',
     memberCount: guild?.memberCount || 0,
     boostCount: guild?.premiumSubscriptionCount || 0,
-    boostTier: guild?.premiumTier || 0
+    boostTier: guild?.premiumTier || 0,
+    createdAt: createdTimestamp ? `<t:${Math.floor(createdTimestamp / 1000)}:F>` : 'unknown',
+    createdAgo: createdTimestamp ? `<t:${Math.floor(createdTimestamp / 1000)}:R>` : 'unknown',
+    joinedAt: joinedTimestamp ? `<t:${Math.floor(joinedTimestamp / 1000)}:F>` : 'unknown',
+    joinedAgo: joinedTimestamp ? `<t:${Math.floor(joinedTimestamp / 1000)}:R>` : 'unknown',
+    createdTimestamp,
+    joinedTimestamp,
+    daysInServer: String(daysInServer),
+    joinedDuration: joinedTimestamp ? formatDuration(Date.now() - joinedTimestamp) : '',
+    avatarUrl: member?.displayAvatarURL?.({ extension: 'png', size: 256 }) || user?.displayAvatarURL?.({ extension: 'png', size: 256 }) || '',
+    serverIconUrl: guild?.iconURL?.({ extension: 'png', size: 256 }) || ''
   };
 }
 
@@ -418,6 +504,16 @@ function resetPanelTextModule(guild, moduleKey) {
   const meta = getPanelTextMeta(moduleKey);
   const defaults = DEFAULT_GUILD[meta.rootKey] || {};
   guild[meta.rootKey] = guild[meta.rootKey] || {};
+  if (moduleKey === 'welcome-dm') {
+    guild.welcome.dmEnabled = defaults.dmEnabled;
+    guild.welcome.dmMode = defaults.dmMode;
+    guild.welcome.dmTitle = defaults.dmTitle;
+    guild.welcome.dmMessage = defaults.dmMessage;
+    guild.welcome.dmFooter = defaults.dmFooter;
+    guild.welcome.dmColor = defaults.dmColor;
+    guild.welcome.dmImageUrl = defaults.dmImageUrl;
+    return guild;
+  }
   if (moduleKey === 'leave-dm') {
     guild.leave.dmEnabled = defaults.dmEnabled;
     guild.leave.dmMode = defaults.dmMode;
@@ -450,7 +546,8 @@ function buildPanelTextPreviewPayload(guildConfig, moduleKey, guild, user) {
     footerKey: meta.footerKey,
     colorKey: meta.colorKey,
     imageKey: meta.imageKey,
-    fallbackTitle: meta.fallbackTitle
+    fallbackTitle: meta.fallbackTitle,
+    moduleKey
   });
 }
 
@@ -497,7 +594,7 @@ async function handleSupportPanelInteraction(interaction) {
   if (action === 'toggle') {
     let enabled = false;
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       guild.support.enabled = !guild.support.enabled;
       if (guild.support.enabled && !guild.support.channelId && currentChannel?.isTextBased?.()) guild.support.channelId = currentChannel.id;
       enabled = guild.support.enabled;
@@ -510,7 +607,7 @@ async function handleSupportPanelInteraction(interaction) {
   if (action === 'relayhere') {
     if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📨 Panel support', '📨 Support panel'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       guild.support.enabled = true;
       guild.support.channelId = currentChannel.id;
       return guild;
@@ -522,7 +619,7 @@ async function handleSupportPanelInteraction(interaction) {
   if (action === 'entryhere') {
     if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📨 Panel support', '📨 Support panel'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       guild.support.entryChannelId = currentChannel.id;
       return guild;
     });
@@ -533,13 +630,27 @@ async function handleSupportPanelInteraction(interaction) {
   if (action === 'restrict') {
     let enabled = false;
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       guild.support.restrictToEntry = !guild.support.restrictToEntry;
       enabled = guild.support.restrictToEntry;
       return guild;
     });
     const fresh = getGuildConfig(interaction.guild.id);
     await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🚧 Restriction support', '🚧 Support restriction'), enabled ? uiLangText(fresh, `Les membres doivent maintenant utiliser le support dans ${fresh.support?.entryChannelId ? `<#${fresh.support.entryChannelId}>` : 'le salon configuré'}.`, `Members must now use support in ${fresh.support?.entryChannelId ? `<#${fresh.support.entryChannelId}>` : 'the configured support channel'}.`) : uiLangText(fresh, 'Les membres peuvent de nouveau utiliser le support depuis n’importe quel salon.', 'Members can now use support from any channel again.'));
+    return refreshPanel();
+  }
+
+  if (action === 'only') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
+      guild.support.entryCommandOnly = !guild.support.entryCommandOnly;
+      if (guild.support.entryCommandOnly && !guild.support.entryChannelId && currentChannel?.isTextBased?.()) guild.support.entryChannelId = currentChannel.id;
+      enabled = guild.support.entryCommandOnly;
+      return guild;
+    });
+    const fresh = getGuildConfig(interaction.guild.id);
+    await sendEphemeral(uiLangText(fresh, '🧱 Salon réservé', '🧱 Support-only channel'), enabled ? uiLangText(fresh, `Seule la commande \`${client.meta.defaultPrefix || '+'}support\` est autorisée dans ${fresh.support?.entryChannelId ? `<#${fresh.support.entryChannelId}>` : 'le salon membre'}.`, `Only the \`${client.meta.defaultPrefix || '+'}support\` command is allowed in ${fresh.support?.entryChannelId ? `<#${fresh.support.entryChannelId}>` : 'the member channel'}.`) : uiLangText(fresh, 'Le salon membre n’est plus réservé à la commande support.', 'The member channel is no longer locked to the support command.'));
     return refreshPanel();
   }
 
@@ -562,12 +673,35 @@ async function handleSupportPanelInteraction(interaction) {
   if (action === 'clear') {
     if (!field || !['entry', 'relay'].includes(field)) return interaction.reply({ content: 'Invalid support panel action.', ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       if (field === 'entry') guild.support.entryChannelId = null;
       if (field === 'relay') guild.support.channelId = null;
       return guild;
     });
     await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🧹 Panel support', '🧹 Support panel'), field === 'entry' ? uiLangText(getGuildConfig(interaction.guild.id), 'Le salon support membres a été retiré.', 'Support member channel cleared.') : uiLangText(getGuildConfig(interaction.guild.id), 'Le salon relais support a été retiré.', 'Support relay channel cleared.'));
+    return refreshPanel();
+  }
+
+  if (action === 'preview') {
+    const fresh = getGuildConfig(interaction.guild.id);
+    const targetId = fresh.support?.entryChannelId || currentChannel?.id;
+    const targetChannel = targetId ? await interaction.guild.channels.fetch(targetId).catch(() => null) : null;
+    return interaction.reply({ ...createSupportPromptPayload(fresh, interaction.guild, client.meta.defaultPrefix || '+', targetChannel || currentChannel || null), ephemeral: true }).catch(() => null);
+  }
+
+  if (action === 'test') {
+    const fresh = getGuildConfig(interaction.guild.id);
+    const relayChannelId = fresh.support?.channelId;
+    const relayChannel = relayChannelId ? await interaction.guild.channels.fetch(relayChannelId).catch(() => null) : null;
+    if (!relayChannel?.isTextBased?.()) {
+      return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '🧪 Test support', '🧪 Support test'), uiLangText(fresh, 'Configure d’abord un salon relais support valide.', 'Set a valid support relay channel first.'))], ephemeral: true }).catch(() => null);
+    }
+    const sent = await relayChannel.send({
+      content: fresh.support?.pingRoleId ? `<@&${fresh.support.pingRoleId}>` : null,
+      embeds: [baseEmbed(fresh, uiLangText(fresh, '🧪 Test relais support', '🧪 Support relay test'), uiLangText(fresh, 'Message de test du relais support. Le staff peut répondre avec la commande de reply.', 'Support relay test message. Staff can answer with the reply command.'))],
+      allowedMentions: { parse: [], roles: fresh.support?.pingRoleId ? [fresh.support.pingRoleId] : [], users: [] }
+    }).catch(() => null);
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🧪 Test support', '🧪 Support test'), sent ? uiLangText(fresh, `Test envoyé dans ${relayChannel}.`, `Test sent in ${relayChannel}.`) : uiLangText(fresh, 'Je n’ai pas pu envoyer le test support.', 'I could not send the support test.'));
     return refreshPanel();
   }
 
@@ -633,7 +767,7 @@ async function handleConfigPanelInteraction(interaction) {
   };
   const sendEphemeral = (title, description) => interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), title, description)], ephemeral: true }).catch(() => null);
 
-  if (action === 'page' || action === 'refresh') {
+  if (action === 'page' || action === 'refresh' || action === 'jump' || action === 'navrefresh') {
     const page = normalizeConfigPanelPage(arg || 'home');
     return interaction.update(buildSafeConfigPanelPayload(config, interaction.guild, page, currentChannel));
   }
@@ -785,6 +919,7 @@ async function handleConfigPanelInteraction(interaction) {
     const presetKey = ['clean', 'premium', 'minimal'].includes(extra) ? extra : 'clean';
     const metaMap = {
       welcome: { root: 'welcome', enabledKey: 'enabled', modeKey: 'mode', titleKey: 'title', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl', channelKey: 'channelId' },
+      'welcome-dm': { root: 'welcome', enabledKey: 'dmEnabled', modeKey: 'dmMode', titleKey: 'dmTitle', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl', channelKey: null },
       leave: { root: 'leave', enabledKey: 'enabled', modeKey: 'mode', titleKey: 'title', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl', channelKey: 'channelId' },
       'leave-dm': { root: 'leave', enabledKey: 'dmEnabled', modeKey: 'dmMode', titleKey: 'dmTitle', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl', channelKey: null },
       boost: { root: 'boost', enabledKey: 'enabled', modeKey: 'mode', titleKey: 'title', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl', channelKey: 'channelId' }
@@ -837,7 +972,7 @@ async function handleConfigPanelInteraction(interaction) {
   if (action === 'supporttoggle') {
     let enabled = false;
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       guild.support.enabled = !guild.support.enabled;
       if (guild.support.enabled && !guild.support.channelId && currentChannel?.isTextBased?.()) guild.support.channelId = currentChannel.id;
       enabled = guild.support.enabled;
@@ -850,7 +985,7 @@ async function handleConfigPanelInteraction(interaction) {
   if (action === 'supportrelayhere') {
     if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📨 Support', '📨 Support'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       guild.support.enabled = true;
       guild.support.channelId = currentChannel.id;
       return guild;
@@ -862,7 +997,7 @@ async function handleConfigPanelInteraction(interaction) {
   if (action === 'supportentryhere') {
     if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📨 Support', '📨 Support'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       guild.support.entryChannelId = currentChannel.id;
       return guild;
     });
@@ -873,12 +1008,25 @@ async function handleConfigPanelInteraction(interaction) {
   if (action === 'supportrestrict') {
     let enabled = false;
     client.store.updateGuild(interaction.guild.id, (guild) => {
-      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false };
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
       guild.support.restrictToEntry = !guild.support.restrictToEntry;
       enabled = guild.support.restrictToEntry;
       return guild;
     });
     await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🚧 Restriction support', '🚧 Support restriction'), enabled ? uiLangText(getGuildConfig(interaction.guild.id), 'Les membres sont maintenant limités au salon support configuré.', 'Members are now restricted to the configured support channel.') : uiLangText(getGuildConfig(interaction.guild.id), 'Les membres peuvent de nouveau utiliser le support depuis n’importe quel salon.', 'Members can now use support from any channel again.'));
+    return refreshPanel('support');
+  }
+
+  if (action === 'supportonly') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.support = guild.support || { enabled: false, channelId: null, pingRoleId: null, entryChannelId: null, restrictToEntry: false, entryCommandOnly: false };
+      guild.support.entryCommandOnly = !guild.support.entryCommandOnly;
+      if (guild.support.entryCommandOnly && !guild.support.entryChannelId && currentChannel?.isTextBased?.()) guild.support.entryChannelId = currentChannel.id;
+      enabled = guild.support.entryCommandOnly;
+      return guild;
+    });
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🧱 Salon réservé', '🧱 Support-only channel'), enabled ? uiLangText(getGuildConfig(interaction.guild.id), 'Le salon membre est maintenant réservé à la commande support.', 'The member channel is now reserved to the support command.') : uiLangText(getGuildConfig(interaction.guild.id), 'Le salon membre n’est plus réservé à la commande support.', 'The member channel is no longer reserved to the support command.'));
     return refreshPanel('support');
   }
 
@@ -1091,6 +1239,119 @@ async function handleConfigPanelInteraction(interaction) {
 }
 
 
+
+async function handleConfessionPanelInteraction(interaction) {
+  if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
+  const config = getGuildConfig(interaction.guild.id);
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, 'Panneau confessions', 'Confessions panel'), uiLangText(config, 'Tu dois avoir Gérer le serveur pour utiliser ce panel.', 'You need Manage Server to use this panel.'))], ephemeral: true }).catch(() => null);
+  }
+
+  const parts = interaction.customId.split(':');
+  const action = parts[1] || 'refresh';
+  const field = parts[2] || null;
+  const currentChannel = interaction.channel;
+  const refreshPanel = async () => {
+    const fresh = getGuildConfig(interaction.guild.id);
+    return interaction.message.edit({ embeds: [createConfessionPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createConfessionPanelComponents(fresh) }).catch(() => null);
+  };
+  const sendEphemeral = (title, description) => interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), title, description)], ephemeral: true }).catch(() => null);
+
+  if (action === 'refresh') {
+    return interaction.update({ embeds: [createConfessionPanelEmbed(config, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createConfessionPanelComponents(config) });
+  }
+
+  if (action === 'toggle') {
+    let enabled = false;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.confessions = guild.confessions || JSON.parse(JSON.stringify(DEFAULT_GUILD.confessions || {}));
+      guild.confessions.enabled = !guild.confessions.enabled;
+      if (guild.confessions.enabled && !guild.confessions.channelId && currentChannel?.isTextBased?.()) guild.confessions.channelId = currentChannel.id;
+      enabled = guild.confessions.enabled;
+      return guild;
+    });
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🤫 Confessions', '🤫 Confessions'), uiLangText(getGuildConfig(interaction.guild.id), `Le module est maintenant **${enabled ? 'activé' : 'désactivé'}**.`, `The module is now **${enabled ? 'enabled' : 'disabled'}**.`));
+    return refreshPanel();
+  }
+
+  if (action === 'channelhere' || action === 'logshere') {
+    if (!currentChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '🤫 Confessions', '🤫 Confessions'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.confessions = guild.confessions || JSON.parse(JSON.stringify(DEFAULT_GUILD.confessions || {}));
+      if (action === 'channelhere') {
+        guild.confessions.channelId = currentChannel.id;
+        guild.confessions.enabled = true;
+      } else {
+        guild.confessions.logChannelId = currentChannel.id;
+      }
+      return guild;
+    });
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🤫 Confessions', '🤫 Confessions'), action === 'channelhere' ? uiLangText(getGuildConfig(interaction.guild.id), `Le salon public est maintenant ${currentChannel}.`, `The public confession channel is now ${currentChannel}.`) : uiLangText(getGuildConfig(interaction.guild.id), `Le salon logs est maintenant ${currentChannel}.`, `The confession log channel is now ${currentChannel}.`));
+    return refreshPanel();
+  }
+
+  if (action === 'attachments') {
+    let allowed = true;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.confessions = guild.confessions || JSON.parse(JSON.stringify(DEFAULT_GUILD.confessions || {}));
+      guild.confessions.allowAttachments = guild.confessions.allowAttachments === false;
+      allowed = guild.confessions.allowAttachments !== false;
+      return guild;
+    });
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '📎 Confessions', '📎 Confessions'), allowed ? uiLangText(getGuildConfig(interaction.guild.id), 'Les pièces jointes sont maintenant autorisées.', 'Attachments are now allowed.') : uiLangText(getGuildConfig(interaction.guild.id), 'Les pièces jointes sont maintenant désactivées.', 'Attachments are now disabled.'));
+    return refreshPanel();
+  }
+
+  if (action === 'clear') {
+    if (!field || !['channel', 'logs'].includes(field)) return interaction.reply({ content: 'Invalid confession panel action.', ephemeral: true }).catch(() => null);
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.confessions = guild.confessions || JSON.parse(JSON.stringify(DEFAULT_GUILD.confessions || {}));
+      if (field === 'channel') guild.confessions.channelId = null;
+      if (field === 'logs') guild.confessions.logChannelId = null;
+      return guild;
+    });
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🧹 Confessions', '🧹 Confessions'), field === 'channel' ? uiLangText(getGuildConfig(interaction.guild.id), 'Le salon public a été retiré.', 'The public confession channel was cleared.') : uiLangText(getGuildConfig(interaction.guild.id), 'Le salon logs a été retiré.', 'The confession log channel was cleared.'));
+    return refreshPanel();
+  }
+
+  if (action === 'test') {
+    const fresh = getGuildConfig(interaction.guild.id);
+    const targetChannel = fresh.confessions?.channelId ? await interaction.guild.channels.fetch(fresh.confessions.channelId).catch(() => null) : null;
+    if (!targetChannel?.isTextBased?.()) {
+      return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '🤫 Confessions', '🤫 Confessions'), uiLangText(fresh, 'Définis d’abord un salon public pour les confessions.', 'Set a public confession channel first.'))], ephemeral: true }).catch(() => null);
+    }
+    const preview = baseEmbed(fresh, fresh.confessions?.title || uiLangText(fresh, '🤫 Confession anonyme', '🤫 Anonymous confession'), uiLangText(fresh, 'Aperçu du rendu : une confession anonyme propre et discrète.', 'Preview look: a clean and discreet anonymous confession.')).setColor(ensureHexColor(fresh.confessions?.color || DEFAULT_GUILD.confessions?.color || '#EC4899')).setFooter({ text: uiLangText(fresh, 'Confession #DEMO • anonyme', 'Confession #DEMO • anonymous') });
+    const sent = await targetChannel.send({ embeds: [preview], components: [], allowedMentions: { parse: [] } }).catch(() => null);
+    await sendEphemeral(uiLangText(fresh, '🧪 Test confessions', '🧪 Confessions test'), sent ? uiLangText(fresh, `Aperçu envoyé dans ${targetChannel}.`, `Preview sent in ${targetChannel}.`) : uiLangText(fresh, 'Je n’ai pas pu envoyer l’aperçu.', 'I could not send the preview.'));
+    return refreshPanel();
+  }
+
+  if (action === 'edit') {
+    const safeField = ['title', 'color'].includes(field) ? field : 'title';
+    const source = config.confessions || {};
+    const labelMap = {
+      title: uiLangText(config, 'Titre des confessions', 'Confession title'),
+      color: uiLangText(config, 'Couleur des confessions (#RRGGBB)', 'Confession color (#RRGGBB)')
+    };
+    const value = String(source?.[safeField] || '').slice(0, 4000);
+    const modal = new ModalBuilder().setCustomId(`confessionpanelmodal:${safeField}`).setTitle(uiLangText(config, `Modifier ${labelMap[safeField]}`, `Edit ${labelMap[safeField]}`).slice(0, 45));
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('value')
+          .setLabel(labelMap[safeField])
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setMaxLength(200)
+          .setValue(value)
+      )
+    );
+    return interaction.showModal(modal);
+  }
+
+  return interaction.reply({ content: 'Unknown action.', ephemeral: true }).catch(() => null);
+}
+
 async function getManagedTempVoiceState(interaction, options = {}) {
   const member = interaction.member;
   const guild = interaction.guild;
@@ -1176,6 +1437,121 @@ client.runTikTokCheck = async function runTikTokCheck() {
   await checkTikTokWatchers(client);
 };
 
+function normalizePdpRotatorConfig(entry = {}) {
+  return {
+    enabled: false,
+    guildId: entry?.guildId || null,
+    intervalMs: Math.max(30_000, Number(entry?.intervalMs) || 30_000),
+    includeBots: false,
+    lastUserId: entry?.lastUserId || null,
+    lastAvatarUrl: entry?.lastAvatarUrl || null,
+    lastAppliedAt: Number(entry?.lastAppliedAt) || 0,
+    lastAttemptAt: Number(entry?.lastAttemptAt) || 0,
+    cooldownUntil: Number(entry?.cooldownUntil) || 0,
+    lastError: entry?.lastError ? String(entry.lastError).slice(0, 180) : null
+  };
+}
+
+function pdpAvatarUrlForMember(member) {
+  return member?.user?.displayAvatarURL?.({ extension: 'png', size: 512 })
+    || member?.displayAvatarURL?.({ extension: 'png', size: 512 })
+    || null;
+}
+
+function pickRandomPdpMember(guild, config = {}) {
+  const candidates = [...(guild?.members?.cache?.values?.() || [])].filter((member) => {
+    if (!member?.user) return false;
+    if (!config.includeBots && member.user.bot) return false;
+    return Boolean(pdpAvatarUrlForMember(member));
+  });
+  if (!candidates.length) return null;
+  const filtered = candidates.length > 1 && config.lastUserId
+    ? candidates.filter((member) => member.id !== config.lastUserId)
+    : candidates;
+  const pool = filtered.length ? filtered : candidates;
+  return pool[Math.floor(Math.random() * pool.length)] || null;
+}
+
+client.runPdpRotator = async function runPdpRotator(force = false, options = {}) {
+  const globalConfig = client.store.getGlobal();
+  const config = normalizePdpRotatorConfig(globalConfig.pdpRotator || {});
+  const manual = Boolean(options?.manual);
+  const guildId = options?.guildId || config.guildId;
+  if ((!config.enabled && !manual) || !guildId) return { ok: false, error: 'disabled' };
+  const now = Date.now();
+  if (!force) {
+    if (config.cooldownUntil && config.cooldownUntil > now) return { ok: false, error: 'cooldown' };
+    if (config.lastAttemptAt && now - config.lastAttemptAt < config.intervalMs) return { ok: false, error: 'interval' };
+  }
+
+  const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+  if (!guild) {
+    client.store.updateGlobal((global) => {
+      global.pdpRotator = normalizePdpRotatorConfig(global.pdpRotator || {});
+      global.pdpRotator.guildId = guildId;
+      global.pdpRotator.lastAttemptAt = now;
+      global.pdpRotator.lastError = 'server-not-found';
+      return global;
+    });
+    return { ok: false, error: 'Server not found.' };
+  }
+
+  if (!guild.members.cache.size) await guild.members.fetch().catch(() => null);
+  const member = pickRandomPdpMember(guild, config);
+  if (!member) {
+    client.store.updateGlobal((global) => {
+      global.pdpRotator = normalizePdpRotatorConfig(global.pdpRotator || {});
+      global.pdpRotator.guildId = guild.id;
+      global.pdpRotator.lastAttemptAt = now;
+      global.pdpRotator.lastError = 'no-valid-member';
+      return global;
+    });
+    return { ok: false, error: 'No valid member avatar found in cache.' };
+  }
+
+  const avatarUrl = pdpAvatarUrlForMember(member);
+  if (!avatarUrl || !client.user) return { ok: false, error: 'Avatar not available.' };
+
+  try {
+    await client.user.setAvatar(avatarUrl);
+    client.store.updateGlobal((global) => {
+      global.pdpRotator = normalizePdpRotatorConfig(global.pdpRotator || {});
+      global.pdpRotator.guildId = guild.id;
+      global.pdpRotator.lastUserId = member.id;
+      global.pdpRotator.lastAvatarUrl = avatarUrl;
+      global.pdpRotator.lastAppliedAt = now;
+      global.pdpRotator.lastAttemptAt = now;
+      global.pdpRotator.lastError = null;
+      global.pdpRotator.cooldownUntil = 0;
+      return global;
+    });
+    return {
+      ok: true,
+      guildId: guild.id,
+      memberId: member.id,
+      memberLabel: member.displayName || member.user.username || member.user.tag || member.id,
+      avatarUrl
+    };
+  } catch (error) {
+    const raw = String(error?.message || error || 'avatar-update-failed');
+    const rateLimited = /rate|too fast|too many|retry|avatar too/i.test(raw);
+    client.store.updateGlobal((global) => {
+      global.pdpRotator = normalizePdpRotatorConfig(global.pdpRotator || {});
+      global.pdpRotator.guildId = guild.id;
+      global.pdpRotator.lastAttemptAt = now;
+      global.pdpRotator.lastError = raw.slice(0, 180);
+      if (rateLimited) global.pdpRotator.cooldownUntil = now + 60 * 60 * 1000;
+      return global;
+    });
+    return {
+      ok: false,
+      error: rateLimited ? 'Discord blocked avatar changes for a while. Try again later.' : raw,
+      avatarUrl,
+      memberLabel: member.displayName || member.user.username || member.id
+    };
+  }
+};
+
 function scheduleLoop(name, delay, fn) {
   const run = async () => {
     try {
@@ -1203,10 +1579,27 @@ function getGuildLiveStats(guild) {
   const online = guild?.presences?.cache
     ? guild.presences.cache.filter((presence) => presence?.status && presence.status !== 'offline').size
     : 0;
-  const voice = guild?.voiceStates?.cache
-    ? guild.voiceStates.cache.filter((state) => state?.channelId && !state?.member?.user?.bot).size
+  const voice = guild?.channels?.cache
+    ? guild.channels.cache
+        .filter((channel) => [ChannelType.GuildVoice, ChannelType.GuildStageVoice].includes(channel?.type))
+        .reduce((total, channel) => total + (channel.members?.filter((member) => !member.user?.bot).size || 0), 0)
     : 0;
   return { members, online, voice };
+}
+
+function queueVoiceStatsRefresh(guildId, delay = 1200) {
+  if (!guildId) return;
+  const existing = client.voiceStatsRefreshTimers.get(guildId);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(async () => {
+    client.voiceStatsRefreshTimers.delete(guildId);
+    const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+    if (!guild) return;
+    await refreshGuildStats(guild).catch(() => null);
+    queueProgressBoardRefresh(guild.id);
+  }, delay);
+  timer.unref?.();
+  client.voiceStatsRefreshTimers.set(guildId, timer);
 }
 
 async function ensureGuildStatsChannels(guild, options = {}) {
@@ -1330,6 +1723,7 @@ async function repairGuildConfiguration(guild, scope = 'all') {
       const leave = ensureGuildSectionShape(g, 'leave', DEFAULT_GUILD.leave);
       const boost = ensureGuildSectionShape(g, 'boost', DEFAULT_GUILD.boost);
       welcome.mode = normalizeAnnouncementModeValue(welcome.mode, DEFAULT_GUILD.welcome.mode);
+      welcome.dmMode = normalizeAnnouncementModeValue(welcome.dmMode, DEFAULT_GUILD.welcome.dmMode);
       leave.mode = normalizeAnnouncementModeValue(leave.mode, DEFAULT_GUILD.leave.mode);
       leave.dmMode = normalizeAnnouncementModeValue(leave.dmMode, DEFAULT_GUILD.leave.dmMode);
       boost.mode = normalizeAnnouncementModeValue(boost.mode, DEFAULT_GUILD.boost.mode);
@@ -1353,6 +1747,22 @@ async function repairGuildConfiguration(guild, scope = 'all') {
       const support = ensureGuildSectionShape(g, 'support', DEFAULT_GUILD.support);
       support.promptMode = normalizeAnnouncementModeValue(support.promptMode, DEFAULT_GUILD.support.promptMode);
       report.fixed.push('support shape normalized');
+    }
+    if (wants('roles')) {
+      const roles = ensureGuildSectionShape(g, 'roles', DEFAULT_GUILD.roles);
+      roles.autoRoles = Array.from(new Set((roles.autoRoles || []).map(String).filter(Boolean)));
+      roles.autoRolesHumans = Array.from(new Set((roles.autoRolesHumans || []).map(String).filter(Boolean)));
+      roles.autoRolesBots = Array.from(new Set((roles.autoRolesBots || []).map(String).filter(Boolean)));
+      roles.rolePanels = roles.rolePanels || {};
+      roles.reactionRoles = roles.reactionRoles || {};
+      roles.statusRole = { ...DEFAULT_GUILD.roles.statusRole, ...(roles.statusRole || {}) };
+      const triggerPool = [];
+      if (roles.statusRole.matchText) triggerPool.push(String(roles.statusRole.matchText));
+      if (Array.isArray(roles.statusRole.matchTexts)) triggerPool.push(...roles.statusRole.matchTexts.map(String));
+      roles.statusRole.matchTexts = Array.from(new Set(triggerPool.map((entry) => entry.trim()).filter(Boolean)));
+      roles.statusRole.matchText = roles.statusRole.matchTexts[0] || '';
+      if (typeof roles.statusRole.removeWhenMissing !== 'boolean') roles.statusRole.removeWhenMissing = true;
+      report.fixed.push('roles shape normalized');
     }
     if (wants('security')) {
       const automod = ensureGuildSectionShape(g, 'automod', DEFAULT_GUILD.automod);
@@ -1418,6 +1828,48 @@ async function repairGuildConfiguration(guild, scope = 'all') {
         report.cleared.push('support ping role was invalid');
       }
     }
+  }
+
+  if (wants('roles')) {
+    const roles = getGuildConfig(guild.id).roles || {};
+    const autoRoleFields = ['autoRoles', 'autoRolesHumans', 'autoRolesBots'];
+    for (const field of autoRoleFields) {
+      const validRoleIds = [];
+      for (const id of roles[field] || []) {
+        const role = await validateRoleRef(guild, id);
+        if (role) validRoleIds.push(String(id));
+        else report.cleared.push(`${field} role ${id} removed`);
+      }
+      client.store.updateGuild(guild.id, (g) => {
+        if (g.roles) g.roles[field] = validRoleIds;
+        return g;
+      });
+    }
+
+    const statusRoleId = roles.statusRole?.roleId;
+    if (statusRoleId) {
+      const role = await validateRoleRef(guild, statusRoleId);
+      if (!role) {
+        client.store.updateGuild(guild.id, (g) => {
+          if (g.roles?.statusRole) g.roles.statusRole.roleId = null;
+          return g;
+        });
+        report.cleared.push('status role target was invalid');
+      }
+    }
+
+    const cleanedTriggers = Array.from(new Set([
+      ...(Array.isArray(roles.statusRole?.matchTexts) ? roles.statusRole.matchTexts : []),
+      roles.statusRole?.matchText || ''
+    ].map((entry) => String(entry || '').trim()).filter(Boolean)));
+    client.store.updateGuild(guild.id, (g) => {
+      if (g.roles?.statusRole) {
+        g.roles.statusRole.matchTexts = cleanedTriggers;
+        g.roles.statusRole.matchText = cleanedTriggers[0] || '';
+      }
+      return g;
+    });
+    if (cleanedTriggers.length) report.fixed.push('status role triggers normalized');
   }
 
   if (wants('security')) {
@@ -1961,11 +2413,46 @@ function getCustomStatusText(presenceLike) {
   return String(activity?.state || '').trim();
 }
 
+function normalizeStatusRoleText(value) {
+  return String(value || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function getStatusRoleNeedles(rule = {}) {
+  const rawValues = Array.from(new Set([...(Array.isArray(rule.matchTexts) ? rule.matchTexts : []), rule.matchText].map((entry) => String(entry || '').trim()).filter(Boolean)));
+  const needles = new Set();
+  for (const raw of rawValues) {
+    const lower = raw.toLowerCase();
+    needles.add(lower);
+    const normalized = normalizeStatusRoleText(raw);
+    if (normalized) needles.add(normalized);
+    const parts = lower.split(/[\s,;|]+/).filter(Boolean);
+    for (const part of parts) {
+      needles.add(part);
+      const segment = part.split('/').filter(Boolean).pop();
+      if (segment) needles.add(segment);
+      const compact = part.replace(/[^a-z0-9]/g, '');
+      if (compact) needles.add(compact);
+    }
+  }
+  return Array.from(needles).filter(Boolean).sort((a, b) => b.length - a.length);
+}
+
+function statusRoleMatches(customStatus = '', rule = {}) {
+  const rawHaystack = String(customStatus || '').toLowerCase();
+  const normalizedHaystack = normalizeStatusRoleText(customStatus);
+  const needles = getStatusRoleNeedles(rule);
+  if (!needles.length) return false;
+  if (String(rule.mode || 'includes').toLowerCase() === 'exact') {
+    return needles.some((needle) => rawHaystack === needle || normalizedHaystack === needle);
+  }
+  return needles.some((needle) => rawHaystack.includes(needle) || normalizedHaystack.includes(needle));
+}
+
 async function syncStatusRoleForMember(member, presenceLike = null) {
   if (!member?.guild || member.user?.bot) return false;
   const config = getGuildConfig(member.guild.id);
   const rule = config.roles?.statusRole || {};
-  if (!rule.enabled || !rule.roleId || !rule.matchText) return false;
+  if (!rule.enabled || !rule.roleId || !(rule.matchText || (Array.isArray(rule.matchTexts) && rule.matchTexts.length))) return false;
 
   const role = member.guild.roles.cache.get(rule.roleId) || await member.guild.roles.fetch(rule.roleId).catch(() => null);
   if (!role || !member.manageable) return false;
@@ -1974,9 +2461,7 @@ async function syncStatusRoleForMember(member, presenceLike = null) {
   if (!me || !me.permissions.has(PermissionFlagsBits.ManageRoles) || role.position >= me.roles.highest.position) return false;
 
   const customStatus = getCustomStatusText(presenceLike || member);
-  const haystack = customStatus.toLowerCase();
-  const needle = String(rule.matchText).toLowerCase();
-  const matches = rule.mode === 'exact' ? haystack === needle : haystack.includes(needle);
+  const matches = statusRoleMatches(customStatus, rule);
   const hasRole = member.roles.cache.has(role.id);
 
   if (matches && !hasRole) {
@@ -2039,14 +2524,15 @@ function buildCtx(source, command) {
       let sent;
       const { deleteAfter = null, ...rest } = payload || {};
       const localized = localizePayload(guildConfig, rest);
-      const normalized = normalizeSystemNoticePayload(localized, guildConfig, { defaultDeleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
+      const branded = applyGuildPayloadBranding(localized, guild, guildConfig);
+      const normalized = normalizeSystemNoticePayload(branded, guildConfig, { defaultDeleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
       if (interaction) {
         const base = { ...normalized.payload };
         if (!interaction.replied && !interaction.deferred) sent = await interaction.reply({ ...base, fetchReply: true });
         else sent = await interaction.followUp(base);
       } else {
         sent = await channel.send(normalized.payload);
-        const shouldDelete = Number.isFinite(deleteAfter) ? deleteAfter : normalized.suggestedDeleteAfter;
+        const shouldDelete = Number.isFinite(deleteAfter) ? deleteAfter : null;
         if (sent && shouldDelete) scheduleMessageDelete(sent, shouldDelete);
       }
       this.lastReply = sent || null;
@@ -2143,7 +2629,8 @@ function patchInteractionLocalization(interaction, guildConfig) {
     const original = interaction[method].bind(interaction);
     interaction[method] = (payload = {}) => {
       const localized = localizePayload(guildConfig, payload);
-      return original(normalizeSystemNoticePayload(localized, guildConfig, { defaultDeleteAfter: TRANSIENT_SYSTEM_DELETE_MS }).payload);
+      const branded = applyGuildPayloadBranding(localized, interaction.guild || null, guildConfig);
+      return original(normalizeSystemNoticePayload(branded, guildConfig, { defaultDeleteAfter: TRANSIENT_SYSTEM_DELETE_MS }).payload);
     };
   }
   interaction.__dvlLocalized = true;
@@ -2177,7 +2664,7 @@ async function runCommand(source, command) {
       if (!ctx.interaction.replied && !ctx.interaction.deferred) await ctx.interaction.reply({ ...payload, ephemeral: true }).catch(() => null);
       else await ctx.interaction.followUp({ ...payload, ephemeral: true }).catch(() => null);
     } else {
-      await ctx.channel.send(payload).catch(() => null);
+      await ctx.channel.send(applyGuildPayloadBranding(payload, ctx.guild, ctx.guildConfig || {})).catch(() => null);
     }
   }
 }
@@ -2232,6 +2719,40 @@ async function handlePicOnly(message) {
   }).catch(() => null);
   if (notice) setTimeout(() => notice.delete().catch(() => null), 7_000).unref?.();
   await sendLog(message.guild, 'security', 'Image-only channel', `${message.author.tag} sent a blocked non-image message in ${message.channel}.`);
+  return true;
+}
+
+async function handleSupportEntryOnly(message) {
+  if (!message.guild || message.author?.bot) return false;
+  const config = getGuildConfig(message.guild.id);
+  const support = config.support || {};
+  if (!support.entryCommandOnly || !support.entryChannelId || message.channel.id !== support.entryChannelId) return false;
+  if (message.member?.permissions.has(PermissionFlagsBits.ManageMessages) || message.member?.permissions.has(PermissionFlagsBits.ManageGuild)) return false;
+
+  const prefix = config.prefix || DEFAULT_PREFIX;
+  const content = String(message.content || '').trim();
+  if (!content) {
+    await message.delete().catch(() => null);
+    return true;
+  }
+
+  const lowered = content.toLowerCase();
+  const allowed = [
+    `${prefix}support`,
+    `${prefix}helpme`,
+    `${prefix}mp`,
+    `${prefix}supporthelp`
+  ].map((v) => v.toLowerCase());
+
+  const ok = content.startsWith(prefix) && allowed.some((cmd) => lowered === cmd || lowered.startsWith(cmd + ' '));
+  if (ok) return false;
+
+  await message.delete().catch(() => null);
+  const notice = await message.channel.send({
+    content: `${message.author}`,
+    embeds: [baseEmbed(config, uiLangText(config, '📨 Salon support', '📨 Support channel'), uiLangText(config, `Ici, utilise uniquement \`${prefix}support ton message\`.`, `Only use \`${prefix}support your message\` here.`))]
+  }).catch(() => null);
+  if (notice) setTimeout(() => notice.delete().catch(() => null), 7_000).unref?.();
   return true;
 }
 
@@ -2664,6 +3185,7 @@ client.once(Events.ClientReady, async () => {
   scheduleLoop('giveaways', 15_000, processGiveaways);
   scheduleLoop('tempbans', 20_000, processTempBans);
   scheduleLoop('tiktok', 90_000, () => client.runTikTokCheck());
+  scheduleLoop('pdp-rotator', 30_000, () => client.runPdpRotator(false));
   scheduleLoop('stats', 60_000, async () => {
     for (const guild of client.guilds.cache.values()) {
       await ensureGuildStatsChannels(guild, { recreateMissing: true });
@@ -2679,7 +3201,28 @@ client.once(Events.ClientReady, async () => {
   }
 });
 
+async function sendWelcomeDirectMessage(member) {
+  if (!member?.guild || !member.user) return false;
+  const config = getGuildConfig(member.guild.id);
+  const welcome = config.welcome || {};
+  if (!welcome.dmEnabled) return false;
+  const variables = getPanelTextVariables(member.guild, member);
+  const payload = createAnnouncementPayload(config, welcome, variables, {
+    modeKey: 'dmMode',
+    titleKey: 'dmTitle',
+    messageKey: 'dmMessage',
+    footerKey: 'dmFooter',
+    colorKey: 'dmColor',
+    imageKey: 'dmImageUrl',
+    fallbackTitle: '👋 Welcome to {server}',
+    moduleKey: 'welcome-dm'
+  });
+  const sent = await member.send(payload).catch(() => null);
+  return Boolean(sent);
+}
+
 client.on(Events.GuildMemberAdd, async (member) => {
+
   const config = getGuildConfig(member.guild.id);
   const ageMinutes = (Date.now() - member.user.createdTimestamp) / 60_000;
   if (config.automod.raidMode?.enabled && ageMinutes < (config.automod.raidMode.joinAgeMinutes || 10080)) {
@@ -2701,18 +3244,12 @@ client.on(Events.GuildMemberAdd, async (member) => {
   await syncStatusRoleForMember(member);
 
   await sendJoinGhostPing(member).catch(() => null);
+  await sendWelcomeDirectMessage(member).catch(() => null);
 
   if (config.welcome.enabled && config.welcome.channelId) {
     const channel = await member.guild.channels.fetch(config.welcome.channelId).catch(() => null);
     if (channel?.isTextBased?.()) {
-      const payload = createAnnouncementPayload(config, config.welcome, {
-        user: member.toString(),
-        userTag: member.user.tag,
-        server: member.guild.name,
-        memberCount: member.guild.memberCount,
-        boostCount: member.guild.premiumSubscriptionCount || 0,
-        boostTier: member.guild.premiumTier || 0
-      }, { fallbackTitle: '👋 Welcome' });
+      const payload = createAnnouncementPayload(config, config.welcome, getPanelTextVariables(member.guild, member), { fallbackTitle: '👋 Welcome', moduleKey: 'welcome' });
       await channel.send(payload).catch(() => null);
     }
   }
@@ -2768,14 +3305,7 @@ Boosts: **${newMember.guild.premiumSubscriptionCount || 0}** • Tier: **${newMe
       if (config.boost?.enabled && config.boost?.channelId) {
         const channel = await newMember.guild.channels.fetch(config.boost.channelId).catch(() => null);
         if (channel?.isTextBased?.()) {
-          const payload = createAnnouncementPayload(config, config.boost, {
-            user: newMember.toString(),
-            userTag: newMember.user.tag,
-            server: newMember.guild.name,
-            memberCount: newMember.guild.memberCount,
-            boostCount: newMember.guild.premiumSubscriptionCount || 0,
-            boostTier: newMember.guild.premiumTier || 0
-          }, { fallbackTitle: '🚀 New boost' });
+          const payload = createAnnouncementPayload(config, config.boost, getPanelTextVariables(newMember.guild, newMember), { fallbackTitle: '🚀 New boost', moduleKey: 'boost' });
           await channel.send(payload).catch(() => null);
         }
       }
@@ -2867,12 +3397,7 @@ async function sendLeaveDirectMessage(member) {
   const config = getGuildConfig(member.guild.id);
   const leave = config.leave || {};
   if (!leave.dmEnabled) return false;
-  const variables = {
-    user: `<@${member.id}>`,
-    userTag: member.user.tag,
-    server: member.guild.name,
-    memberCount: member.guild.memberCount
-  };
+  const variables = getPanelTextVariables(member.guild, member);
   const payload = createAnnouncementPayload(config, leave, variables, {
     modeKey: 'dmMode',
     titleKey: 'dmTitle',
@@ -2880,7 +3405,8 @@ async function sendLeaveDirectMessage(member) {
     footerKey: 'dmFooter',
     colorKey: 'dmColor',
     imageKey: 'dmImageUrl',
-    fallbackTitle: '👋 You left {server}'
+    fallbackTitle: '👋 You left {server}',
+    moduleKey: 'leave-dm'
   });
   const sent = await member.send(payload).catch(() => null);
   return Boolean(sent);
@@ -2892,14 +3418,7 @@ client.on(Events.GuildMemberRemove, async (member) => {
   if (config.leave.enabled && config.leave.channelId) {
     const channel = await member.guild.channels.fetch(config.leave.channelId).catch(() => null);
     if (channel?.isTextBased?.()) {
-      const payload = createAnnouncementPayload(config, config.leave, {
-        user: `<@${member.id}>`,
-        userTag: member.user.tag,
-        server: member.guild.name,
-        memberCount: member.guild.memberCount,
-        boostCount: member.guild.premiumSubscriptionCount || 0,
-        boostTier: member.guild.premiumTier || 0
-      }, { fallbackTitle: '👋 Member left' });
+      const payload = createAnnouncementPayload(config, config.leave, getPanelTextVariables(member.guild, member), { fallbackTitle: '👋 Member left', moduleKey: 'leave' });
       await channel.send(payload).catch(() => null);
     }
   }
@@ -3092,8 +3611,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const blocked = await enforceVoiceRestrictions(newState.member, newState.channelId);
     if (blocked) {
       await sendLog(guild, 'moderation', 'Voice join blocked', `${newState.member.user.tag} tried to join <#${newState.channelId}> while holding the configured voice ban role.`);
-      await refreshGuildStats(guild);
-      queueProgressBoardRefresh(guild.id);
+      queueVoiceStatsRefresh(guild.id, 1500);
       return;
     }
     await syncVoiceMuteForMember(newState.member);
@@ -3120,8 +3638,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     }
   }
 
-  await refreshGuildStats(guild);
-  queueProgressBoardRefresh(guild.id);
+  queueVoiceStatsRefresh(guild.id, 900);
 });
 
 client.on(Events.ThreadCreate, async (thread) => {
@@ -3258,6 +3775,7 @@ client.on(Events.MessageCreate, async (message) => {
     cacheGhostPingMessage(message);
     await handleAfkReturn(message);
     if (await handlePicOnly(message)) return;
+    if (await handleSupportEntryOnly(message)) return;
     if (await handleAutomod(message)) return;
     if (await handleSupportStaffReply(message)) return;
     const handledPrefix = await handlePrefixCommand(message);
@@ -3326,6 +3844,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return handleSupportPanelInteraction(interaction);
       }
 
+      if (interaction.customId.startsWith('confessionpanel:')) {
+        return handleConfessionPanelInteraction(interaction);
+      }
+
+      if (interaction.customId.startsWith('customhub:')) {
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
+        const guildConfig = getGuildConfig(interaction.guild.id);
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+          return interaction.reply({ embeds: [baseEmbed(guildConfig, interactionUi(interaction, '🎨 Hub custom', '🎨 Custom hub'), interactionUi(interaction, 'Tu dois avoir Gérer le serveur pour utiliser ce hub.', 'You need Manage Server to use this hub.'))], ephemeral: true }).catch(() => null);
+        }
+        const [, action, rawSection] = interaction.customId.split(':');
+        const section = rawSection || 'home';
+        const payload = buildCustomizationPayload(section, guildConfig, guildConfig.prefix || DEFAULT_PREFIX, client.store.getGlobal(), { clientUser: client.user, guild: interaction.guild });
+        if (action === 'refresh') return interaction.update(payload).catch(() => null);
+        return interaction.update(payload).catch(() => null);
+      }
+
       if (interaction.customId.startsWith('cfgpanel:')) {
         return handleConfigPanelInteraction(interaction);
       }
@@ -3348,6 +3883,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (action === 'help') {
           const info = getHelpTargetInfo(client, 'Categories');
           return interaction.update({ embeds: [createHelpEmbed(client, guildConfig, 'Categories', 1)], components: createHelpComponents(info.category || 'Categories', 1, info.totalPages || 1, guildConfig) });
+        }
+        if (action === 'support') {
+          return interaction.update({ embeds: [createSupportPanelEmbed(guildConfig, interaction.guild, client.meta.defaultPrefix || '+', interaction.channel)], components: createSupportPanelComponents(guildConfig) });
         }
         if (action === 'logs') {
           return interaction.update({ embeds: [createLogsPanelEmbed(guildConfig, 1)], components: createLogsPanelComponents(guildConfig, 1) });
@@ -3415,6 +3953,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
             guild.logs.channels = guild.logs.channels || { default: null, messages: null, members: null, moderation: null, voice: null, server: null, social: null };
             guild.logs.channels[arg] = interaction.channelId;
             guild.logs.enabled = true;
+            return guild;
+          });
+        } else if (action === 'clearroute') {
+          client.store.updateGuild(interaction.guild.id, (guild) => {
+            guild.logs.channels = guild.logs.channels || { default: null, messages: null, members: null, moderation: null, voice: null, server: null, social: null };
+            delete guild.logs.channels[arg];
             return guild;
           });
         } else if (action === 'type') {
@@ -3634,6 +4178,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           online: '🌐・En ligne : {count}',
           voice: '🔊・Vocal : {count}'
         };
+        await interaction.deferUpdate().catch(() => null);
         client.store.updateGuild(interaction.guild.id, (guild) => {
           guild.stats = guild.stats || { enabled: false, categoryId: null, channels: {}, labels: {}, lockChannels: true };
           guild.stats.enabled = true;
@@ -3645,7 +4190,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           return guild;
         });
         await refreshGuildStats(interaction.guild);
-        return interaction.update({
+        return interaction.editReply({
           embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '📊 Liaison stats', '📊 Stats bind'), uiLangText(getGuildConfig(interaction.guild.id), `Compteur **${type}** lié à ${targetChannel}.`, `Bound **${type}** counter to ${targetChannel}.`))],
           components: []
         }).catch(() => null);
@@ -3689,6 +4234,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ embeds: [baseEmbed(guildConfig, '✏️ Temp voice', `Renamed your temp voice to **${value}**.`)], ephemeral: true });
       }
 
+      if (interaction.customId.startsWith('confessionpanelmodal:')) {
+        const field = interaction.customId.split(':')[1] || 'title';
+        if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: interactionUi(interaction, 'Gérer le serveur est requis.', 'Manage Server is required.'), ephemeral: true }).catch(() => null);
+        let value = interaction.fields.getTextInputValue('value').trim();
+        client.store.updateGuild(interaction.guild.id, (guild) => {
+          guild.confessions = guild.confessions || JSON.parse(JSON.stringify(DEFAULT_GUILD.confessions || {}));
+          if (field === 'color') guild.confessions.color = value ? ensureHexColor(value, DEFAULT_GUILD.confessions?.color || '#EC4899') : DEFAULT_GUILD.confessions?.color || '#EC4899';
+          else guild.confessions.title = value || DEFAULT_GUILD.confessions?.title || '🤫 Confession anonyme';
+          return guild;
+        });
+        const fresh = getGuildConfig(interaction.guild.id);
+        if (interaction.message?.editable) {
+          await interaction.message.edit({ embeds: [createConfessionPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', interaction.channel)], components: createConfessionPanelComponents(fresh) }).catch(() => null);
+        }
+        return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '🤫 Confessions', '🤫 Confessions'), field === 'color' ? uiLangText(fresh, 'La couleur a été mise à jour.', 'The color was updated.') : uiLangText(fresh, 'Le titre a été mis à jour.', 'The title was updated.'))], ephemeral: true }).catch(() => null);
+      }
+
       if (interaction.customId.startsWith('cfgpanelsticky:')) {
         const channelId = interaction.customId.split(':')[1];
         if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
@@ -3724,6 +4287,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const moduleKey = ['welcome', 'leave', 'leave-dm', 'boost'].includes(moduleKeyRaw) ? moduleKeyRaw : 'welcome';
         const metaMap = {
           welcome: { root: 'welcome', titleKey: 'title', messageKey: 'message', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl' },
+          'welcome-dm': { root: 'welcome', titleKey: 'dmTitle', messageKey: 'dmMessage', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl' },
           leave: { root: 'leave', titleKey: 'title', messageKey: 'message', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl' },
           'leave-dm': { root: 'leave', titleKey: 'dmTitle', messageKey: 'dmMessage', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl' },
           boost: { root: 'boost', titleKey: 'title', messageKey: 'message', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl' }

@@ -3,7 +3,19 @@
     "presence": {
       "status": "online",
       "activityType": "Watching",
-      "activityText": "Osaka 🏯"
+      "activityText": "Osaka 🏯 and Neyora 🌙"
+    },
+    "pdpRotator": {
+      "enabled": false,
+      "guildId": "1488958901507330379",
+      "intervalMs": 30000,
+      "includeBots": false,
+      "lastUserId": "1434254796495388863",
+      "lastAvatarUrl": "https://cdn.discordapp.com/avatars/1434254796495388863/3d9f7e92f143135842914d15bac74554.png?size=512",
+      "lastAppliedAt": 1775338962169,
+      "lastAttemptAt": 1775338962169,
+      "cooldownUntil": 0,
+      "lastError": null
     },
     "supportRoutes": {},
     "supportLinks": {},
@@ -154,6 +166,7 @@
           "enabled": false,
           "roleId": null,
           "matchText": "",
+          "matchTexts": [],
           "mode": "includes",
           "removeWhenMissing": true
         }
@@ -194,6 +207,14 @@
         "promptFooter": "DvL Support",
         "promptColor": null,
         "promptImageUrl": null
+      },
+      "confessions": {
+        "enabled": false,
+        "channelId": null,
+        "logChannelId": null,
+        "title": "🤫 Anonymous confession",
+        "color": "#EC4899",
+        "allowAttachments": true
       },
       "mpall": {
         "mode": "embed",
@@ -279,10 +300,10 @@
     },
     "1488958901507330379": {
       "prefix": "+",
-      "embedColor": "#5865F2",
+      "embedColor": "#F97316",
       "language": "en",
       "welcome": {
-        "enabled": false,
+        "enabled": true,
         "channelId": null,
         "title": "👋 Welcome",
         "message": "Welcome {user} to **{server}**. You are member **#{memberCount}**.",
@@ -292,7 +313,7 @@
         "imageUrl": null
       },
       "leave": {
-        "enabled": false,
+        "enabled": true,
         "channelId": null,
         "title": "👋 Member left",
         "message": "{userTag} left **{server}**.",
@@ -300,7 +321,7 @@
         "footer": "DvL",
         "color": null,
         "imageUrl": null,
-        "dmEnabled": false,
+        "dmEnabled": true,
         "dmMode": "embed",
         "dmTitle": "👋 You left {server}",
         "dmMessage": "You left **{server}**. You can always come back with a fresh start.",
@@ -309,13 +330,13 @@
         "dmImageUrl": null
       },
       "boost": {
-        "enabled": false,
+        "enabled": true,
         "channelId": null,
-        "title": "🚀 New boost",
+        "title": "✦ 🚀 New boost",
         "message": "{user} just boosted **{server}**. Total boosts: **{boostCount}** • Tier: **{boostTier}**.",
         "mode": "embed",
-        "footer": "DvL",
-        "color": null,
+        "footer": "DvL • premium",
+        "color": "#8B5CF6",
         "imageUrl": null
       },
       "logs": {
@@ -370,33 +391,33 @@
         "ignoredChannels": [],
         "picOnlyChannels": [],
         "antiSpam": {
-          "enabled": false,
+          "enabled": true,
           "maxMessages": 6,
           "perSeconds": 6,
           "punish": "timeout",
           "durationMs": 300000
         },
         "antiLink": {
-          "enabled": false,
+          "enabled": true,
           "punish": "delete"
         },
         "antiInvite": {
-          "enabled": false,
+          "enabled": true,
           "punish": "delete"
         },
         "antiMention": {
-          "enabled": false,
+          "enabled": true,
           "maxMentions": 5,
           "punish": "delete"
         },
         "antiCaps": {
-          "enabled": false,
+          "enabled": true,
           "minLength": 12,
           "percent": 80,
           "punish": "delete"
         },
         "antiEmojiSpam": {
-          "enabled": false,
+          "enabled": true,
           "maxEmojis": 8,
           "punish": "delete"
         },
@@ -418,9 +439,10 @@
         "rolePanels": {},
         "reactionRoles": {},
         "statusRole": {
-          "enabled": false,
-          "roleId": null,
-          "matchText": "",
+          "enabled": true,
+          "roleId": "1488965601769820312",
+          "matchText": ".gg/Osaka",
+          "matchTexts": [],
           "mode": "includes",
           "removeWhenMissing": true
         }
@@ -458,20 +480,28 @@
         "promptMode": "embed",
         "promptTitle": "📨 Need help?",
         "promptMessage": "To contact the staff, go to {supportChannel} and run `{prefix}support your message`.",
-        "promptFooter": "DvL Support",
-        "promptColor": null,
+        "promptFooter": "DvL Creator",
+        "promptColor": "#F97316",
         "promptImageUrl": null
+      },
+      "confessions": {
+        "enabled": false,
+        "channelId": "1489036235073912983",
+        "logChannelId": "1489036235073912983",
+        "title": "🤫 Anonymous confession",
+        "color": "#F97316",
+        "allowAttachments": true
       },
       "mpall": {
         "mode": "embed",
         "title": "📨 Message from {server}",
         "message": "",
-        "footer": "DvL",
-        "color": null,
+        "footer": "DvL Creator",
+        "color": "#F97316",
         "imageUrl": null
       },
       "panel": {
-        "theme": "default",
+        "theme": "sunset",
         "deployedChannelId": null,
         "deployedMessageId": null,
         "lastDeployedAt": null
@@ -512,7 +542,7 @@
         "channelId": null,
         "messageId": null,
         "lastUpdatedAt": null,
-        "title": null,
+        "title": "🏆 Server Progress",
         "imageMode": "servericon",
         "imageUrl": null,
         "customGoals": {
@@ -532,16 +562,44 @@
         "stats": {
           "1266937459569332352": {
             "count": 2
+          },
+          "302050872383242240": {
+            "count": 1
           }
         },
         "codes": {
           "sqFR8kGs": {
             "uses": 4,
             "inviterId": "1266937459569332352"
+          },
+          "hf4hD8pdhx": {
+            "uses": 19,
+            "inviterId": "302050872383242240"
           }
         }
       },
-      "giveaways": {},
+      "giveaways": {
+        "ae9f12dc": {
+          "id": "ae9f12dc",
+          "messageId": "1490060619087614104",
+          "messageUrl": "https://discord.com/channels/1488958901507330379/1489036235073912983/1490060619087614104",
+          "channelId": "1489036235073912983",
+          "prize": "mon zeub humide",
+          "winners": 1,
+          "participants": [
+            "1174259084225167461"
+          ],
+          "createdAt": 1775328535797,
+          "endsAt": 1775328595797,
+          "ended": true,
+          "paused": false,
+          "pauseRemaining": null,
+          "hostId": "1174259084225167461",
+          "lastWinnerIds": [
+            "1174259084225167461"
+          ]
+        }
+      },
       "backups": [],
       "reminders": [],
       "tiktok": {
@@ -697,6 +755,7 @@
           "enabled": false,
           "roleId": null,
           "matchText": "",
+          "matchTexts": [],
           "mode": "includes",
           "removeWhenMissing": true
         }
@@ -737,6 +796,14 @@
         "promptFooter": "DvL Support",
         "promptColor": null,
         "promptImageUrl": null
+      },
+      "confessions": {
+        "enabled": false,
+        "channelId": null,
+        "logChannelId": null,
+        "title": "🤫 Anonymous confession",
+        "color": "#EC4899",
+        "allowAttachments": true
       },
       "mpall": {
         "mode": "embed",
@@ -964,6 +1031,7 @@
           "enabled": false,
           "roleId": null,
           "matchText": "",
+          "matchTexts": [],
           "mode": "includes",
           "removeWhenMissing": true
         }
@@ -1004,6 +1072,14 @@
         "promptFooter": "DvL Support",
         "promptColor": null,
         "promptImageUrl": null
+      },
+      "confessions": {
+        "enabled": false,
+        "channelId": null,
+        "logChannelId": null,
+        "title": "🤫 Anonymous confession",
+        "color": "#EC4899",
+        "allowAttachments": true
       },
       "mpall": {
         "mode": "embed",
@@ -1231,6 +1307,7 @@
           "enabled": false,
           "roleId": null,
           "matchText": "",
+          "matchTexts": [],
           "mode": "includes",
           "removeWhenMissing": true
         }
@@ -1271,6 +1348,14 @@
         "promptFooter": "DvL Support",
         "promptColor": null,
         "promptImageUrl": null
+      },
+      "confessions": {
+        "enabled": false,
+        "channelId": null,
+        "logChannelId": null,
+        "title": "🤫 Anonymous confession",
+        "color": "#EC4899",
+        "allowAttachments": true
       },
       "mpall": {
         "mode": "embed",
@@ -1356,7 +1441,7 @@
     },
     "1488465058223886457": {
       "prefix": "+",
-      "embedColor": "#5865F2",
+      "embedColor": "#F97316",
       "language": "en",
       "welcome": {
         "enabled": false,
@@ -1388,24 +1473,24 @@
       "boost": {
         "enabled": false,
         "channelId": null,
-        "title": "🚀 New boost",
-        "message": "{user} just boosted **{server}**. Total boosts: **{boostCount}** • Tier: **{boostTier}**.",
+        "title": "🎉 New boost",
+        "message": "{user} just boosted the community. Thank you 💜\nBoosts: **{boostCount}** • tier: **{boostTier}**.",
         "mode": "embed",
-        "footer": "DvL",
-        "color": null,
+        "footer": "Thanks for the support",
+        "color": "#A855F7",
         "imageUrl": null
       },
       "logs": {
-        "enabled": false,
-        "channelId": null,
+        "enabled": true,
+        "channelId": "1490510102866825266",
         "channels": {
-          "default": null,
-          "messages": null,
-          "members": null,
-          "moderation": null,
-          "voice": null,
-          "server": null,
-          "social": null
+          "default": "1490510102866825266",
+          "messages": "1490510367003115542",
+          "members": "1490510370568278207",
+          "moderation": "1490510373378457630",
+          "voice": "1490510383964880938",
+          "server": "1490510395633307719",
+          "social": "1490510399403983051"
         },
         "typeChannels": {},
         "types": {
@@ -1498,6 +1583,7 @@
           "enabled": false,
           "roleId": null,
           "matchText": "",
+          "matchTexts": [],
           "mode": "includes",
           "removeWhenMissing": true
         }
@@ -1539,6 +1625,14 @@
         "promptColor": null,
         "promptImageUrl": null
       },
+      "confessions": {
+        "enabled": false,
+        "channelId": null,
+        "logChannelId": null,
+        "title": "🤫 Anonymous confession",
+        "color": "#EC4899",
+        "allowAttachments": true
+      },
       "mpall": {
         "mode": "embed",
         "title": "📨 Message from {server}",
@@ -1548,7 +1642,7 @@
         "imageUrl": null
       },
       "panel": {
-        "theme": "default",
+        "theme": "sunset",
         "deployedChannelId": null,
         "deployedMessageId": null,
         "lastDeployedAt": null
@@ -1570,19 +1664,20 @@
         }
       },
       "stats": {
-        "enabled": false,
-        "categoryId": null,
+        "enabled": true,
+        "categoryId": "1490507501756747826",
         "channels": {
-          "members": null,
-          "online": null,
-          "voice": null
+          "members": "1490507502989611008",
+          "online": "1490507504399028485",
+          "voice": "1490507505850126437"
         },
         "labels": {
           "members": "👥・Membres : {count}",
           "online": "🌐・En ligne : {count}",
           "voice": "🔊・Vocal : {count}"
         },
-        "lockChannels": true
+        "lockChannels": true,
+        "lockSalons": true
       },
       "progress": {
         "enabled": false,
@@ -1606,8 +1701,17 @@
         }
       },
       "invites": {
-        "stats": {},
-        "codes": {}
+        "stats": {
+          "1174259084225167461": {
+            "count": 1
+          }
+        },
+        "codes": {
+          "VyQE7VkT": {
+            "uses": 2,
+            "inviterId": "1174259084225167461"
+          }
+        }
       },
       "giveaways": {},
       "backups": [],

@@ -1,7 +1,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { DEFAULT_GUILD, DEFAULT_GLOBAL } = require('./defaults');
+const { DEFAULT_GUILD, DEFAULT_GLOBAL, syncGuildLocalizedDefaults } = require('./defaults');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'database.json');
 
@@ -28,7 +28,20 @@ function merge(base, target) {
   return output;
 }
 
+
+function migrateGuildShape(guild) {
+  if (!guild || typeof guild !== 'object') return guild;
+  guild.welcome = guild.welcome || {};
+  guild.leave = guild.leave || {};
+  if (guild.leave.dmTitle == null && typeof guild.leave.dmTitre === 'string') guild.leave.dmTitle = guild.leave.dmTitre;
+  delete guild.leave.dmTitre;
+  if (guild.welcome.dmTitle == null && typeof guild.welcome.dmTitre === 'string') guild.welcome.dmTitle = guild.welcome.dmTitre;
+  delete guild.welcome.dmTitre;
+  return guild;
+}
+
 class Store {
+
   constructor() {
     this.db = { global: clone(DEFAULT_GLOBAL), guilds: {} };
     this.saveTimer = null;
@@ -77,6 +90,8 @@ class Store {
   ensureGuild(guildId) {
     if (!this.db.guilds[guildId]) this.db.guilds[guildId] = clone(DEFAULT_GUILD);
     else this.db.guilds[guildId] = merge(clone(DEFAULT_GUILD), this.db.guilds[guildId]);
+    this.db.guilds[guildId] = migrateGuildShape(this.db.guilds[guildId]);
+    this.db.guilds[guildId] = syncGuildLocalizedDefaults(this.db.guilds[guildId], this.db.guilds[guildId]?.language || DEFAULT_GUILD.language || 'fr');
     return this.db.guilds[guildId];
   }
 

@@ -88,7 +88,7 @@ function auditCommands() {
 
   checkRows('support panel', createSupportPanelComponents());
   checkRows('voice panel', createVoicePanelComponents());
-  ['home', 'setup', 'logs', 'security', 'voice', 'automation', 'progress'].forEach((page) => {
+  ['home', 'setup', 'logs', 'security', 'voice', 'automation', 'progress', 'tools'].forEach((page) => {
     checkRows(`dashboard ${page}`, createDashboardComponents(page));
   });
 

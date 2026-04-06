@@ -2,30 +2,37 @@
 const DEFAULT_GUILD = {
   prefix: '+',
   embedColor: '#5865F2',
-  language: 'en',
+  language: 'fr',
   welcome: {
     enabled: false,
     channelId: null,
-    title: '👋 Welcome',
-    message: 'Welcome {user} to **{server}**. You are member **#{memberCount}**.',
-    mode: 'embed',
-    footer: 'DvL',
-    color: null,
-    imageUrl: null
-  },
-  leave: {
-    enabled: false,
-    channelId: null,
-    title: '👋 Member left',
-    message: '{userTag} left **{server}**.',
+    title: '👋 Bienvenue',
+    message: 'Bienvenue {user} sur **{server}**. Tu es le membre **#{memberCount}**.',
     mode: 'embed',
     footer: 'DvL',
     color: null,
     imageUrl: null,
     dmEnabled: false,
     dmMode: 'embed',
-    dmTitle: '👋 You left {server}',
-    dmMessage: 'You left **{server}**. You can always come back with a fresh start.',
+    dmTitle: '👋 Bienvenue sur {server}',
+    dmMessage: 'Bienvenue sur **{server}**. Profite bien de ton arrivée.',
+    dmFooter: 'DvL',
+    dmColor: null,
+    dmImageUrl: null
+  },
+  leave: {
+    enabled: false,
+    channelId: null,
+    title: '👋 Départ membre',
+    message: '{userTag} a quitté **{server}**.',
+    mode: 'embed',
+    footer: 'DvL',
+    color: null,
+    imageUrl: null,
+    dmEnabled: false,
+    dmMode: 'embed',
+    dmTitle: '👋 Tu as quitté {server}',
+    dmMessage: 'Tu as quitté **{server}**. Tu peux toujours revenir plus tard.',
     dmFooter: 'DvL',
     dmColor: null,
     dmImageUrl: null
@@ -33,8 +40,8 @@ const DEFAULT_GUILD = {
   boost: {
     enabled: false,
     channelId: null,
-    title: '🚀 New boost',
-    message: '{user} just boosted **{server}**. Total boosts: **{boostCount}** • Tier: **{boostTier}**.',
+    title: '🚀 Nouveau boost',
+    message: '{user} vient de booster **{server}**. Total des boosts : **{boostCount}** • Niveau : **{boostTier}**.',
     mode: 'embed',
     footer: 'DvL',
     color: null,
@@ -112,6 +119,7 @@ const DEFAULT_GUILD = {
       enabled: false,
       roleId: null,
       matchText: '',
+      matchTexts: [],
       mode: 'includes',
       removeWhenMissing: true
     }
@@ -131,16 +139,25 @@ const DEFAULT_GUILD = {
     pingRoleId: null,
     entryChannelId: null,
     restrictToEntry: false,
+    entryCommandOnly: false,
     promptMode: 'embed',
-    promptTitle: '📨 Need help?',
-    promptMessage: 'To contact the staff, go to {supportChannel} and run `{prefix}support your message`.',
+    promptTitle: '📨 Besoin d’aide ?',
+    promptMessage: 'Pour contacter le staff, va dans {supportChannel} et utilise `{prefix}support ton message`.',
     promptFooter: 'DvL Support',
     promptColor: null,
     promptImageUrl: null
   },
+  confessions: {
+    enabled: false,
+    channelId: null,
+    logChannelId: null,
+    title: '🤫 Confession anonyme',
+    color: '#EC4899',
+    allowAttachments: true
+  },
   mpall: {
     mode: 'embed',
-    title: '📨 Message from {server}',
+    title: '📨 Message de {server}',
     message: '',
     footer: 'DvL',
     color: null,
@@ -222,15 +239,97 @@ const DEFAULT_GUILD = {
   afk: {}
 };
 
+
+
+const LOCALIZED_DEFAULT_TEXTS = {
+  welcome: {
+    title: { fr: '👋 Bienvenue', en: '👋 Welcome' },
+    message: {
+      fr: 'Bienvenue {user} sur **{server}**. Tu es le membre **#{memberCount}**.',
+      en: 'Welcome {user} to **{server}**. You are member **#{memberCount}**.'
+    },
+    footer: { fr: 'DvL', en: 'DvL' },
+    dmTitle: { fr: '👋 Bienvenue sur {server}', en: '👋 Welcome to {server}' },
+    dmMessage: {
+      fr: 'Bienvenue sur **{server}**. Profite bien de ton arrivée.',
+      en: 'Welcome to **{server}**. Enjoy your arrival.'
+    },
+    dmFooter: { fr: 'DvL', en: 'DvL' }
+  },
+  leave: {
+    title: { fr: '👋 Départ membre', en: '👋 Member left' },
+    message: { fr: '{userTag} a quitté **{server}**.', en: '{userTag} left **{server}**.' },
+    footer: { fr: 'DvL', en: 'DvL' },
+    dmTitle: { fr: '👋 Tu as quitté {server}', en: '👋 You left {server}' },
+    dmMessage: {
+      fr: 'Tu as quitté **{server}**. Tu peux toujours revenir plus tard.',
+      en: 'You left **{server}**. You can always come back with a fresh start.'
+    },
+    dmFooter: { fr: 'DvL', en: 'DvL' }
+  },
+  boost: {
+    title: { fr: '🚀 Nouveau boost', en: '🚀 New boost' },
+    message: {
+      fr: '{user} vient de booster **{server}**. Total des boosts : **{boostCount}** • Niveau : **{boostTier}**.',
+      en: '{user} just boosted **{server}**. Total boosts: **{boostCount}** • Tier: **{boostTier}**.'
+    },
+    footer: { fr: 'DvL', en: 'DvL' }
+  },
+  support: {
+    promptTitle: { fr: '📨 Besoin d’aide ?', en: '📨 Need help?' },
+    promptMessage: {
+      fr: 'Pour contacter le staff, va dans {supportChannel} et utilise `{prefix}support ton message`.',
+      en: 'To contact the staff, go to {supportChannel} and run `{prefix}support your message`.'
+    },
+    promptFooter: { fr: 'DvL Support', en: 'DvL Support' }
+  },
+  confessions: {
+    title: { fr: '🤫 Confession anonyme', en: '🤫 Anonymous confession' }
+  },
+  mpall: {
+    title: { fr: '📨 Message de {server}', en: '📨 Message from {server}' },
+    footer: { fr: 'DvL', en: 'DvL' }
+  }
+};
+
+function syncGuildLocalizedDefaults(guild, lang = 'fr') {
+  const targetLang = String(lang || 'fr').toLowerCase() === 'en' ? 'en' : 'fr';
+  const allValues = (entry) => Object.values(entry || {}).filter((value) => typeof value === 'string');
+  for (const [sectionKey, fields] of Object.entries(LOCALIZED_DEFAULT_TEXTS)) {
+    guild[sectionKey] = guild[sectionKey] || {};
+    for (const [fieldKey, localized] of Object.entries(fields)) {
+      const current = guild[sectionKey][fieldKey];
+      const variants = allValues(localized);
+      if (current == null || current === '' || variants.includes(current)) {
+        guild[sectionKey][fieldKey] = localized[targetLang] || localized.fr || current;
+      }
+    }
+  }
+  if (!guild.language) guild.language = targetLang;
+  return guild;
+}
+
 const DEFAULT_GLOBAL = {
   presence: {
     status: 'online',
     activityType: 'Watching',
     activityText: 'your server'
   },
+  pdpRotator: {
+    enabled: false,
+    guildId: null,
+    intervalMs: 30000,
+    includeBots: false,
+    lastUserId: null,
+    lastAvatarUrl: null,
+    lastAppliedAt: 0,
+    lastAttemptAt: 0,
+    cooldownUntil: 0,
+    lastError: null
+  },
   supportRoutes: {},
   supportLinks: {},
   backups: []
 };
 
-module.exports = { DEFAULT_GUILD, DEFAULT_GLOBAL };
+module.exports = { DEFAULT_GUILD, DEFAULT_GLOBAL, syncGuildLocalizedDefaults };
