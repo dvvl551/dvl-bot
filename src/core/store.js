@@ -1,9 +1,13 @@
-
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { DEFAULT_GUILD, DEFAULT_GLOBAL, syncGuildLocalizedDefaults } = require('./defaults');
 
-const DB_PATH = path.join(__dirname, '..', '..', 'data', 'database.json');
+const DB_DIR = path.join(__dirname, '..', '..', 'data');
+const DB_PATH = path.join(DB_DIR, 'database.json');
+const SNAPSHOT_DIR = path.join(DB_DIR, 'snapshots');
+const MAX_SAFETY_SNAPSHOTS = 24;
+const SNAPSHOT_COOLDOWN_MS = 30 * 60 * 1000;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -28,6 +32,47 @@ function merge(base, target) {
   return output;
 }
 
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8') || '{}');
+}
+
+function writeFileAtomic(filePath, content) {
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tempPath, content);
+  fs.renameSync(tempPath, filePath);
+}
+
+function pruneSnapshotFiles() {
+  if (!fs.existsSync(SNAPSHOT_DIR)) return;
+  const files = fs.readdirSync(SNAPSHOT_DIR)
+    .filter((name) => /^database-.*\.json$/i.test(name))
+    .map((name) => ({
+      name,
+      filePath: path.join(SNAPSHOT_DIR, name),
+      time: fs.statSync(path.join(SNAPSHOT_DIR, name)).mtimeMs
+    }))
+    .sort((a, b) => b.time - a.time);
+  for (const entry of files.slice(MAX_SAFETY_SNAPSHOTS)) {
+    fs.unlinkSync(entry.filePath);
+  }
+}
+
+function formatSnapshotStamp(date = new Date()) {
+  const parts = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+    '-',
+    String(date.getHours()).padStart(2, '0'),
+    String(date.getMinutes()).padStart(2, '0'),
+    String(date.getSeconds()).padStart(2, '0')
+  ];
+  return parts.join('');
+}
 
 function migrateGuildShape(guild) {
   if (!guild || typeof guild !== 'object') return guild;
@@ -41,27 +86,94 @@ function migrateGuildShape(guild) {
 }
 
 class Store {
-
   constructor() {
     this.db = { global: clone(DEFAULT_GLOBAL), guilds: {} };
     this.saveTimer = null;
+    this.lastSafetySnapshotAt = 0;
+    this.lastSafetySnapshotHash = null;
+  }
+
+  captureSafetySnapshot(reason = 'autosave', { force = false } = {}) {
+    ensureDir(DB_DIR);
+    ensureDir(SNAPSHOT_DIR);
+    if (!fs.existsSync(DB_PATH)) return null;
+
+    const raw = fs.readFileSync(DB_PATH, 'utf8');
+    if (!String(raw || '').trim()) return null;
+
+    const hash = crypto.createHash('sha1').update(raw).digest('hex');
+    const now = Date.now();
+    if (!force && this.lastSafetySnapshotHash === hash && now - this.lastSafetySnapshotAt < SNAPSHOT_COOLDOWN_MS) {
+      return null;
+    }
+
+    const safeReason = String(reason || 'autosave').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'autosave';
+    const fileName = `database-${formatSnapshotStamp(new Date(now))}-${safeReason}.json`;
+    const targetPath = path.join(SNAPSHOT_DIR, fileName);
+    fs.writeFileSync(targetPath, raw);
+    this.lastSafetySnapshotAt = now;
+    this.lastSafetySnapshotHash = hash;
+    pruneSnapshotFiles();
+    return targetPath;
+  }
+
+  listSafetySnapshots() {
+    ensureDir(SNAPSHOT_DIR);
+    return fs.readdirSync(SNAPSHOT_DIR)
+      .filter((name) => /^database-.*\.json$/i.test(name))
+      .map((name) => {
+        const filePath = path.join(SNAPSHOT_DIR, name);
+        const stats = fs.statSync(filePath);
+        return {
+          name,
+          path: filePath,
+          size: stats.size,
+          createdAt: stats.mtime.toISOString()
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  readLatestSafetySnapshot() {
+    const snapshots = this.listSafetySnapshots();
+    for (const entry of snapshots) {
+      try {
+        return { entry, parsed: readJsonFile(entry.path) };
+      } catch {
+        continue;
+      }
+    }
+    return null;
   }
 
   init() {
-    const dir = path.dirname(DB_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    ensureDir(DB_DIR);
+    ensureDir(SNAPSHOT_DIR);
+
     if (!fs.existsSync(DB_PATH)) {
-      fs.writeFileSync(DB_PATH, JSON.stringify(this.db, null, 2));
+      writeFileAtomic(DB_PATH, JSON.stringify(this.db, null, 2));
+      this.captureSafetySnapshot('fresh-start', { force: true });
       return;
     }
 
+    this.captureSafetySnapshot('startup', { force: true });
+
     try {
-      const parsed = JSON.parse(fs.readFileSync(DB_PATH, 'utf8') || '{}');
+      const parsed = readJsonFile(DB_PATH);
       this.db.global = merge(clone(DEFAULT_GLOBAL), parsed.global || {});
       this.db.guilds = parsed.guilds || {};
     } catch (error) {
-      console.error('Failed to read database.json, recreating it.', error);
-      this.flush();
+      console.error('Failed to read database.json, trying latest safety snapshot.', error);
+      const recovered = this.readLatestSafetySnapshot();
+      if (recovered?.parsed) {
+        this.db.global = merge(clone(DEFAULT_GLOBAL), recovered.parsed.global || {});
+        this.db.guilds = recovered.parsed.guilds || {};
+        writeFileAtomic(DB_PATH, JSON.stringify(recovered.parsed, null, 2));
+        console.warn(`Recovered database.json from safety snapshot: ${recovered.entry.name}`);
+      } else {
+        console.error('No valid safety snapshot found, recreating database.json.');
+        this.flush({ forceSnapshot: false });
+      }
     }
   }
 
@@ -70,8 +182,12 @@ class Store {
     this.saveTimer = setTimeout(() => this.flush(), 400);
   }
 
-  flush() {
-    fs.writeFileSync(DB_PATH, JSON.stringify(this.db, null, 2));
+  flush(options = {}) {
+    const { forceSnapshot = false } = options;
+    ensureDir(DB_DIR);
+    ensureDir(SNAPSHOT_DIR);
+    if (fs.existsSync(DB_PATH)) this.captureSafetySnapshot('pre-save', { force: forceSnapshot });
+    writeFileAtomic(DB_PATH, JSON.stringify(this.db, null, 2));
   }
 
   getGlobal() {

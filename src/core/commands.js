@@ -418,7 +418,16 @@ function quickExamplesForCommand(command, prefix = '+') {
     purge: [`${prefix}purge @user 5`, `${prefix}purge 123456789012345678 10`, `${prefix}clear 20`],
     warn: [`${prefix}warn @user Spam`, `${prefix}warnings @user`, `${prefix}clearwarnings @user`],
     rolepanel: [`${prefix}rolepanel`, `${prefix}reactbutton`, `${prefix}autorole`],
-    autorole: [`${prefix}autorole add @Member`, `${prefix}autorole list`, `${prefix}roles view`]
+    autorole: [`${prefix}autorole add @Member`, `${prefix}autorole list`, `${prefix}roles view`],
+    info: [`${prefix}info`, `${prefix}membercount`, `${prefix}servericon`],
+    utility: [`${prefix}utility`, `${prefix}choose a | b | c`, `${prefix}embed`],
+    choose: [`${prefix}choose rouge | bleu | violet`, `${prefix}choose pizza | tacos`, `${prefix}choose logs | support | roles`],
+    servericon: [`${prefix}servericon`, `${prefix}serverinfo`, `${prefix}serverbanner`],
+    serverbanner: [`${prefix}serverbanner`, `${prefix}servericon`, `${prefix}serverinfo`],
+    emojiinfo: [`${prefix}emojiinfo <:emoji:123456789012345678>`, `${prefix}emojiinfo nomemoji`, `${prefix}emojiinfo 123456789012345678`],
+    membercount: [`${prefix}membercount`, `${prefix}boosters`, `${prefix}serverinfo`],
+    boosters: [`${prefix}boosters`, `${prefix}membercount`, `${prefix}serverinfo`],
+    rolemembers: [`${prefix}rolemembers @Role`, `${prefix}roleinfo @Role`, `${prefix}roles user @member`]
   };
   if (map[name]) return map[name];
   if (/(?:channel|here|#channel|<channel>)/i.test(usage)) {
@@ -907,6 +916,167 @@ async function cleanWhitelistEntries(ctx) {
   ctx.store.updateGuild(ctx.guild.id, (guild) => {
     guild.automod.whitelistUserIds = overview.users.map((entry) => entry.id);
     guild.automod.whitelistRoleIds = overview.roles.map((entry) => entry.id);
+    return guild;
+  });
+  return overview;
+}
+
+
+function getAutomodIgnoredChannels(mod = {}) {
+  return Array.from(new Set([
+    ...(Array.isArray(mod.ignoredChannels) ? mod.ignoredChannels : []),
+    ...(Array.isArray(mod.ignoredSalons) ? mod.ignoredSalons : [])
+  ].map((id) => String(id)).filter(Boolean)));
+}
+
+function getAutomodPicOnlyChannels(mod = {}) {
+  return Array.from(new Set([
+    ...(Array.isArray(mod.picOnlyChannels) ? mod.picOnlyChannels : []),
+    ...(Array.isArray(mod.picOnlySalons) ? mod.picOnlySalons : [])
+  ].map((id) => String(id)).filter(Boolean)));
+}
+
+function countEnabledSecurityRules(mod = {}) {
+  return ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => mod[key]?.enabled).length;
+}
+
+function collectSecurityIssues(guildConfig = {}) {
+  const mod = guildConfig.automod || {};
+  const ghost = mod.ghostPing || { enabled: false, channelId: null };
+  const issues = [];
+  if (ghost.enabled && !ghost.channelId) issues.push(uiText(guildConfig, 'ghost ping actif sans salon lié', 'ghost ping is enabled without a linked channel'));
+  if (mod.badWordsEnabled && !(mod.badWords || []).length) issues.push(uiText(guildConfig, 'filtre de mots activé sans liste de mots', 'bad words filter is enabled without any saved words'));
+  if (mod.antiSpam?.enabled && !mod.antiSpam?.maxMessages) issues.push(uiText(guildConfig, 'anti-spam actif sans seuil de messages clair', 'anti-spam is enabled without a clear message threshold'));
+  if (mod.antiMention?.enabled && !mod.antiMention?.maxMentions) issues.push(uiText(guildConfig, 'anti-mention actif sans seuil clair', 'anti-mention is enabled without a clear threshold'));
+  if (!countEnabledSecurityRules(mod) && !ghost.enabled && !mod.badWordsEnabled) issues.push(uiText(guildConfig, 'aucune protection AutoMod active', 'no AutoMod protection is enabled'));
+  return issues;
+}
+
+function buildSecurityDoctorEmbed(guildConfig, prefix = '+') {
+  const mod = guildConfig.automod || {};
+  const ghost = mod.ghostPing || { enabled: false, channelId: null };
+  const ignored = getAutomodIgnoredChannels(mod);
+  const picOnly = getAutomodPicOnlyChannels(mod);
+  const whitelistUsers = Array.isArray(mod.whitelistUserIds) ? mod.whitelistUserIds.length : 0;
+  const whitelistRoles = Array.isArray(mod.whitelistRoleIds) ? mod.whitelistRoleIds.length : 0;
+  const issues = collectSecurityIssues(guildConfig);
+  const enabled = countEnabledSecurityRules(mod);
+  return createModuleActionEmbed(guildConfig, {
+    moduleKey: 'security',
+    titleFr: 'Diagnostic sécurité',
+    titleEn: 'Security doctor',
+    summary: uiText(guildConfig, 'Vue claire des protections, bypass et seuils sensibles pour éviter les oublis avant update.', 'Clear view of protections, bypasses and sensitive thresholds before you update anything.'),
+    stateLines: [
+      metricLine(uiText(guildConfig, 'Filtres actifs', 'Active filters'), `**${enabled}**`),
+      metricLine(uiText(guildConfig, 'Ghost ping', 'Ghost ping'), `${uiState(Boolean(ghost.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))}${ghost.channelId ? ` • <#${ghost.channelId}>` : ''}`),
+      metricLine(uiText(guildConfig, 'Salons ignorés', 'Ignored channels'), `**${ignored.length}**`),
+      metricLine(uiText(guildConfig, 'Salons image only', 'Pic-only channels'), `**${picOnly.length}**`),
+      metricLine(uiText(guildConfig, 'Whitelist', 'Whitelist'), `**${whitelistUsers + whitelistRoles}**`),
+      metricLine(uiText(guildConfig, 'Mots bloqués', 'Blocked words'), `**${(mod.badWords || []).length}**`)
+    ],
+    extraFields: [
+      sectionField(uiText(guildConfig, '🎚️ Seuils utiles', '🎚️ Useful thresholds'), [
+        `**Anti-spam :** ${mod.antiSpam?.enabled ? `${mod.antiSpam.maxMessages || 0}/${mod.antiSpam.perSeconds || 0}s • ${(mod.antiSpam.punish || 'delete')}` : uiText(guildConfig, 'off', 'off')}`,
+        `**Anti-mention :** ${mod.antiMention?.enabled ? `${mod.antiMention.maxMentions || 0} • ${(mod.antiMention.punish || 'delete')}` : uiText(guildConfig, 'off', 'off')}`,
+        `**Anti-caps :** ${mod.antiCaps?.enabled ? `${mod.antiCaps.percent || 0}% • min ${mod.antiCaps.minLength || 0}` : uiText(guildConfig, 'off', 'off')}`,
+        `**Anti-emoji :** ${mod.antiEmojiSpam?.enabled ? `${mod.antiEmojiSpam.maxEmojis || 0} • ${(mod.antiEmojiSpam.punish || 'delete')}` : uiText(guildConfig, 'off', 'off')}`,
+        `**Raid mode :** ${mod.raidMode?.enabled ? `${mod.raidMode.joinAgeMinutes || 0} min` : uiText(guildConfig, 'off', 'off')}`
+      ], false),
+      sectionField(uiText(guildConfig, '🧯 Bypass actifs', '🧯 Active bypasses'), [
+        `**${uiText(guildConfig, 'Users whitelist', 'User whitelist')} :** ${whitelistUsers}`,
+        `**${uiText(guildConfig, 'Roles whitelist', 'Role whitelist')} :** ${whitelistRoles}`,
+        `**${uiText(guildConfig, 'Ignored channels', 'Ignored channels')} :** ${ignored.length ? ignored.map((id) => `<#${id}>`).join(', ') : uiText(guildConfig, 'aucun', 'none')}`,
+        `**${uiText(guildConfig, 'Pic-only channels', 'Pic-only channels')} :** ${picOnly.length ? picOnly.map((id) => `<#${id}>`).join(', ') : uiText(guildConfig, 'aucun', 'none')}`
+      ], false),
+      sectionField(uiText(guildConfig, '🩺 À surveiller', '🩺 Watch points'), issues.length ? issues.map((line) => `• ${line}`) : [uiText(guildConfig, 'rien de bloquant détecté côté sécurité', 'nothing blocking detected for security setup')], false)
+    ],
+    nextLines: [
+      `• ${commandPill(prefix, 'security preset balanced')}`,
+      `• ${commandPill(prefix, 'security bypass')}`,
+      `• ${commandPill(prefix, 'security raid on')}`,
+      `• ${commandPill(prefix, 'ghostping here')}`
+    ]
+  });
+}
+
+function buildConfigExportPayload(guildConfig, guild) {
+  const built = buildGuildBackupSnapshot(guildConfig, guild);
+  return {
+    exportedAt: new Date().toISOString(),
+    guildId: guild?.id || null,
+    guildName: guild?.name || built.snapshot?.server?.name || null,
+    exportVersion: 1,
+    snapshot: built.snapshot,
+    meta: built.meta
+  };
+}
+
+async function collectRoleStorageOverview(ctx) {
+  const roles = ctx.guildConfig.roles || {};
+  const overview = {
+    autoRoles: [],
+    autoRolesHumans: [],
+    autoRolesBots: [],
+    brokenAutoRoles: [],
+    brokenAutoRolesHumans: [],
+    brokenAutoRolesBots: [],
+    buttonPanelsKept: 0,
+    buttonPanelsRemoved: 0,
+    reactionPairsKept: 0,
+    reactionPairsRemoved: 0,
+    reactionEntriesRemoved: 0,
+    statusRoleOk: Boolean(roles.statusRole?.roleId ? (ctx.guild.roles.cache.get(roles.statusRole.roleId) || await ctx.guild.roles.fetch(roles.statusRole.roleId).catch(() => null)) : true),
+    statusRoleId: roles.statusRole?.roleId || null,
+    cleanedRolePanels: {},
+    cleanedReactionRoles: {}
+  };
+
+  for (const field of ['autoRoles', 'autoRolesHumans', 'autoRolesBots']) {
+    for (const id of roles[field] || []) {
+      const role = ctx.guild.roles.cache.get(id) || await ctx.guild.roles.fetch(id).catch(() => null);
+      if (role) overview[field].push(String(id));
+      else overview[`broken${field[0].toUpperCase()}${field.slice(1)}`].push(String(id));
+    }
+  }
+
+  for (const [panelId, entry] of Object.entries(roles.rolePanels || {})) {
+    const role = entry?.roleId ? (ctx.guild.roles.cache.get(entry.roleId) || await ctx.guild.roles.fetch(entry.roleId).catch(() => null)) : null;
+    const channel = entry?.channelId ? (ctx.guild.channels.cache.get(entry.channelId) || await ctx.guild.channels.fetch(entry.channelId).catch(() => null)) : null;
+    if (role && channel?.isTextBased?.()) {
+      overview.cleanedRolePanels[panelId] = entry;
+      overview.buttonPanelsKept += 1;
+    } else {
+      overview.buttonPanelsRemoved += 1;
+    }
+  }
+
+  for (const [messageId, entry] of Object.entries(roles.reactionRoles || {})) {
+    const pairs = [];
+    for (const pair of entry?.pairs || []) {
+      const role = pair?.roleId ? (ctx.guild.roles.cache.get(pair.roleId) || await ctx.guild.roles.fetch(pair.roleId).catch(() => null)) : null;
+      if (role) {
+        pairs.push(pair);
+        overview.reactionPairsKept += 1;
+      } else {
+        overview.reactionPairsRemoved += 1;
+      }
+    }
+    if (pairs.length) overview.cleanedReactionRoles[messageId] = { ...entry, pairs };
+    else overview.reactionEntriesRemoved += 1;
+  }
+
+  return overview;
+}
+
+async function cleanRoleStorageEntries(ctx) {
+  const overview = await collectRoleStorageOverview(ctx);
+  ctx.store.updateGuild(ctx.guild.id, (guild) => {
+    guild.roles.autoRoles = overview.autoRoles;
+    guild.roles.autoRolesHumans = overview.autoRolesHumans;
+    guild.roles.autoRolesBots = overview.autoRolesBots;
+    guild.roles.rolePanels = overview.cleanedRolePanels;
+    guild.roles.reactionRoles = overview.cleanedReactionRoles;
+    if (guild.roles?.statusRole?.roleId && !overview.statusRoleOk) guild.roles.statusRole.roleId = null;
     return guild;
   });
   return overview;
@@ -2396,163 +2566,141 @@ function makeSimpleCommand(command) {
 
 function buildWelcomeModuleEmbed(guildConfig, prefix = '+') {
   const welcome = guildConfig.welcome || {};
-  const embed = baseEmbed(guildConfig, '👋 Welcome module', 'Welcome messages and welcome DMs with clear control over channel, style and preview.');
-  embed.addFields(
-    {
-      name: 'Server welcome',
-      value: [
-        `**Status:** ${welcome.enabled ? 'on' : 'off'}`,
-        `**Channel:** ${welcome.channelId ? `<#${welcome.channelId}>` : 'not set'}`,
-        `**Message:** ${formatTemplatePreview(welcome.message)}`,
-        ...buildAnnouncementStyleLines(guildConfig, welcome)
-      ].join('\n').slice(0, 1024),
-      inline: false
-    },
-    {
-      name: 'Welcome DM',
-      value: [
-        `**Status:** ${welcome.dmEnabled ? 'on' : 'off'}`,
-        `**Message:** ${formatTemplatePreview(welcome.dmMessage)}`,
-        ...buildAnnouncementStyleLines(guildConfig, welcome, { modeKey: 'dmMode', titleKey: 'dmTitle', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl' })
-      ].join('\n').slice(0, 1024),
-      inline: false
-    },
-    {
-      name: 'Quick setup',
-      value: [
-        `\`${prefix}welcome on\``,
-        `\`${prefix}welcome channel #welcome\``,
-        `\`${prefix}welcome mode embed\``,
-        `\`${prefix}welcome message Bienvenue {user} sur {server}\``,
-        `\`${prefix}welcome preset premium\``
-      ].join('\n'),
-      inline: true
-    },
-    {
-      name: 'DM setup',
-      value: [
-        `\`${prefix}welcome dm on\``,
-        `\`${prefix}welcome dmpreset premium\``,
-        `\`${prefix}welcome dmmode embed\``,
-        `\`${prefix}welcome dmmessage Bienvenue sur **{server}**\``,
-        `\`${prefix}welcome testdm\``
-      ].join('\n'),
-      inline: true
-    },
-    {
-      name: 'Checks',
-      value: `\`${prefix}welcome vars\` • \`${prefix}welcome example\` • \`${prefix}welcome test\` • \`${prefix}welcome testdm\` • \`${prefix}welcome reset\``,
-      inline: false
-    }
+  const issues = [];
+  if (welcome.enabled && !welcome.channelId) issues.push(uiText(guildConfig, '• active mais sans salon', '• enabled but no channel'));
+  if (welcome.dmEnabled && !String(welcome.dmMessage || welcome.dmTitle || '').trim()) issues.push(uiText(guildConfig, '• MP actif mais texte vide', '• DM enabled but text is empty'));
+
+  const embed = applyHubFrame(
+    baseEmbed(
+      guildConfig,
+      uiText(guildConfig, '👋 Welcome', '👋 Welcome'),
+      uiText(guildConfig, 'Réglage simple des messages d’arrivée en salon et en MP.', 'Simple setup for join messages in channel and in DMs.')
+    ),
+    guildConfig,
+    null,
+    'Welcome',
+    'Welcome',
+    [
+      hubBadge(guildConfig, '💬', 'Salon', 'Channel', `${uiState(Boolean(welcome.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${uiChannel(welcome.channelId, uiText(guildConfig, 'non défini', 'not set'))}`),
+      hubBadge(guildConfig, '💌', 'MP', 'DM', `${uiState(Boolean(welcome.dmEnabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${getAnnouncementModeLabel(welcome.dmMode)}`),
+      hubBadge(guildConfig, '🎨', 'Mode', 'Mode', getAnnouncementModeLabel(welcome.mode))
+    ]
   );
-  return embed;
+
+  embed.addFields(
+    sectionField(uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'), [
+      metricLine(uiText(guildConfig, 'Salon', 'Channel'), uiChannel(welcome.channelId, uiText(guildConfig, 'non défini', 'not set'))),
+      metricLine(uiText(guildConfig, 'Titre', 'Title'), formatTemplatePreview(welcome.title, uiText(guildConfig, 'aucun', 'none'))),
+      metricLine(uiText(guildConfig, 'Message', 'Message'), formatTemplatePreview(welcome.message)),
+      metricLine(uiText(guildConfig, 'MP', 'DM'), `${uiState(Boolean(welcome.dmEnabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${formatTemplatePreview(welcome.dmMessage, uiText(guildConfig, 'non défini', 'not set'))}`)
+    ], false),
+    sectionField(uiText(guildConfig, '⚡ Commence par', '⚡ Start with'), [
+      commandPill(prefix, 'welcome on'),
+      commandPill(prefix, 'welcome channel here'),
+      commandPill(prefix, 'welcome preset premium'),
+      commandPill(prefix, 'welcome test')
+    ], true),
+    sectionField(uiText(guildConfig, '🧪 Outils', '🧪 Tools'), [
+      commandPill(prefix, 'welcome dm on'),
+      commandPill(prefix, 'welcome testdm'),
+      commandPill(prefix, 'welcome vars'),
+      commandPill(prefix, 'texts')
+    ], true),
+    sectionField(uiText(guildConfig, '🩺 À corriger', '🩺 Needs attention'), issues.length ? issues : uiText(guildConfig, '• rien de bloquant', '• nothing blocking'))
+  );
+  return translateEmbedForUi(guildConfig, embed);
 }
 function buildLeaveModuleEmbed(guildConfig, prefix = '+') {
   const leave = guildConfig.leave || {};
-  const embed = baseEmbed(guildConfig, '👋 Leave module', 'Leave logs and leave DMs with separate style controls.');
-  embed.addFields(
-    {
-      name: 'Server leave message',
-      value: [
-        `**Status:** ${leave.enabled ? 'on' : 'off'}`,
-        `**Channel:** ${leave.channelId ? `<#${leave.channelId}>` : 'not set'}`,
-        `**Message:** ${formatTemplatePreview(leave.message)}`,
-        ...buildAnnouncementStyleLines(guildConfig, leave)
-      ].join('\n').slice(0, 1024),
-      inline: false
-    },
-    {
-      name: 'MP leave',
-      value: [
-        `**Status:** ${leave.dmEnabled ? 'on' : 'off'}`,
-        `**Message:** ${formatTemplatePreview(leave.dmMessage)}`,
-        ...buildAnnouncementStyleLines(guildConfig, leave, { modeKey: 'dmMode', titleKey: 'dmTitle', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl' })
-      ].join('\n').slice(0, 1024),
-      inline: false
-    },
-    {
-      name: 'Quick setup',
-      value: [
-        `\`${prefix}leave on\``,
-        `\`${prefix}leave channel #logs\``,
-        `\`${prefix}leave mode embed\``,
-        `\`${prefix}leave message {userTag} a quitté {server}\``,
-        `\`${prefix}leave preset soft\``
-      ].join('\n'),
-      inline: true
-    },
-    {
-      name: 'DM setup',
-      value: [
-        `\`${prefix}leave dm on\``,
-        `\`${prefix}leave dmmode plain\``,
-        `\`${prefix}leave dmmessage Merci d'être passé sur {server}\``,
-        `\`${prefix}leave testdm\``,
-        `\`${prefix}leave dmpreset soft\``
-      ].join('\n'),
-      inline: true
-    },
-    {
-      name: 'Checks',
-      value: `\`${prefix}leave vars\` • \`${prefix}leave example\` • \`${prefix}leave preset soft\` • \`${prefix}leave test\` • \`${prefix}leave testdm\` • \`${prefix}leave reset\``,
-      inline: false
-    }
+  const issues = [];
+  if (leave.enabled && !leave.channelId) issues.push(uiText(guildConfig, '• actif mais sans salon', '• enabled but no channel'));
+  if (leave.dmEnabled && !String(leave.dmMessage || leave.dmTitle || '').trim()) issues.push(uiText(guildConfig, '• MP actif mais texte vide', '• DM enabled but text is empty'));
+
+  const embed = applyHubFrame(
+    baseEmbed(
+      guildConfig,
+      uiText(guildConfig, '👋 Leave', '👋 Leave'),
+      uiText(guildConfig, 'Réglage simple des messages de départ en salon et en MP.', 'Simple setup for leave messages in channel and in DMs.')
+    ),
+    guildConfig,
+    null,
+    'Leave',
+    'Leave',
+    [
+      hubBadge(guildConfig, '💬', 'Salon', 'Channel', `${uiState(Boolean(leave.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${uiChannel(leave.channelId, uiText(guildConfig, 'non défini', 'not set'))}`),
+      hubBadge(guildConfig, '💌', 'MP', 'DM', `${uiState(Boolean(leave.dmEnabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${getAnnouncementModeLabel(leave.dmMode)}`),
+      hubBadge(guildConfig, '🎨', 'Mode', 'Mode', getAnnouncementModeLabel(leave.mode))
+    ]
   );
-  return embed;
+
+  embed.addFields(
+    sectionField(uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'), [
+      metricLine(uiText(guildConfig, 'Salon', 'Channel'), uiChannel(leave.channelId, uiText(guildConfig, 'non défini', 'not set'))),
+      metricLine(uiText(guildConfig, 'Titre', 'Title'), formatTemplatePreview(leave.title, uiText(guildConfig, 'aucun', 'none'))),
+      metricLine(uiText(guildConfig, 'Message', 'Message'), formatTemplatePreview(leave.message)),
+      metricLine(uiText(guildConfig, 'MP', 'DM'), `${uiState(Boolean(leave.dmEnabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${formatTemplatePreview(leave.dmMessage, uiText(guildConfig, 'non défini', 'not set'))}`)
+    ], false),
+    sectionField(uiText(guildConfig, '⚡ Commence par', '⚡ Start with'), [
+      commandPill(prefix, 'leave on'),
+      commandPill(prefix, 'leave channel here'),
+      commandPill(prefix, 'leave preset soft'),
+      commandPill(prefix, 'leave test')
+    ], true),
+    sectionField(uiText(guildConfig, '🧪 Outils', '🧪 Tools'), [
+      commandPill(prefix, 'leave dm on'),
+      commandPill(prefix, 'leave testdm'),
+      commandPill(prefix, 'leave vars'),
+      commandPill(prefix, 'texts')
+    ], true),
+    sectionField(uiText(guildConfig, '🩺 À corriger', '🩺 Needs attention'), issues.length ? issues : uiText(guildConfig, '• rien de bloquant', '• nothing blocking'))
+  );
+  return translateEmbedForUi(guildConfig, embed);
 }
 function buildBoostModuleEmbed(guildConfig, prefix = '+') {
   const boost = guildConfig.boost || {};
-  const embed = baseEmbed(guildConfig, '🚀 Boost module', 'Boost announcement style. The event stays under logs/tracking, but the text is managed here too.');
-  embed.addFields(
-    {
-      name: 'Current state',
-      value: [
-        `**Status:** ${boost.enabled ? 'on' : 'off'}`,
-        `**Channel:** ${boost.channelId ? `<#${boost.channelId}>` : 'not set'}`,
-        `**Message:** ${formatTemplatePreview(boost.message)}`,
-        ...buildAnnouncementStyleLines(guildConfig, boost)
-      ].join('\n').slice(0, 1024),
-      inline: false
-    },
-    {
-      name: 'Quick setup',
-      value: [
-        `\`${prefix}boost on\``,
-        `\`${prefix}boost channel #boosts\``,
-        `\`${prefix}boost preset premium\``,
-        `\`${prefix}boost test\``
-      ].join('\n'),
-      inline: true
-    },
-    {
-      name: 'Presets',
-      value: [
-        `\`${prefix}boost preset clean\``,
-        `\`${prefix}boost preset premium\``,
-        `\`${prefix}boost preset community\``,
-        `\`${prefix}boost preset anime\``,
-        `\`${prefix}boost preset minimal\``
-      ].join('\n'),
-      inline: true
-    },
-    {
-      name: 'Fine tuning',
-      value: [
-        `\`${prefix}boost title 🚀 Nouveau boost\``,
-        `\`${prefix}boost footer Merci pour le soutien\``,
-        `\`${prefix}boost color #FF73FA\``,
-        `\`${prefix}boost image https://...\``
-      ].join('\n'),
-      inline: false
-    },
-    {
-      name: 'Checks',
-      value: `\`${prefix}boost vars\` • \`${prefix}boost example\` • \`${prefix}boost test\` • \`${prefix}boost reset\``,
-      inline: false
-    }
+  const issues = [];
+  if (boost.enabled && !boost.channelId) issues.push(uiText(guildConfig, '• actif mais sans salon', '• enabled but no channel'));
+
+  const embed = applyHubFrame(
+    baseEmbed(
+      guildConfig,
+      uiText(guildConfig, '🚀 Boost', '🚀 Boost'),
+      uiText(guildConfig, 'Réglage simple de l’annonce de boost et de son style.', 'Simple setup for the boost announcement and its style.')
+    ),
+    guildConfig,
+    null,
+    'Boost',
+    'Boost',
+    [
+      hubBadge(guildConfig, '💬', 'Salon', 'Channel', `${uiState(Boolean(boost.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${uiChannel(boost.channelId, uiText(guildConfig, 'non défini', 'not set'))}`),
+      hubBadge(guildConfig, '🎨', 'Mode', 'Mode', getAnnouncementModeLabel(boost.mode)),
+      hubBadge(guildConfig, '🧪', 'Test', 'Test', commandPill(prefix, 'boost test'))
+    ]
   );
-  return embed;
+
+  embed.addFields(
+    sectionField(uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'), [
+      metricLine(uiText(guildConfig, 'Titre', 'Title'), formatTemplatePreview(boost.title, uiText(guildConfig, 'aucun', 'none'))),
+      metricLine(uiText(guildConfig, 'Message', 'Message'), formatTemplatePreview(boost.message)),
+      metricLine('Footer', formatTemplatePreview(boost.footer, uiText(guildConfig, 'aucun', 'none')))
+    ], false),
+    sectionField(uiText(guildConfig, '⚡ Commence par', '⚡ Start with'), [
+      commandPill(prefix, 'boost on'),
+      commandPill(prefix, 'boost channel here'),
+      commandPill(prefix, 'boost preset premium'),
+      commandPill(prefix, 'boost test')
+    ], true),
+    sectionField(uiText(guildConfig, '🧪 Outils', '🧪 Tools'), [
+      commandPill(prefix, 'boost vars'),
+      commandPill(prefix, 'boost example'),
+      commandPill(prefix, 'boost color #FF73FA'),
+      commandPill(prefix, 'texts')
+    ], true),
+    sectionField(uiText(guildConfig, '🩺 À corriger', '🩺 Needs attention'), issues.length ? issues : uiText(guildConfig, '• rien de bloquant', '• nothing blocking'))
+  );
+  return translateEmbedForUi(guildConfig, embed);
 }
+
 function formatTemplatePreview(value, fallback = 'not set') {
   const text = String(value || '').trim();
   if (!text) return fallback;
@@ -2968,7 +3116,7 @@ function getSupportPresetConfig(guildConfig, presetKey = 'clean') {
     clean: {
       promptMode: 'embed',
       promptTitle: uiText(guildConfig, '📨 Besoin d’aide ?', '📨 Need help?'),
-      promptMessage: uiText(guildConfig, 'Pour contacter le staff, va dans {supportChannel} et utilise `{prefix}support ton message`.', 'To contact the staff, go to {supportChannel} and run `{prefix}support your message`.'),
+      promptMessage: uiText(guildConfig, 'Pour contacter le staff, écris dans {supportChannel} ou envoie un MP au bot. `{prefix}support ton message` marche aussi.', 'To contact the staff, write in {supportChannel} or DM the bot. `{prefix}support your message` also works.'),
       promptFooter: 'DvL Support',
       promptColor: null,
       promptImageUrl: null
@@ -2976,7 +3124,7 @@ function getSupportPresetConfig(guildConfig, presetKey = 'clean') {
     premium: {
       promptMode: 'embed',
       promptTitle: uiText(guildConfig, '✨ Support prioritaire', '✨ Priority support'),
-      promptMessage: uiText(guildConfig, 'Besoin d’aide ? Passe dans {supportChannel} puis utilise `{prefix}support ton message`. Le staff te répondra en MP.', 'Need help? Go to {supportChannel} then use `{prefix}support your message`. Staff will answer you in DMs.'),
+      promptMessage: uiText(guildConfig, 'Besoin d’aide ? Écris dans {supportChannel} ou contacte le bot en MP. `{prefix}support ton message` reste dispo si tu préfères.', 'Need help? Write in {supportChannel} or DM the bot. `{prefix}support your message` still works if you prefer.'),
       promptFooter: uiText(guildConfig, 'DvL Premium Support', 'DvL Premium Support'),
       promptColor: '#8B5CF6',
       promptImageUrl: null
@@ -2984,7 +3132,7 @@ function getSupportPresetConfig(guildConfig, presetKey = 'clean') {
     community: {
       promptMode: 'embed',
       promptTitle: uiText(guildConfig, '🧩 Support communauté', '🧩 Community support'),
-      promptMessage: uiText(guildConfig, 'Une question ou un souci ? Ouvre une demande dans {supportChannel} avec `{prefix}support ton message`.', 'Any question or issue? Open a request in {supportChannel} with `{prefix}support your message`.'),
+      promptMessage: uiText(guildConfig, 'Une question ou un souci ? Écris dans {supportChannel} ou contacte le bot en MP. `{prefix}support ton message` marche aussi.', 'Any question or issue? Write in {supportChannel} or DM the bot. `{prefix}support your message` works too.'),
       promptFooter: uiText(guildConfig, 'On arrive vite', 'We will be there soon'),
       promptColor: '#22C55E',
       promptImageUrl: null
@@ -2992,7 +3140,7 @@ function getSupportPresetConfig(guildConfig, presetKey = 'clean') {
     anime: {
       promptMode: 'embed',
       promptTitle: uiText(guildConfig, '🌸 Centre d’aide', '🌸 Help center'),
-      promptMessage: uiText(guildConfig, 'Tu as besoin d’un coup de main ? Direction {supportChannel} puis `{prefix}support ton message` ✨', 'Need a hand? Head to {supportChannel} then run `{prefix}support your message` ✨'),
+      promptMessage: uiText(guildConfig, 'Tu as besoin d’un coup de main ? Écris dans {supportChannel} ou passe en MP au bot ✨ `{prefix}support ton message` reste possible.', 'Need a hand? Write in {supportChannel} or DM the bot ✨ `{prefix}support your message` still works.'),
       promptFooter: uiText(guildConfig, 'Le staff arrive', 'Staff is on the way'),
       promptColor: '#FB7185',
       promptImageUrl: null
@@ -3000,7 +3148,7 @@ function getSupportPresetConfig(guildConfig, presetKey = 'clean') {
     minimal: {
       promptMode: 'plain',
       promptTitle: null,
-      promptMessage: uiText(guildConfig, 'Support: va dans {supportChannel} puis utilise `{prefix}support ton message`.', 'Support: go to {supportChannel} then run `{prefix}support your message`.'),
+      promptMessage: uiText(guildConfig, 'Support : écris dans {supportChannel} ou envoie un MP au bot. `{prefix}support ton message` fonctionne aussi.', 'Support: write in {supportChannel} or DM the bot. `{prefix}support your message` works too.'),
       promptFooter: null,
       promptColor: null,
       promptImageUrl: null
@@ -3117,7 +3265,7 @@ function createSupportPromptPayload(guildConfig, guild, prefix = '+', fallbackCh
   const support = guildConfig.support || {};
   const vars = getSupportPromptVariables(guild, support, prefix, fallbackChannel);
   const title = fillTemplate(support.promptTitle || '📨 Need help?', vars).trim();
-  const description = fillTemplate(support.promptMessage || 'To contact the staff, go to {supportChannel} and run `{prefix}support your message`.', vars).trim();
+  const description = fillTemplate(support.promptMessage || 'To contact the staff, write in {supportChannel} or DM the bot. `{prefix}support your message` also works.', vars).trim();
   const footer = fillTemplate(support.promptFooter ?? 'DvL Support', vars).trim();
   const imageUrl = fillTemplate(support.promptImageUrl || '', vars).trim();
   return createAnnouncementPreviewPayload(guildConfig, {
@@ -3215,78 +3363,56 @@ function buildSupportModuleEmbed(guildConfig, prefix = '+') {
   const noValue = uiText(guildConfig, 'non défini', 'not set');
   const none = uiText(guildConfig, 'aucun', 'none');
   const relayReady = Boolean(support.enabled && support.channelId);
-  const entryReady = !support.restrictToEntry || Boolean(support.entryChannelId);
+  const entryReady = Boolean(support.entryChannelId);
   const promptReady = Boolean(String(support.promptTitle || '').trim() || String(support.promptMessage || '').trim());
-  const pingReady = Boolean(support.pingRoleId);
-  const lockReady = !support.entryCommandOnly || Boolean(support.entryChannelId);
-  const readyCount = [relayReady, entryReady, promptReady, pingReady, lockReady].filter(Boolean).length;
-  const healthLabel = readyCount >= 4 ? uiText(guildConfig, 'propre', 'healthy') : (readyCount >= 2 ? uiText(guildConfig, 'correct', 'usable') : uiText(guildConfig, 'à finir', 'needs setup'));
-  const promptMode = normalizeAnnouncementMode(support.promptMode);
-  const promptTarget = support.entryChannelId ? `<#${support.entryChannelId}>` : noValue;
   const issues = [];
   if (!relayReady) issues.push(uiText(guildConfig, '• définis le salon relais staff', '• set the staff relay channel'));
-  if (!entryReady) issues.push(uiText(guildConfig, '• ajoute le salon membre si la restriction est active', '• add the member channel if the restriction is enabled'));
+  if (!entryReady) issues.push(uiText(guildConfig, '• définis le salon membre', '• set the member channel'));
   if (!promptReady) issues.push(uiText(guildConfig, '• prépare le prompt public', '• prepare the public prompt'));
-  if (support.entryCommandOnly && !support.entryChannelId) issues.push(uiText(guildConfig, '• le mode support-only a besoin d’un salon membre', '• support-only mode needs a member channel'));
+  if (support.entryCommandOnly && !support.entryChannelId) issues.push(uiText(guildConfig, '• support-only a besoin du salon membre', '• support-only needs the member channel'));
+
+  const memberFlow = entryReady
+    ? uiText(guildConfig, `Les membres écrivent dans ${uiChannel(support.entryChannelId, noValue)}, utilisent \`${prefix}support\`, ou contactent le bot en MP.`, `Members write in ${uiChannel(support.entryChannelId, noValue)}, use \`${prefix}support\`, or DM the bot.`)
+    : uiText(guildConfig, `Les membres peuvent utiliser \`${prefix}support\` ou contacter le bot en MP.`, `Members can use \`${prefix}support\` or DM the bot.`);
 
   const embed = applyHubFrame(
     baseEmbed(
       guildConfig,
-      uiText(guildConfig, '📨 Hub support', '📨 Support hub'),
-      [
-        uiText(guildConfig, 'Bloc propre pour gérer le support : relais staff, salon membre, prompt public et test du flux sans courir après des sous-commandes dispersées.', 'Clean block to manage support: staff relay, member channel, public prompt and flow tests without chasing scattered subcommands.'),
-        '',
-        hubBadge(guildConfig, '📍', 'Santé', 'Health', `**${healthLabel}** • ${readyCount}/5`),
-        hubBadge(guildConfig, '🧾', 'Relais staff', 'Staff relay', uiChannel(support.channelId, noValue)),
-        hubBadge(guildConfig, '💬', 'Salon membre', 'Member channel', uiChannel(support.entryChannelId, noValue)),
-        hubBadge(guildConfig, '🎨', 'Prompt', 'Prompt', `\`${promptMode}\``)
-      ].join('\n')
+      uiText(guildConfig, '📨 Support', '📨 Support'),
+      uiText(guildConfig, 'Un point clair pour le contact membre, le relais staff et le prompt public.', 'One clear place for member contact, staff relay and the public prompt.')
     ),
     guildConfig,
     null,
     'Support',
-    'Support'
+    'Support',
+    [
+      hubBadge(guildConfig, '👥', 'Membres', 'Members', memberFlow),
+      hubBadge(guildConfig, '🧾', 'Relais', 'Relay', `${uiState(Boolean(support.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${uiChannel(support.channelId, noValue)}`),
+      hubBadge(guildConfig, '🔔', 'Ping', 'Ping', uiRole(support.pingRoleId, none))
+    ]
   );
 
   embed.addFields(
-    sectionField(uiText(guildConfig, '📍 Routage', '📍 Routing'), [
-      metricLine(uiText(guildConfig, 'Relais', 'Relay'), uiState(support.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))),
-      metricLine(uiText(guildConfig, 'Salon relais', 'Relay channel'), uiChannel(support.channelId, noValue)),
+    sectionField(uiText(guildConfig, '📍 État actuel', '📍 Current state'), [
       metricLine(uiText(guildConfig, 'Salon membre', 'Member channel'), uiChannel(support.entryChannelId, noValue)),
+      metricLine(uiText(guildConfig, 'Relais staff', 'Staff relay'), uiChannel(support.channelId, noValue)),
       metricLine(uiText(guildConfig, 'Restriction', 'Restriction'), uiBool(support.restrictToEntry, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no'))),
-      metricLine(uiText(guildConfig, 'Support-only', 'Support-only'), uiBool(support.entryCommandOnly, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no'))),
-      metricLine(uiText(guildConfig, 'Rôle ping', 'Ping role'), uiRole(support.pingRoleId, none))
-    ]),
-    sectionField(uiText(guildConfig, '🎨 Prompt public', '🎨 Public prompt'), [
-      metricLine(uiText(guildConfig, 'Mode', 'Mode'), `\`${promptMode}\``),
-      metricLine(uiText(guildConfig, 'Titre', 'Title'), formatTemplatePreview(support.promptTitle, uiText(guildConfig, 'par défaut', 'default'))),
-      metricLine(uiText(guildConfig, 'Message', 'Message'), formatTemplatePreview(support.promptMessage, uiText(guildConfig, 'par défaut', 'default'))),
-      metricLine('Footer', formatTemplatePreview(support.promptFooter, uiText(guildConfig, 'par défaut', 'default'))),
-      metricLine(uiText(guildConfig, 'Couleur', 'Color'), support.promptColor || guildConfig.embedColor || '#5865F2'),
-      metricLine(uiText(guildConfig, 'Cible', 'Target'), promptTarget)
-    ]),
-    sectionField(uiText(guildConfig, '🩺 Diagnostic', '🩺 Diagnosis'), [
-      metricLine(uiText(guildConfig, 'Flux relais', 'Relay flow'), relayReady ? uiText(guildConfig, 'prêt', 'ready') : uiText(guildConfig, 'incomplet', 'incomplete')),
-      metricLine(uiText(guildConfig, 'Flux membre', 'Member flow'), entryReady ? uiText(guildConfig, 'cohérent', 'consistent') : uiText(guildConfig, 'à corriger', 'fix needed')),
-      metricLine(uiText(guildConfig, 'Prompt', 'Prompt'), promptReady ? uiText(guildConfig, 'prêt à envoyer', 'ready to send') : uiText(guildConfig, 'vide / à finir', 'empty / incomplete')),
-      metricLine(uiText(guildConfig, 'Ping staff', 'Staff ping'), pingReady ? uiText(guildConfig, 'défini', 'set') : uiText(guildConfig, 'optionnel', 'optional')),
-      issues.length ? issues.join('\n') : uiText(guildConfig, '• rien de bloquant détecté', '• nothing blocking detected')
+      metricLine(uiText(guildConfig, 'Support-only', 'Support-only'), uiBool(support.entryCommandOnly, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no')))
+    ], false),
+    sectionField(uiText(guildConfig, '⚡ Le plus utile', '⚡ Most useful'), [
+      commandPill(prefix, 'support panel'),
+      commandPill(prefix, 'support quicksetup #support-logs'),
+      commandPill(prefix, 'support preview'),
+      commandPill(prefix, 'support send'),
+      commandPill(prefix, 'support test')
     ], true),
-    sectionField(uiText(guildConfig, '⚡ Actions utiles', '⚡ Useful actions'), [
-      `• ${commandPill(prefix, 'support panel')}`,
-      `• ${commandPill(prefix, 'support quicksetup #support-logs')}`,
-      `• ${commandPill(prefix, 'support relay #support-logs')}`,
-      `• ${commandPill(prefix, 'support entry #support')}`,
-      `• ${commandPill(prefix, 'support preset clean')}`,
-      `• ${commandPill(prefix, 'support preview')} • ${commandPill(prefix, 'support test')}`
+    sectionField(uiText(guildConfig, '💬 Côté membres', '💬 Member side'), [
+      uiText(guildConfig, '• écrire directement dans le salon support', '• write directly in the support channel'),
+      `• ${commandPill(prefix, 'support Bonjour')}`,
+      uiText(guildConfig, '• contacter le bot en MP', '• DM the bot directly'),
+      `• ${commandPill(prefix, 'reply @user Bonjour')}`
     ], true),
-    sectionField(uiText(guildConfig, '🧭 Flow conseillé', '🧭 Recommended flow'), [
-      `1. ${commandPill(prefix, 'support quicksetup #support-logs')} ${uiText(guildConfig, 'pour aller vite', 'for a fast start')}`,
-      `2. ${commandPill(prefix, 'support role @Staff')} ${uiText(guildConfig, 'si tu veux ping un rôle', 'if you want to ping a role')}`,
-      `3. ${commandPill(prefix, 'support preview')} ${uiText(guildConfig, 'pour vérifier le rendu', 'to check the render')}`,
-      `4. ${commandPill(prefix, 'support send')} ${uiText(guildConfig, 'pour poster le prompt', 'to post the prompt')}`,
-      `5. ${commandPill(prefix, 'support test')} ${uiText(guildConfig, 'pour valider le relais', 'to validate the relay')}`
-    ])
+    sectionField(uiText(guildConfig, '🩺 À finir', '🩺 Needs attention'), issues.length ? issues : uiText(guildConfig, '• setup propre, tu peux tester le flux', '• setup looks clean, you can test the flow'))
   );
 
   return translateEmbedForUi(guildConfig, embed);
@@ -3591,27 +3717,22 @@ function buildTextsHubEmbed(guildConfig, prefix = '+', focus = 'home') {
       [
         hubBadge(guildConfig, '🧬', 'Variables', 'Variables', `**${TEXT_VARIABLE_LINES.length}**`),
         hubBadge(guildConfig, '👀', 'Préviews', 'Previews', commandPill(prefix, 'welcome test')),
-        hubBadge(guildConfig, '📨', 'DM', 'DM', `${uiText(guildConfig, 'welcome + leave', 'welcome + leave')}`),
-        hubBadge(guildConfig, '🎨', 'Presets', 'Presets', commandPill(prefix, 'textspreset clean'))
+        hubBadge(guildConfig, '🎨', 'Preset', 'Preset', commandPill(prefix, 'textspreset clean'))
       ]
     );
 
     embed.addFields(
       sectionField(uiText(guildConfig, '🧬 Variables', '🧬 Variables'), TEXT_VARIABLE_LINES, false),
-      sectionField(uiText(guildConfig, '⚡ Où les utiliser', '⚡ Where to use them'), [
+      sectionField(uiText(guildConfig, '⚡ Où les mettre', '⚡ Where to use them'), [
         commandPill(prefix, 'welcome message ...'),
-        commandPill(prefix, 'welcome dmmessage ...'),
         commandPill(prefix, 'leave message ...'),
-        commandPill(prefix, 'leave dmmessage ...'),
         commandPill(prefix, 'boost message ...'),
         commandPill(prefix, 'support prompt ...')
       ], true),
-      sectionField(uiText(guildConfig, '👀 Préviews utiles', '👀 Useful previews'), [
+      sectionField(uiText(guildConfig, '👀 Tests', '👀 Tests'), [
         commandPill(prefix, 'welcome test'),
         commandPill(prefix, 'testwelcomedm'),
         commandPill(prefix, 'leave test'),
-        commandPill(prefix, 'testleavedm'),
-        commandPill(prefix, 'boost test'),
         commandPill(prefix, 'support preview')
       ], true)
     );
@@ -3619,62 +3740,54 @@ function buildTextsHubEmbed(guildConfig, prefix = '+', focus = 'home') {
   }
 
   const issues = [];
-  if (welcome.enabled && !welcome.channelId) issues.push(uiText(guildConfig, 'welcome activé sans salon', 'welcome is enabled without a channel'));
-  if (welcome.dmEnabled && !welcome.dmMessage && !welcome.dmTitle) issues.push(uiText(guildConfig, 'welcome DM actif mais encore vide', 'welcome DM is enabled but still empty'));
-  if (leave.enabled && !leave.channelId) issues.push(uiText(guildConfig, 'leave activé sans salon', 'leave is enabled without a channel'));
-  if (leave.dmEnabled && !leave.dmMessage && !leave.dmTitle) issues.push(uiText(guildConfig, 'leave DM actif mais encore vide', 'leave DM is enabled but still empty'));
-  if (boost.enabled && !boost.channelId) issues.push(uiText(guildConfig, 'boost activé sans salon', 'boost is enabled without a channel'));
-  if (support.entryCommandOnly && !support.entryChannelId) issues.push(uiText(guildConfig, 'support-only actif sans salon membre', 'support-only is enabled without a member channel'));
+  if (welcome.enabled && !welcome.channelId) issues.push(uiText(guildConfig, '• welcome activé sans salon', '• welcome enabled without a channel'));
+  if (leave.enabled && !leave.channelId) issues.push(uiText(guildConfig, '• leave activé sans salon', '• leave enabled without a channel'));
+  if (boost.enabled && !boost.channelId) issues.push(uiText(guildConfig, '• boost activé sans salon', '• boost enabled without a channel'));
+  if (support.entryCommandOnly && !support.entryChannelId) issues.push(uiText(guildConfig, '• support-only actif sans salon membre', '• support-only is enabled without a member channel'));
 
   const textModules = [
-    [uiText(guildConfig, 'Welcome', 'Welcome'), `${uiState(Boolean(welcome.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(welcome.channelId, uiText(guildConfig, 'non défini', 'not set'))} • ${getAnnouncementModeLabel(welcome.mode)}`],
-    [uiText(guildConfig, 'Welcome DM', 'Welcome DM'), `${uiState(Boolean(welcome.dmEnabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${getAnnouncementModeLabel(welcome.dmMode)}`],
-    [uiText(guildConfig, 'Leave', 'Leave'), `${uiState(Boolean(leave.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(leave.channelId, uiText(guildConfig, 'non défini', 'not set'))} • ${getAnnouncementModeLabel(leave.mode)}`],
-    [uiText(guildConfig, 'Leave DM', 'Leave DM'), `${uiState(Boolean(leave.dmEnabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${getAnnouncementModeLabel(leave.dmMode)}`],
-    [uiText(guildConfig, 'Boost', 'Boost'), `${uiState(Boolean(boost.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(boost.channelId, uiText(guildConfig, 'non défini', 'not set'))} • ${getAnnouncementModeLabel(boost.mode)}`],
-    [uiText(guildConfig, 'Prompt support', 'Support prompt'), `${uiState(Boolean(support.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))} • ${uiChannel(support.entryChannelId, uiText(guildConfig, 'non défini', 'not set'))} • ${getAnnouncementModeLabel(support.promptMode)}`]
+    metricLine(uiText(guildConfig, 'Welcome', 'Welcome'), `${uiState(Boolean(welcome.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${uiChannel(welcome.channelId, uiText(guildConfig, 'non défini', 'not set'))}`),
+    metricLine(uiText(guildConfig, 'Welcome DM', 'Welcome DM'), `${uiState(Boolean(welcome.dmEnabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${getAnnouncementModeLabel(welcome.dmMode)}`),
+    metricLine(uiText(guildConfig, 'Leave', 'Leave'), `${uiState(Boolean(leave.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${uiChannel(leave.channelId, uiText(guildConfig, 'non défini', 'not set'))}`),
+    metricLine(uiText(guildConfig, 'Leave DM', 'Leave DM'), `${uiState(Boolean(leave.dmEnabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${getAnnouncementModeLabel(leave.dmMode)}`),
+    metricLine(uiText(guildConfig, 'Boost', 'Boost'), `${uiState(Boolean(boost.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${uiChannel(boost.channelId, uiText(guildConfig, 'non défini', 'not set'))}`),
+    metricLine(uiText(guildConfig, 'Support', 'Support'), `${uiState(Boolean(support.enabled), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))} • ${uiChannel(support.entryChannelId, uiText(guildConfig, 'non défini', 'not set'))}`)
   ];
 
   const liveCount = [welcome.enabled, welcome.dmEnabled, leave.enabled, leave.dmEnabled, boost.enabled, support.enabled].filter(Boolean).length;
   const embed = applyHubFrame(
     baseEmbed(
       guildConfig,
-      uiText(guildConfig, '📝 Hub textes', '📝 Text hub'),
-      uiText(guildConfig, 'Point propre pour gérer welcome, leave, boost, MP et le prompt support sans retenir 12 syntaxes différentes.', 'Clean place to manage welcome, leave, boost, DMs and the support prompt without memorizing 12 different syntaxes.')
+      uiText(guildConfig, '📝 Textes', '📝 Texts'),
+      uiText(guildConfig, 'Tout ce qui touche aux messages visibles par les membres, sans bloc énorme à lire.', 'Everything related to member-facing texts, without one giant block to read.')
     ),
     guildConfig,
     null,
     'Textes',
     'Texts',
     [
-      hubBadge(guildConfig, '🟢', 'Modules live', 'Live modules', `**${liveCount}/6**`),
-      hubBadge(guildConfig, '📨', 'DM actifs', 'Active DMs', `**${[welcome.dmEnabled, leave.dmEnabled].filter(Boolean).length}**`),
-      hubBadge(guildConfig, '🎨', 'Preset global', 'Global preset', commandPill(prefix, 'textspreset clean')),
-      hubBadge(guildConfig, '🧪', 'Préview rapide', 'Quick preview', commandPill(prefix, 'welcome test'))
+      hubBadge(guildConfig, '🟢', 'Modules actifs', 'Live modules', `**${liveCount}/6**`),
+      hubBadge(guildConfig, '💌', 'DM', 'DM', `**${[welcome.dmEnabled, leave.dmEnabled].filter(Boolean).length}**`),
+      hubBadge(guildConfig, '🎨', 'Preset global', 'Global preset', commandPill(prefix, 'textspreset clean'))
     ]
   );
 
   embed.addFields(
-    sectionField(uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'), textModules.map(([label, value]) => metricLine(label, value)), false),
-    sectionField(uiText(guildConfig, '⚡ Flow conseillé', '⚡ Recommended flow'), [
-      `1. ${commandPill(prefix, 'texts welcome')}`,
-      `2. ${commandPill(prefix, 'texts leave')}`,
-      `3. ${commandPill(prefix, 'boost')}`,
-      `4. ${commandPill(prefix, 'support')}`,
-      `5. ${commandPill(prefix, 'texts vars')}`,
-      `6. ${commandPill(prefix, 'textspreset clean')}`
+    sectionField(uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'), textModules, false),
+    sectionField(uiText(guildConfig, '⚡ Ouvre direct', '⚡ Open directly'), [
+      commandPill(prefix, 'texts welcome'),
+      commandPill(prefix, 'texts leave'),
+      commandPill(prefix, 'boost'),
+      commandPill(prefix, 'support')
     ], true),
-    sectionField(uiText(guildConfig, '🎨 Presets & previews', '🎨 Presets & previews'), [
+    sectionField(uiText(guildConfig, '🧪 Presets & tests', '🧪 Presets & tests'), [
       commandPill(prefix, 'textspreset clean'),
       commandPill(prefix, 'textspreset premium'),
-      commandPill(prefix, 'textspreset anime'),
       commandPill(prefix, 'welcome test'),
-      commandPill(prefix, 'testwelcomedm'),
-      commandPill(prefix, 'testleavedm')
+      commandPill(prefix, 'leave test')
     ], true),
-    sectionField(uiText(guildConfig, '🩺 Diagnostic', '🩺 Diagnosis'), issues.length ? issues.map((issue) => `• ${issue}`) : [uiText(guildConfig, 'rien de bloquant détecté sur les textes', 'nothing blocking detected for text modules')], false)
+    sectionField(uiText(guildConfig, '🩺 À corriger', '🩺 Needs attention'), issues.length ? issues : uiText(guildConfig, '• rien de bloquant', '• nothing blocking'))
   );
-
   return translateEmbedForUi(guildConfig, embed);
 }
 
@@ -3803,19 +3916,16 @@ function buildSecurityHubEmbed(guildConfig, prefix = '+') {
   const ghost = mod.ghostPing || { enabled: false, channelId: null };
   const whitelistUsers = Array.isArray(mod.whitelistUserIds) ? mod.whitelistUserIds.length : 0;
   const whitelistRoles = Array.isArray(mod.whitelistRoleIds) ? mod.whitelistRoleIds.length : 0;
-  const ignoredChannels = Array.isArray(mod.ignoredSalons) ? mod.ignoredSalons.length : 0;
-  const picOnlyChannels = Array.isArray(mod.picOnlySalons) ? mod.picOnlySalons.length : 0;
-  const enabledCount = ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => mod[key]?.enabled).length;
-  const issues = [];
-  if (ghost.enabled && !ghost.channelId) issues.push(uiText(guildConfig, 'ghost ping actif sans salon de logs', 'ghost ping is enabled without a log channel'));
-  if (mod.badWordsEnabled && !(mod.badWords || []).length) issues.push(uiText(guildConfig, 'filtre de mots activé sans liste de mots', 'bad words filter is enabled without any words'));
-  if (!enabledCount && !ghost.enabled) issues.push(uiText(guildConfig, 'aucune protection AutoMod active', 'no AutoMod protection is enabled'));
+  const ignoredChannels = getAutomodIgnoredChannels(mod).length;
+  const picOnlyChannels = getAutomodPicOnlyChannels(mod).length;
+  const enabledCount = countEnabledSecurityRules(mod);
+  const issues = collectSecurityIssues(guildConfig);
 
   const embed = applyHubFrame(
     baseEmbed(
       guildConfig,
       uiText(guildConfig, '🚨 Hub sécurité', '🚨 Security hub'),
-      uiText(guildConfig, 'Preset global, ghost ping, whitelist et protections AutoMod dans une seule vue propre.', 'Global preset, ghost ping, whitelist and AutoMod protections in one clean view.')
+      uiText(guildConfig, 'Preset global, bypass AutoMod, salons spéciaux et protections principales dans une seule vue propre.', 'Global preset, AutoMod bypasses, special channels and main protections in one clean view.')
     ),
     guildConfig,
     null,
@@ -3849,9 +3959,9 @@ function buildSecurityHubEmbed(guildConfig, prefix = '+') {
     ], true),
     sectionField(uiText(guildConfig, '⚡ Setup conseillé', '⚡ Recommended setup'), [
       commandPill(prefix, 'security preset balanced'),
+      commandPill(prefix, 'security doctor'),
+      commandPill(prefix, 'security bypass'),
       commandPill(prefix, 'ghostping here'),
-      commandPill(prefix, 'automodconfig'),
-      commandPill(prefix, 'whitelistlist'),
       commandPill(prefix, 'piconlylist')
     ], true),
     sectionField(uiText(guildConfig, '🩺 Points à surveiller', '🩺 Watch points'), issues.length ? issues.map((issue) => `• ${issue}`) : [uiText(guildConfig, 'rien de bloquant détecté côté sécurité', 'nothing blocking detected for security setup')], false)
@@ -4630,29 +4740,101 @@ function formatCommandAccess(command, guildConfig = null) {
   return { scope, perms };
 }
 
+function getCommandHelpUsage(command) {
+  return String(command?.helpUsageShort || command?.usage || command?.name || '').trim();
+}
+
+function renderHelpGuideLine(prefix, line) {
+  const rendered = String(line || '').replace(/\{prefix\}/g, prefix).trim();
+  if (!rendered) return null;
+  return rendered.includes(prefix) ? `• \`${rendered}\`` : `• ${rendered}`;
+}
+
+function normalizeHelpSyntaxGroups(command, guildConfig, prefix) {
+  const explicit = Array.isArray(command?.helpSyntaxGroups) ? command.helpSyntaxGroups : [];
+  const source = explicit.length
+    ? explicit
+    : (Array.isArray(command?.helpQuickSections) ? command.helpQuickSections.map((section) => ({
+        labelFr: section.titleFr || section.title || 'Section',
+        labelEn: section.titleEn || section.title || 'Section',
+        lines: section.lines || []
+      })) : []);
+  return source.map((group) => {
+    const name = uiText(guildConfig, group.labelFr || group.titleFr || group.label || group.title || 'Section', group.labelEn || group.titleEn || group.label || group.title || 'Section');
+    const lines = (group.lines || []).map((line) => renderHelpGuideLine(prefix, line)).filter(Boolean).slice(0, group.limit || 4);
+    return { name, lines, inline: group.inline !== false };
+  }).filter((group) => group.lines.length);
+}
+
+function getCommandHelpSections(command, guildConfig, prefix) {
+  return normalizeHelpSyntaxGroups(command, guildConfig, prefix).map((group) => ({
+    name: group.name,
+    value: group.lines.join('\n').slice(0, 1024),
+    inline: group.inline !== false
+  })).filter((section) => section.value);
+}
+
+function formatInvalidUsageText(command, guildConfig, prefix, extra = '') {
+  const usageLabel = uiText(guildConfig, 'À taper', 'What to type');
+  const quickLabel = uiText(guildConfig, 'Commandes utiles', 'Useful commands');
+  const examplesLabel = uiText(guildConfig, 'Exemples', 'Examples');
+  const aliasesLabel = uiText(guildConfig, 'Alias', 'Aliases');
+  const groups = normalizeHelpSyntaxGroups(command, guildConfig, prefix);
+  const quickLines = groups.slice(0, 3).flatMap((group) => {
+    const compactTitle = String(group.name || '').replace(/^[^\wÀ-ÿ]+/u, '').trim();
+    const head = compactTitle ? [`**${compactTitle}**`] : [];
+    return [...head, ...group.lines.slice(0, 3)];
+  }).slice(0, 10);
+  const exampleLines = quickExamplesForCommand(command, prefix).slice(0, 3).map((entry) => `• \`${entry}\``);
+  const aliasLine = command.aliases?.length ? `${aliasesLabel} • ${command.aliases.slice(0, 4).map((alias) => `\`${prefix}${alias}\``).join(' • ')}` : null;
+  return [
+    `${usageLabel} • ${commandPill(prefix, getCommandHelpUsage(command))}`,
+    command.helpIntro || command.description || null,
+    quickLines.length ? `
+**${quickLabel}**
+${quickLines.join('\n')}` : null,
+    exampleLines.length ? `
+**${examplesLabel}**
+${exampleLines.join('\n')}` : null,
+    extra ? `
+${extra}` : null,
+    aliasLine
+  ].filter(Boolean).join('\n');
+}
+
 function createCommandHelpEmbed(client, guildConfig, command) {
   const prefix = guildConfig?.prefix || '+';
   const access = formatCommandAccess(command, guildConfig);
-  const slashText = command.slash ? `/${command.slash.root} ${command.slash.sub}` : uiText(guildConfig, 'Aucune version slash', 'No slash version');
-  const usage = commandPill(prefix, command.usage || command.name);
-  const aliases = command.aliases?.length ? command.aliases.map((alias) => commandPill(prefix, alias)).join(' • ') : uiText(guildConfig, 'Aucun', 'None');
-  const examples = quickExamplesForCommand(command, prefix).slice(0, 3).map((line) => commandPill('', line)).join('\n');
-  const embed = brandEmbed(guildConfig, uiText(guildConfig, `📘 Commande • ${prefix}${command.name}`, `📘 Command • ${prefix}${command.name}`), [
-    command.description || uiText(guildConfig, 'Aucune description.', 'No description.'),
+  const slashText = command.slash ? `/${command.slash.root} ${command.slash.sub}` : null;
+  const usage = commandPill(prefix, getCommandHelpUsage(command));
+  const aliasList = command.aliases?.slice(0, 4) || [];
+  const syntaxGroups = normalizeHelpSyntaxGroups(command, guildConfig, prefix);
+  const examples = quickExamplesForCommand(command, prefix).slice(0, 4).map((line) => `• \`${line}\``);
+  const descriptionIntro = command.helpIntro || command.description || uiText(guildConfig, 'Aucune description.', 'No description.');
+
+  const embed = brandEmbed(guildConfig, uiText(guildConfig, `📘 ${prefix}${command.name}`, `📘 ${prefix}${command.name}`), [
+    descriptionIntro,
     '',
     hubBadge(guildConfig, '🗂️', 'Catégorie', 'Category', `${CATEGORY_META[command.category]?.emoji || '•'} ${categoryLabelFor(guildConfig, command.category)}`),
     hubBadge(guildConfig, '🧭', 'Accès', 'Access', access.scope),
     hubBadge(guildConfig, '🔐', 'Permissions', 'Permissions', access.perms)
   ].join('\n'));
 
-  embed.addFields(
-    sectionField(uiText(guildConfig, '🧩 Syntaxe principale', '🧩 Main syntax'), usage, false),
-    sectionField(uiText(guildConfig, '⚡ Exemples rapides', '⚡ Quick examples'), examples, false),
-    sectionField(uiText(guildConfig, '🪄 Alias', '🪄 Aliases'), aliases, true),
-    sectionField('Slash', `\`${slashText}\``, true)
-  );
+  embed.addFields(sectionField(uiText(guildConfig, '🧩 À taper', '🧩 What to type'), [
+    usage,
+    slashText ? `${uiText(guildConfig, 'Slash', 'Slash')} • \`${slashText}\`` : null,
+    aliasList.length ? `${uiText(guildConfig, 'Alias', 'Aliases')} • ${aliasList.map((alias) => commandPill(prefix, alias)).join(' • ')}` : null
+  ]));
 
-  embed.setFooter({ text: uiText(guildConfig, 'DvL • fiche commande', 'DvL • command card') });
+  syntaxGroups.slice(0, 3).forEach((group) => {
+    embed.addFields(sectionField(group.name, group.lines, group.inline !== false));
+  });
+
+  if (examples.length) {
+    embed.addFields(sectionField(uiText(guildConfig, '🧪 Exemples', '🧪 Examples'), examples, false));
+  }
+
+  embed.setFooter({ text: uiText(guildConfig, 'DvL • aide commande', 'DvL • command help') });
   return applyEmbedVisualStyle(embed, guildConfig);
 }
 
@@ -4663,17 +4845,9 @@ function chunkLines(lines, size = 12) {
 }
 
 function buildHelpLine(prefix, cmd, category = null, guildConfig = null) {
-  const aliasList = cmd.aliases || [];
-  const aliasPreview = aliasList.slice(0, category === 'All' ? 1 : 2);
-  const usage = String(cmd.usage || cmd.name || '').trim();
-  const usageText = usage ? `\`${prefix}${usage}\`` : `\`${prefix}${cmd.name}\``;
-  const aliasText = aliasPreview.length
-    ? `
-↳ ${uiText(guildConfig, 'alias', 'aliases')} : ${aliasPreview.map((a) => `\`${prefix}${a}\``).join(', ')}${aliasList.length > aliasPreview.length ? ' …' : ''}`
-    : '';
+  const summary = clipText(cmd.helpIntro || cmd.description || uiText(guildConfig, 'Commande disponible.', 'Available command.'), category === 'All' ? 52 : 62);
   const categoryText = category === 'All' ? ` • ${CATEGORY_META[cmd.category]?.emoji || '•'} ${cmd.category}` : '';
-  return `**\`${prefix}${cmd.name}\`**${categoryText}
-↳ ${uiText(guildConfig, 'syntaxe', 'syntax')} : ${usageText}${aliasText}`;
+  return `• **${commandPill(prefix, cmd.name)}**${categoryText} — ${summary}`;
 }
 
 function getSetupHelpPages() {
@@ -5537,7 +5711,7 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
   if (category === 'All') intro.push(uiText(guildConfig, 'Liste complète découpée en pages pour rester lisible.', 'Full list split into pages to stay readable.'));
   if (category === 'System') intro.push(`Tout ce qui touche à \`${prefix}dashboard\`, \`${prefix}panel\`, \`${prefix}modules\` et \`${prefix}setupcheck\`.`);
   if (category === 'Tracking') intro.push(uiText(guildConfig, 'Compteurs, invites et refresh sont regroupés ici.', 'Counters, invites and refresh tools are grouped here.'));
-  if (category === 'Support') intro.push(uiText(guildConfig, `Membres : \`${prefix}support <message>\` • Staff : \`${prefix}reply @user <texte>\`.`, `Members: \`${prefix}support <message>\` • Staff: \`${prefix}reply @user <text>\`.`));
+  if (category === 'Support') intro.push(uiText(guildConfig, `Membres : \`${prefix}support <message>\` ou MP au bot • Staff : \`${prefix}reply @user <texte>\`.`, `Members: \`${prefix}support <message>\` or DM the bot • Staff: \`${prefix}reply @user <text>\`.`));
   if (category === 'Permissions') intro.push(`Niveaux : \`${prefix}permrole 1 @Role\` • commandes : \`${prefix}permcmd 1 add timeout\`.`);
   if (category === 'Voice') intro.push(uiText(guildConfig, 'Déplacements voc, temp voice et modération voc.', 'Voice moves, temp voice and voice moderation.'));
   if (category === 'Logs') intro.push(`Utilise \`${prefix}logs view\`, \`${prefix}logs types\` ou \`${prefix}logs panel\`.`);
@@ -5899,6 +6073,36 @@ function createCommands() {
       }
     }),
     makeSimpleCommand({
+      name: 'start',
+      aliases: ['where', 'begin', 'debut', 'début', 'quickstart', 'gettingstarted'],
+      category: 'General',
+      description: 'Short onboarding help for setup, staff and members',
+      usage: 'start [start|staff|members|health]',
+      dmAllowed: true,
+      async execute(ctx) {
+        const kind = String(ctx.args[0] || 'start').toLowerCase();
+        const mapped = ['staff', 'members', 'health'].includes(kind) ? kind : 'start';
+        await ctx.reply({ embeds: [createSpecialHelpEmbed(ctx.guildConfig, mapped)] });
+      }
+    }),
+    makeSimpleCommand({
+      name: 'uptime',
+      aliases: ['runtime', 'upt'],
+      category: 'General',
+      description: 'Show bot uptime and process health basics',
+      usage: 'uptime',
+      dmAllowed: true,
+      async execute(ctx) {
+        const memory = Math.round(process.memoryUsage().rss / 1024 / 1024);
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⏱️ Uptime', [
+          `**Bot uptime:** ${formatDuration(process.uptime() * 1000)}`,
+          `**Latency:** ${ctx.client.ws.ping}ms`,
+          `**Memory:** ${memory} MB`,
+          `**Guilds:** ${ctx.client.guilds.cache.size}`
+        ].join('\n'))] });
+      }
+    }),
+    makeSimpleCommand({
       name: 'find',
       aliases: ['search', 'finder', 'cmd', 'findcmd', 'searchcmd', 'commande'],
       category: 'General',
@@ -5960,13 +6164,36 @@ function createCommands() {
     }),
     makeSimpleCommand({
       name: 'config',
-      aliases: ['settings'],
+      aliases: ['settings', 'configsummary', 'configview'],
       category: 'Config',
-      description: 'Show core guild settings',
-      usage: 'config',
+      description: 'Show core guild settings, export them, or run a quick config doctor',
+      usage: 'config [summary|doctor|export]',
       guildOnly: true,
       slash: { root: 'general', sub: 'config', description: 'Show core guild settings' },
       async execute(ctx) {
+        const action = String(ctx.args[0] || 'summary').toLowerCase();
+        if (['doctor', 'health', 'check'].includes(action)) {
+          return ctx.reply({ embeds: [createSetupCheckEmbed(ctx.guildConfig, ctx.guild)] });
+        }
+        if (['export', 'download'].includes(action)) {
+          const payload = buildConfigExportPayload(ctx.guildConfig, ctx.guild);
+          const attachment = new AttachmentBuilder(Buffer.from(JSON.stringify(payload, null, 2), 'utf8'), { name: `dvl-config-${ctx.guild.id}.json` });
+          return ctx.reply({
+            embeds: [createModuleActionEmbed(ctx.guildConfig, {
+              moduleKey: 'config',
+              titleFr: 'Config exportée',
+              titleEn: 'Config exported',
+              tone: 'success',
+              summary: uiText(ctx.guildConfig, 'La configuration actuelle du serveur a été exportée en JSON.', 'The current server config was exported as JSON.'),
+              nextLines: [
+                `• ${commandPill(ctx.prefix, 'backup create before-big-update')}`,
+                `• ${commandPill(ctx.prefix, 'config doctor')}`,
+                `• ${commandPill(ctx.prefix, 'backup list')}`
+              ]
+            })],
+            files: [attachment]
+          });
+        }
         const g = ctx.guildConfig;
         const embed = baseEmbed(ctx.guildConfig, '⚙️ Guild Config', 'Main server setup overview. Use `+setup` for the clean setup hub.').addFields(
           {
@@ -6016,14 +6243,13 @@ function createCommands() {
             name: 'Quick setup',
             value: [
               '`+setup`',
+              '`+config doctor`',
+              '`+config export`',
               '`+setwelcomechannel #channel`',
               '`+setlogchannel #logs`',
-              '`+setlogchannel messages #msg-logs`',
-              '`+stats setup`',
-              '`+trophychannel here`',
-              '`+setvoicemuterole @MutedVC`',
               '`+supportchannel #support-logs`',
-              '`+setboostchannel #boosts`'
+              '`+stats setup`',
+              '`+trophychannel here`'
             ].join(' • '),
             inline: false
           }
@@ -6081,6 +6307,133 @@ function createCommands() {
       async execute(ctx) {
         const page = 'tools';
         await ctx.reply({ embeds: [createDashboardEmbed(ctx.guildConfig, ctx.guild, page)], components: createDashboardComponents(page, ctx.guildConfig) });
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'info',
+      aliases: ['infos', 'infohub', 'assetshub', 'serverassets', 'viewinfo'],
+      category: 'Info',
+      description: 'Hub propre pour les avatars, bannières, infos serveur et listes utiles',
+      usage: 'info [view|assets|server|user|role|channel|members|boosters]',
+      guildOnly: true,
+      helpIntro: 'Hub rapide pour retrouver les commandes d’infos sans fouiller tout le bot.',
+      helpSyntaxGroups: [
+        { labelFr: 'Base', labelEn: 'Base', lines: ['{prefix}info', '{prefix}info assets', '{prefix}info members'] },
+        { labelFr: 'Serveur', labelEn: 'Server', lines: ['{prefix}serverinfo', '{prefix}servericon', '{prefix}serverbanner'] },
+        { labelFr: 'Membres & rôles', labelEn: 'Members & roles', lines: ['{prefix}userinfo @membre', '{prefix}membercount', '{prefix}rolemembers @role'] }
+      ],
+      async execute(ctx) {
+        const section = String(ctx.args[0] || 'view').toLowerCase();
+        const guild = ctx.guild;
+        const boosters = guild.members.cache.filter((member) => member.premiumSinceTimestamp).size;
+        if (['view', 'home', 'list', 'show', 'status'].includes(section)) {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '📌 Hub infos', '📌 Info hub'), [
+            uiText(ctx.guildConfig, 'Point d’entrée rapide pour les commandes d’infos utiles du serveur.', 'Fast entry point for the most useful info commands.'),
+            '',
+            hubBadge(ctx.guildConfig, '🏰', 'Serveur', 'Server', `${guild.name} • ${formatStatNumber(guild.memberCount || guild.members.cache.size || 0)} ${uiText(ctx.guildConfig, 'membres', 'members')}`),
+            hubBadge(ctx.guildConfig, '✨', 'Boosters', 'Boosters', `**${boosters}**`),
+            hubBadge(ctx.guildConfig, '😀', 'Emojis', 'Emojis', `**${guild.emojis.cache.size}**`),
+            '',
+            `**${uiText(ctx.guildConfig, 'Serveur', 'Server')}**`,
+            `• ${commandPill(ctx.prefix, 'serverinfo')} • ${commandPill(ctx.prefix, 'servericon')} • ${commandPill(ctx.prefix, 'serverbanner')}`,
+            '',
+            `**${uiText(ctx.guildConfig, 'Membres', 'Members')}**`,
+            `• ${commandPill(ctx.prefix, 'userinfo @membre')} • ${commandPill(ctx.prefix, 'avatar @membre')} • ${commandPill(ctx.prefix, 'banner @membre')}`,
+            '',
+            `**${uiText(ctx.guildConfig, 'Rôles / salons', 'Roles / channels')}**`,
+            `• ${commandPill(ctx.prefix, 'roleinfo @role')} • ${commandPill(ctx.prefix, 'rolemembers @role')} • ${commandPill(ctx.prefix, 'channelinfo #salon')}`,
+            '',
+            `**${uiText(ctx.guildConfig, 'Compteurs rapides', 'Quick counters')}**`,
+            `• ${commandPill(ctx.prefix, 'membercount')} • ${commandPill(ctx.prefix, 'boosters')} • ${commandPill(ctx.prefix, 'emojiinfo <:emoji:123>')}`
+          ].join('\n'))] });
+        }
+        if (['assets', 'media', 'visuel', 'visual'].includes(section)) {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🖼️ Infos • Assets', '🖼️ Info • Assets'), [
+            `• ${commandPill(ctx.prefix, 'servericon')}`,
+            `• ${commandPill(ctx.prefix, 'serverbanner')}`,
+            `• ${commandPill(ctx.prefix, 'avatar @membre')}`,
+            `• ${commandPill(ctx.prefix, 'banner @membre')}`,
+            `• ${commandPill(ctx.prefix, 'emojiinfo <:emoji:123>')}`
+          ].join('\n'))] });
+        }
+        if (['server', 'guild', 'serv'].includes(section)) {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🏰 Infos • Serveur', '🏰 Info • Server'), [
+            `• ${commandPill(ctx.prefix, 'serverinfo')}`,
+            `• ${commandPill(ctx.prefix, 'servericon')}`,
+            `• ${commandPill(ctx.prefix, 'serverbanner')}`,
+            `• ${commandPill(ctx.prefix, 'membercount')}`,
+            `• ${commandPill(ctx.prefix, 'boosters')}`
+          ].join('\n'))] });
+        }
+        if (['user', 'member', 'membre', 'members'].includes(section)) {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '👤 Infos • Membres', '👤 Info • Members'), [
+            `• ${commandPill(ctx.prefix, 'userinfo @membre')}`,
+            `• ${commandPill(ctx.prefix, 'avatar @membre')}`,
+            `• ${commandPill(ctx.prefix, 'banner @membre')}`,
+            `• ${commandPill(ctx.prefix, 'membercount')}`,
+            `• ${commandPill(ctx.prefix, 'boosters')}`
+          ].join('\n'))] });
+        }
+        if (['role', 'roles'].includes(section)) {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🎭 Infos • Rôles', '🎭 Info • Roles'), [
+            `• ${commandPill(ctx.prefix, 'roleinfo @role')}`,
+            `• ${commandPill(ctx.prefix, 'rolemembers @role')}`,
+            `• ${commandPill(ctx.prefix, 'roles view')}`
+          ].join('\n'))] });
+        }
+        if (['channel', 'channels', 'salon', 'salons'].includes(section)) {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '💬 Infos • Salons', '💬 Info • Channels'), [
+            `• ${commandPill(ctx.prefix, 'channelinfo #salon')}`,
+            `• ${commandPill(ctx.prefix, 'logs view')}`,
+            `• ${commandPill(ctx.prefix, 'panel')}`
+          ].join('\n'))] });
+        }
+        if (['boosters', 'boosts', 'nitro'].includes(section)) {
+          const members = await guild.members.fetch().catch(() => guild.members.cache);
+          const list = [...members.values()].filter((member) => member.premiumSinceTimestamp).sort((a, b) => (b.premiumSinceTimestamp || 0) - (a.premiumSinceTimestamp || 0)).slice(0, 20);
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '✨ Infos • Boosters', '✨ Info • Boosters'), list.length ? list.map((member) => `• ${member} • <t:${Math.floor(member.premiumSinceTimestamp / 1000)}:R>`).join('\n') : uiText(ctx.guildConfig, 'Aucun booster trouvé.', 'No boosters found.'))] });
+        }
+        return ctx.invalidUsage(`Examples: \`${ctx.prefix}info\`, \`${ctx.prefix}info assets\`, \`${ctx.prefix}info server\`, \`${ctx.prefix}info boosters\`.`);
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'utility',
+      aliases: ['util', 'utils', 'utilityhub', 'practical', 'toolkit'],
+      category: 'Utility',
+      description: 'Hub propre pour les petits outils utiles, builders et commandes texte',
+      usage: 'utility [view|create|text|calc|fun|staff]',
+      dmAllowed: true,
+      helpIntro: 'Hub rapide pour les commandes utilitaires les plus pratiques.',
+      helpSyntaxGroups: [
+        { labelFr: 'Base', labelEn: 'Base', lines: ['{prefix}utility', '{prefix}utility create', '{prefix}utility text'] },
+        { labelFr: 'Outils', labelEn: 'Tools', lines: ['{prefix}embed', '{prefix}poll', '{prefix}remind 10m texte', '{prefix}calc 1+1'] },
+        { labelFr: 'Texte', labelEn: 'Text', lines: ['{prefix}choose rouge | bleu', '{prefix}hash texte', '{prefix}base64 texte'] }
+      ],
+      async execute(ctx) {
+        const section = String(ctx.args[0] || 'view').toLowerCase();
+        if (['view', 'home', 'show', 'list', 'status'].includes(section)) {
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🛠️ Hub utilitaire', '🛠️ Utility hub'), [
+            uiText(ctx.guildConfig, 'Regroupe les petites commandes utiles du bot sans te noyer dans la liste complète.', 'Groups the practical small commands without drowning you in the full list.'),
+            '',
+            `**${uiText(ctx.guildConfig, 'Création', 'Creation')}**`,
+            `• ${commandPill(ctx.prefix, 'embed')} • ${commandPill(ctx.prefix, 'poll')} • ${commandPill(ctx.prefix, 'say texte')}`,
+            '',
+            `**${uiText(ctx.guildConfig, 'Outils rapides', 'Quick tools')}**`,
+            `• ${commandPill(ctx.prefix, 'remind 10m texte')} • ${commandPill(ctx.prefix, 'calc 2+2')} • ${commandPill(ctx.prefix, 'afk raison')}`,
+            '',
+            `**${uiText(ctx.guildConfig, 'Texte / fun', 'Text / fun')}**`,
+            `• ${commandPill(ctx.prefix, 'choose rouge | bleu | violet')} • ${commandPill(ctx.prefix, 'reverse texte')} • ${commandPill(ctx.prefix, 'mock texte')}`,
+            '',
+            `**${uiText(ctx.guildConfig, 'Conversion', 'Conversion')}**`,
+            `• ${commandPill(ctx.prefix, 'hash texte')} • ${commandPill(ctx.prefix, 'binary texte')} • ${commandPill(ctx.prefix, 'base64 texte')}`
+          ].join('\n'))] });
+        }
+        if (['create', 'builder', 'build', 'staff'].includes(section)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🧱 Utility • Création', '🧱 Utility • Creation'), [`• ${commandPill(ctx.prefix, 'embed')}`, `• ${commandPill(ctx.prefix, 'poll')}`, `• ${commandPill(ctx.prefix, 'say texte')}`].join('\n'))] });
+        if (['text', 'texte', 'fun'].includes(section)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '✍️ Utility • Texte', '✍️ Utility • Text'), [`• ${commandPill(ctx.prefix, 'choose rouge | bleu')}`, `• ${commandPill(ctx.prefix, 'reverse texte')}`, `• ${commandPill(ctx.prefix, 'uppercase texte')}`, `• ${commandPill(ctx.prefix, 'lowercase texte')}`, `• ${commandPill(ctx.prefix, 'mock texte')}`, `• ${commandPill(ctx.prefix, 'clap texte')}`].join('\n'))] });
+        if (['calc', 'math', 'convert', 'conversion'].includes(section)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🧮 Utility • Calcul & conversion', '🧮 Utility • Math & conversion'), [`• ${commandPill(ctx.prefix, 'calc 5*(2+1)')}`, `• ${commandPill(ctx.prefix, 'hash texte')}`, `• ${commandPill(ctx.prefix, 'binary texte')}`, `• ${commandPill(ctx.prefix, 'base64 texte')}`].join('\n'))] });
+        return ctx.invalidUsage(`Examples: \`${ctx.prefix}utility\`, \`${ctx.prefix}utility create\`, \`${ctx.prefix}utility text\`, \`${ctx.prefix}utility calc\`.`);
       }
     }),
 
@@ -6341,13 +6694,44 @@ function createCommands() {
       name: 'security',
       aliases: ['securityhub', 'automodhub', 'securityhelp'],
       category: 'Security',
-      description: 'Clean security hub for presets and ghost ping setup',
-      usage: 'security [view|preset <off|soft|balanced|strict>|ghostping <on|off|here|#channel|test>|config|status]',
+      description: 'Clean security hub for presets, bypasses, raid mode and ghost ping setup',
+      usage: 'security [view|doctor|preset <off|soft|balanced|strict>|ghostping <on|off|here|#channel|test>|bypass|raid <on|off|age <minutes>>|ignore <here|#channel|list|off>|media <here|#channel|list|off>]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
       async execute(ctx) {
         const action = String(ctx.args[0] || 'view').toLowerCase();
-        if (['view', 'config', 'show', 'list', 'status', 'setup'].includes(action)) return ctx.reply({ embeds: [buildSecurityHubEmbed(ctx.guildConfig, ctx.prefix)] });
+        if (['view', 'config', 'show', 'list', 'status', 'setup', 'home'].includes(action)) return ctx.reply({ embeds: [buildSecurityHubEmbed(ctx.guildConfig, ctx.prefix)] });
+        if (['doctor', 'check', 'health'].includes(action)) return ctx.reply({ embeds: [buildSecurityDoctorEmbed(ctx.guildConfig, ctx.prefix)] });
+        if (['bypass', 'whitelist', 'trust'].includes(action)) {
+          const mod = ctx.guildConfig.automod || {};
+          const ignored = getAutomodIgnoredChannels(mod);
+          const picOnly = getAutomodPicOnlyChannels(mod);
+          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+            moduleKey: 'security',
+            titleFr: 'Bypass AutoMod',
+            titleEn: 'AutoMod bypasses',
+            summary: uiText(ctx.guildConfig, 'Vue propre des exceptions AutoMod : whitelist users/rôles, salons ignorés et salons image-only.', 'Clean view of AutoMod exceptions: whitelisted users/roles, ignored channels and pic-only channels.'),
+            stateLines: [
+              metricLine(uiText(ctx.guildConfig, 'Users whitelist', 'User whitelist'), `**${(mod.whitelistUserIds || []).length}**`),
+              metricLine(uiText(ctx.guildConfig, 'Roles whitelist', 'Role whitelist'), `**${(mod.whitelistRoleIds || []).length}**`),
+              metricLine(uiText(ctx.guildConfig, 'Ignored channels', 'Ignored channels'), `**${ignored.length}**`),
+              metricLine(uiText(ctx.guildConfig, 'Pic-only channels', 'Pic-only channels'), `**${picOnly.length}**`)
+            ],
+            extraFields: [
+              sectionField(uiText(ctx.guildConfig, '🧾 Détail rapide', '🧾 Quick detail'), [
+                `**${uiText(ctx.guildConfig, 'Salons ignorés', 'Ignored channels')} :** ${ignored.length ? ignored.map((id) => `<#${id}>`).join(', ') : uiText(ctx.guildConfig, 'aucun', 'none')}`,
+                `**${uiText(ctx.guildConfig, 'Salons image only', 'Pic-only channels')} :** ${picOnly.length ? picOnly.map((id) => `<#${id}>`).join(', ') : uiText(ctx.guildConfig, 'aucun', 'none')}`,
+                `**${uiText(ctx.guildConfig, 'Mots bloqués', 'Blocked words')} :** ${(mod.badWords || []).length}`
+              ], false)
+            ],
+            nextLines: [
+              `• ${commandPill(ctx.prefix, 'wl @role')}`,
+              `• ${commandPill(ctx.prefix, 'security ignore here')}`,
+              `• ${commandPill(ctx.prefix, 'security media here')}`,
+              `• ${commandPill(ctx.prefix, 'whitelistlist')}`
+            ]
+          })] });
+        }
         if (action === 'preset') {
           const preset = String(ctx.args[1] || '').toLowerCase();
           if (!['off', 'soft', 'balanced', 'strict'].includes(preset)) return ctx.invalidUsage(`Example: \`${ctx.prefix}security preset balanced\`.`);
@@ -6373,16 +6757,100 @@ function createCommands() {
             mod.raidMode = { ...mod.raidMode, enabled: strictness >= 1, joinAgeMinutes: strictness === 2 ? 20160 : 10080 };
             return guild;
           });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🚨 Preset sécurité', '🚨 Security preset'), uiText(ctx.guildConfig, `Preset **${preset}** appliqué.`, `Preset **${preset}** applied.`))] });
+          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+            moduleKey: 'security',
+            titleFr: 'Preset sécurité',
+            titleEn: 'Security preset',
+            tone: 'success',
+            summary: uiText(ctx.guildConfig, `Preset **${preset}** appliqué.`, `Preset **${preset}** applied.`),
+            nextLines: [
+              `• ${commandPill(ctx.prefix, 'security doctor')}`,
+              `• ${commandPill(ctx.prefix, 'security bypass')}`,
+              `• ${commandPill(ctx.prefix, 'ghostping here')}`
+            ]
+          })] });
+        }
+        if (action === 'raid') {
+          const sub = String(ctx.args[1] || 'view').toLowerCase();
+          if (['view', 'show', 'status'].includes(sub)) return ctx.reply({ embeds: [buildSecurityDoctorEmbed(ctx.guildConfig, ctx.prefix)] });
+          if (['on', 'off'].includes(sub)) {
+            ctx.store.updateGuild(ctx.guild.id, (guild) => {
+              guild.automod.raidMode = { ...guild.automod.raidMode, enabled: sub === 'on' };
+              return guild;
+            });
+            const fresh = ctx.store.getGuild(ctx.guild.id).automod || {};
+            return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+              moduleKey: 'security',
+              titleFr: 'Raid mode',
+              titleEn: 'Raid mode',
+              tone: 'success',
+              summary: uiText(ctx.guildConfig, `Le raid mode est maintenant **${sub === 'on' ? 'actif' : 'inactif'}**.`, `Raid mode is now **${sub}**.`),
+              stateLines: [metricLine(uiText(ctx.guildConfig, 'Âge minimum', 'Minimum age'), `**${fresh.raidMode?.joinAgeMinutes || 10080}** min`)]
+            })] });
+          }
+          if (sub === 'age') {
+            const minutes = Number(ctx.args[2] || 0);
+            if (!Number.isInteger(minutes) || minutes < 10) return ctx.invalidUsage(`Example: \`${ctx.prefix}security raid age 10080\`.`);
+            ctx.store.updateGuild(ctx.guild.id, (guild) => {
+              guild.automod.raidMode = { ...guild.automod.raidMode, enabled: true, joinAgeMinutes: minutes };
+              return guild;
+            });
+            return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+              moduleKey: 'security',
+              titleFr: 'Raid mode',
+              titleEn: 'Raid mode',
+              tone: 'success',
+              summary: uiText(ctx.guildConfig, `Le raid mode vérifie maintenant les comptes plus récents que **${minutes}** minute(s).`, `Raid mode now checks accounts newer than **${minutes}** minute(s).`)
+            })] });
+          }
+          return ctx.invalidUsage(`Examples: \`${ctx.prefix}security raid on\`, \`${ctx.prefix}security raid age 10080\`.`);
+        }
+        if (action === 'ignore') {
+          const sub = String(ctx.args[1] || '').toLowerCase();
+          if (!sub || ['list', 'view', 'show'].includes(sub)) return ctx.reply({ embeds: [buildSecurityDoctorEmbed(ctx.guildConfig, ctx.prefix)] });
+          const clear = ['off', 'remove', 'clear'].includes(sub);
+          const channel = clear ? null : (sub === 'here' ? ctx.channel : await ctx.getChannel('channel', 1));
+          if (!clear && !channel?.isTextBased?.()) return ctx.invalidUsage(`Examples: \`${ctx.prefix}security ignore here\`, \`${ctx.prefix}security ignore #general\`, \`${ctx.prefix}security ignore off\`.`);
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.automod.ignoredChannels = getAutomodIgnoredChannels(guild.automod).filter((id) => !channel || id !== channel.id);
+            if (!clear && channel) guild.automod.ignoredChannels.push(channel.id);
+            return guild;
+          });
+          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+            moduleKey: 'security',
+            titleFr: 'Salon ignoré',
+            titleEn: 'Ignored channel',
+            tone: 'success',
+            summary: clear ? uiText(ctx.guildConfig, 'Aucun nouveau salon ignoré ajouté. Utilise la commande dédiée pour retirer un salon précis si besoin.', 'No new ignored channel added. Use the dedicated command if you want to remove a specific channel.') : uiText(ctx.guildConfig, `${channel} est maintenant ignoré par l’AutoMod.`, `${channel} is now ignored by AutoMod.`),
+            nextLines: [`• ${commandPill(ctx.prefix, 'automodignored')}`, `• ${commandPill(ctx.prefix, 'security bypass')}`]
+          })] });
+        }
+        if (['media', 'piconly', 'imageonly'].includes(action)) {
+          const sub = String(ctx.args[1] || '').toLowerCase();
+          if (!sub || ['list', 'view', 'show'].includes(sub)) return ctx.reply({ embeds: [buildSecurityDoctorEmbed(ctx.guildConfig, ctx.prefix)] });
+          const clear = ['off', 'remove', 'clear'].includes(sub);
+          const channel = clear ? null : (sub === 'here' ? ctx.channel : await ctx.getChannel('channel', 1));
+          if (!clear && !channel?.isTextBased?.()) return ctx.invalidUsage(`Examples: \`${ctx.prefix}security media here\`, \`${ctx.prefix}security media #photos\`, \`${ctx.prefix}security media off\`.`);
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.automod.picOnlyChannels = getAutomodPicOnlyChannels(guild.automod).filter((id) => !channel || id !== channel.id);
+            if (!clear && channel) guild.automod.picOnlyChannels.push(channel.id);
+            return guild;
+          });
+          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+            moduleKey: 'security',
+            titleFr: 'Salon image only',
+            titleEn: 'Pic-only channel',
+            tone: 'success',
+            summary: clear ? uiText(ctx.guildConfig, 'Aucun nouveau salon image-only ajouté.', 'No new pic-only channel added.') : uiText(ctx.guildConfig, `${channel} est maintenant en mode **image only**.`, `${channel} is now in **pic-only** mode.`),
+            nextLines: [`• ${commandPill(ctx.prefix, 'piconlylist')}`, `• ${commandPill(ctx.prefix, 'security bypass')}`]
+          })] });
         }
         if (action === 'ghostping') {
           const sub = String(ctx.args[1] || '').toLowerCase();
           const pickedChannel = await ctx.getChannel('channel', 1);
           if (!sub || sub === 'config') return ctx.reply({ embeds: [buildSecurityHubEmbed(ctx.guildConfig, ctx.prefix)] });
-          if (sub === 'check') return ctx.reply({ embeds: [buildSecurityHubEmbed(ctx.guildConfig, ctx.prefix)] });
-
-
-        if (sub === 'test') {
+          if (sub === 'check') return ctx.reply({ embeds: [buildSecurityDoctorEmbed(ctx.guildConfig, ctx.prefix)] });
+          if (sub === 'test') {
             const rule = ctx.guildConfig.automod?.ghostPing || { enabled: false, channelId: null };
             const channelId = rule.channelId || ctx.channel.id;
             const testChannel = channelId ? (ctx.guild.channels.cache.get(channelId) || await ctx.guild.channels.fetch(channelId).catch(() => null)) : null;
@@ -6394,59 +6862,7 @@ function createCommands() {
               `Use another account to join and verify the ping.`
             ].join('\n'))] });
           }
-          if (sub === 'global') {
-          const state = String(ctx.args[1] || '').toLowerCase();
-          if (!['on', 'off'].includes(state)) return ctx.invalidUsage(`Examples: \`${ctx.prefix}logs global on\`, \`${ctx.prefix}logs global off\`.`);
-          ctx.store.updateGuild(ctx.guild.id, (guild) => {
-            guild.logs.enabled = state === 'on';
-            return guild;
-          });
-          const freshLogs = ctx.store.getGuild(ctx.guild.id).logs || {};
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'logs',
-            titleFr: 'Switch global logs',
-            titleEn: 'Global logs switch',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `Le switch global des logs est maintenant **${state === 'on' ? 'actif' : 'inactif'}**.`, `The global logs switch is now **${state}**.`),
-            stateLines: buildLogsStateLines(ctx.guildConfig, freshLogs),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'logs default here')}`,
-              `• ${commandPill(ctx.prefix, 'logs test boost')}`
-            ]
-          })] });
-        }
-
-        if (sub === 'default') {
-          const rawDestination = String(ctx.args[1] || '').toLowerCase();
-          const disableRoute = ['off', 'none', 'remove', 'clear'].includes(rawDestination);
-          let channel = null;
-          if (!disableRoute) {
-            if (rawDestination === 'here') channel = ctx.channel;
-            else channel = await ctx.getChannel('channel', 1);
-            if (!isLogsTextChannel(channel)) return ctx.invalidUsage(`Examples: \`${ctx.prefix}logs default here\`, \`${ctx.prefix}logs default #logs\`, \`${ctx.prefix}logs default off\`.`);
-          }
-          ctx.store.updateGuild(ctx.guild.id, (guild) => {
-            guild.logs.enabled = true;
-            return applyLogChannelTarget(guild, { kind: 'default', key: 'default', label: 'Default' }, disableRoute ? null : channel.id);
-          });
-          const freshLogs = ctx.store.getGuild(ctx.guild.id).logs || {};
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'logs',
-            titleFr: 'Route logs par défaut',
-            titleEn: 'Default logs route',
-            tone: 'success',
-            summary: disableRoute
-              ? uiText(ctx.guildConfig, 'La route par défaut des logs a été retirée.', 'The default logs route has been cleared.')
-              : uiText(ctx.guildConfig, `La route par défaut des logs est maintenant ${channel}.`, `The default logs route is now ${channel}.`),
-            stateLines: buildLogsStateLines(ctx.guildConfig, freshLogs),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'logs view')}`,
-              `• ${commandPill(ctx.prefix, 'logs test all')}`
-            ]
-          })] });
-        }
-
-        if (['on', 'off'].includes(sub)) {
+          if (['on', 'off'].includes(sub)) {
             ctx.store.updateGuild(ctx.guild.id, (guild) => {
               guild.automod.ghostPing = guild.automod.ghostPing || { enabled: false, channelId: null };
               guild.automod.ghostPing.enabled = sub === 'on';
@@ -6466,7 +6882,7 @@ function createCommands() {
           }
           return ctx.invalidUsage(`Examples: \`${ctx.prefix}security ghostping on\`, \`${ctx.prefix}security ghostping here\`, \`${ctx.prefix}security ghostping test\`.`);
         }
-        return ctx.invalidUsage(`Examples: \`${ctx.prefix}security\`, \`${ctx.prefix}security preset balanced\`, \`${ctx.prefix}security ghostping here\`.`);
+        return ctx.invalidUsage(`Examples: \`${ctx.prefix}security\`, \`${ctx.prefix}security doctor\`, \`${ctx.prefix}security bypass\`, \`${ctx.prefix}security preset balanced\`.`);
       }
     }),
 
@@ -7332,15 +7748,65 @@ makeSimpleCommand({
       aliases: ['rolehub', 'rolesetup', 'roleshelp', 'rolesview', 'rolesstatus', 'rolesconfig', 'rolesmenu'],
       category: 'Roles',
       description: 'Cleaner role hub for viewing, giving, removing, mass roles and member role inspection',
-      usage: 'roles <view|user|add|remove|mass|autorole|all|panels|statusrole> [@user] [@role]',
+      usage: 'roles <view|list|clean|user|add|remove|mass|autorole|all|panels|statusrole> [@user] [@role]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageRoles],
       async execute(ctx) {
         const sub = String(ctx.args[0] || 'view').toLowerCase();
         const render = (ids) => ids.length ? ids.map((roleId) => `<@&${roleId}>`).join(', ') : 'none';
 
-        if (['view', 'list', 'show', 'help', 'status'].includes(sub)) {
+        if (['view', 'show', 'help', 'status'].includes(sub)) {
           return ctx.reply({ embeds: [buildRolesHubEmbed(ctx.guildConfig, ctx.prefix)] });
+        }
+
+        if (sub === 'list') {
+          const buttonPanels = Object.keys(ctx.guildConfig.roles?.rolePanels || {}).length;
+          const reactionPanels = Object.keys(ctx.guildConfig.roles?.reactionRoles || {}).length;
+          const autoRoles = ctx.guildConfig.roles?.autoRoles || [];
+          const autoRolesHumans = ctx.guildConfig.roles?.autoRolesHumans || [];
+          const autoRolesBots = ctx.guildConfig.roles?.autoRolesBots || [];
+          const statusRole = ctx.guildConfig.roles?.statusRole || {};
+          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+            moduleKey: 'roles',
+            titleFr: 'Résumé rôles',
+            titleEn: 'Roles summary',
+            summary: uiText(ctx.guildConfig, 'Vue claire des auto-rôles, panels et rôle de statut sans ouvrir plusieurs commandes.', 'Clean view of auto roles, panels and the status role without opening multiple commands.'),
+            stateLines: [
+              metricLine(uiText(ctx.guildConfig, 'Auto-rôles all', 'Auto roles all'), `**${autoRoles.length}**`),
+              metricLine(uiText(ctx.guildConfig, 'Auto-rôles humans', 'Auto roles humans'), `**${autoRolesHumans.length}**`),
+              metricLine(uiText(ctx.guildConfig, 'Auto-rôles bots', 'Auto roles bots'), `**${autoRolesBots.length}**`),
+              metricLine(uiText(ctx.guildConfig, 'Panels boutons', 'Button panels'), `**${buttonPanels}**`),
+              metricLine(uiText(ctx.guildConfig, 'Panels réactions', 'Reaction panels'), `**${reactionPanels}**`),
+              metricLine(uiText(ctx.guildConfig, 'Rôle statut', 'Status role'), statusRole.roleId ? `<@&${statusRole.roleId}>` : uiText(ctx.guildConfig, 'non défini', 'not set'))
+            ],
+            nextLines: [
+              `• ${commandPill(ctx.prefix, 'autorole view')}`,
+              `• ${commandPill(ctx.prefix, 'roles panels')}`,
+              `• ${commandPill(ctx.prefix, 'roles clean')}`
+            ]
+          })] });
+        }
+
+        if (sub === 'clean') {
+          const overview = await cleanRoleStorageEntries(ctx);
+          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+            moduleKey: 'roles',
+            titleFr: 'Rôles nettoyés',
+            titleEn: 'Roles storage cleaned',
+            tone: 'success',
+            summary: uiText(ctx.guildConfig, 'Les références cassées des auto-rôles et panels ont été nettoyées.', 'Broken auto-role and panel references were cleaned.'),
+            stateLines: [
+              metricLine(uiText(ctx.guildConfig, 'Auto-rôles cassés retirés', 'Broken auto roles removed'), `**${overview.brokenAutoRoles.length + overview.brokenAutoRolesHumans.length + overview.brokenAutoRolesBots.length}**`),
+              metricLine(uiText(ctx.guildConfig, 'Panels boutons retirés', 'Button panels removed'), `**${overview.buttonPanelsRemoved}**`),
+              metricLine(uiText(ctx.guildConfig, 'Pairs réactions retirées', 'Reaction pairs removed'), `**${overview.reactionPairsRemoved}**`),
+              metricLine(uiText(ctx.guildConfig, 'Entries réactions retirées', 'Reaction entries removed'), `**${overview.reactionEntriesRemoved}**`),
+              metricLine(uiText(ctx.guildConfig, 'Rôle statut', 'Status role'), overview.statusRoleOk ? uiText(ctx.guildConfig, 'OK', 'OK') : uiText(ctx.guildConfig, 'retiré si cassé', 'cleared if broken'))
+            ],
+            nextLines: [
+              `• ${commandPill(ctx.prefix, 'roles list')}`,
+              `• ${commandPill(ctx.prefix, 'autorole view')}`
+            ]
+          })] });
         }
 
         if (sub === 'autorole') {
@@ -7946,8 +8412,8 @@ ${render('Bots only', buckets.bots)}`
       name: 'backup',
       aliases: ['backupconfig', 'serverbackup', 'bk', 'backupview', 'backuplatest'],
       category: 'System',
-      description: 'Create, import, list, restore, export or delete server backups',
-      usage: 'backup <create|list|load|info|export|delete|import> [id] [name]',
+      description: 'Create, import, list, restore, export or delete server backups, with local safety snapshots for updates',
+      usage: 'backup <create|list|latest|load|info|export|delete|import|safety> [id] [name]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
       slash: {
@@ -7977,6 +8443,7 @@ ${render('Bots only', buckets.bots)}`
       async execute(ctx) {
         const rawAction = ctx.getText('action', 0);
         const backups = getGlobalBackups(ctx.store);
+        const safetySnapshots = typeof ctx.store.listSafetySnapshots === 'function' ? ctx.store.listSafetySnapshots() : [];
         if (!ctx.interaction && !rawAction && !ctx.args.length) {
           return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
             moduleKey: 'backup',
@@ -7985,9 +8452,12 @@ ${render('Bots only', buckets.bots)}`
             summary: [
               uiText(ctx.guildConfig, 'Sauvegarde, export, import et restore serveur dans une vue simple.', 'Server save, export, import and restore in one simple view.'),
               '',
-              uiText(ctx.guildConfig, `Backups stockés : **${backups.length}**`, `Stored backups: **${backups.length}**`)
+              uiText(ctx.guildConfig, `Backups stockés : **${backups.length}**`, `Stored backups: **${backups.length}**`),
+              uiText(ctx.guildConfig, `Snapshots sécurité locales : **${safetySnapshots.length}**`, `Local safety snapshots: **${safetySnapshots.length}**`)
             ],
-            stateLines: backups[0] ? buildBackupStateLines(ctx.guildConfig, backups[0]) : [],
+            stateLines: (backups[0] ? buildBackupStateLines(ctx.guildConfig, backups[0]) : []).concat(safetySnapshots[0] ? [
+              metricLine(uiText(ctx.guildConfig, 'Dernière snapshot locale', 'Latest local snapshot'), `<t:${Math.floor(new Date(safetySnapshots[0].createdAt).getTime() / 1000)}:R>`)
+            ] : []),
             nextLines: [
               `• ${commandPill(ctx.prefix, 'backup create')}`,
               `• ${commandPill(ctx.prefix, 'backup list')}`,
@@ -8084,6 +8554,26 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
           return ctx.reply({ embeds: buildBackupListEmbeds(ctx, backups) });
         }
 
+        if (['safety', 'local', 'snapshots', 'autosafe'].includes(action)) {
+          const latest = safetySnapshots[0] || null;
+          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+            moduleKey: 'backup',
+            titleFr: 'Snapshots sécurité',
+            titleEn: 'Safety snapshots',
+            summary: uiText(ctx.guildConfig, 'Copies locales automatiques du fichier de config avant les grosses mises à jour et avant les sauvegardes critiques.', 'Automatic local copies of the config file before major updates and before critical saves.'),
+            stateLines: [
+              metricLine(uiText(ctx.guildConfig, 'Snapshots stockées', 'Stored snapshots'), `**${safetySnapshots.length}**`),
+              metricLine(uiText(ctx.guildConfig, 'Dernière snapshot', 'Latest snapshot'), latest ? `<t:${Math.floor(new Date(latest.createdAt).getTime() / 1000)}:F>` : uiText(ctx.guildConfig, 'aucune', 'none')),
+              metricLine(uiText(ctx.guildConfig, 'Fichier', 'File'), latest ? `\`${latest.name}\`` : uiText(ctx.guildConfig, 'aucun', 'none'))
+            ],
+            nextLines: [
+              `• ${commandPill(ctx.prefix, 'backup create before-update')}`,
+              `• ${commandPill(ctx.prefix, 'backup export latest')}`,
+              `• ${commandPill(ctx.prefix, 'backup list')}`
+            ]
+          })] });
+        }
+
         const found = resolveGlobalBackupEntry(backups, rawId || (['latest', 'last'].includes(action) ? 'latest' : ''));
         if (!found && !['create', 'save', 'make', 'import', 'list', 'ls', 'view', 'show'].includes(action)) {
           return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
@@ -8169,13 +8659,26 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
         }
 
         if (['restore', 'load', 'apply'].includes(action)) {
+          const currentBackup = buildGuildBackupSnapshot(ctx.guildConfig, ctx.guild);
+          const safetyEntry = {
+            id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+            name: `${ctx.guild.name}-auto-before-restore`.slice(0, 60),
+            createdAt: new Date().toISOString(),
+            createdBy: ctx.user.id,
+            sourceGuildId: ctx.guild.id,
+            sourceGuildName: ctx.guild.name,
+            snapshot: currentBackup.snapshot,
+            meta: currentBackup.meta
+          };
+          saveGlobalBackups(ctx.store, (items) => [safetyEntry, ...items.filter((entry) => entry.id !== safetyEntry.id)]);
           await ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
             moduleKey: 'backup',
             titleFr: 'Restore lancé',
             titleEn: 'Restore started',
-            summary: uiText(ctx.guildConfig, 'Le restore propre du serveur démarre. Les salons et rôles existants seront remplacés quand possible.', 'A clean server restore is starting. Existing channels and roles will be replaced when possible.'),
+            summary: uiText(ctx.guildConfig, 'Le restore propre du serveur démarre. Un backup automatique avant restore vient d’être créé pour éviter de tout refaire si besoin.', 'A clean server restore is starting. An automatic pre-restore backup was just created so you can roll back if needed.'),
             stateLines: buildBackupStateLines(ctx.guildConfig, found),
             nextLines: [
+              `• ${commandPill(ctx.prefix, `backup load ${safetyEntry.id}`)}`,
               `• ${commandPill(ctx.prefix, 'setup check')}`,
               `• ${commandPill(ctx.prefix, 'panel')}`
             ]
@@ -8407,6 +8910,158 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
         }
       }
     }),
+    makeSimpleCommand({
+      name: 'choose',
+      aliases: ['pick', 'select', 'decision'],
+      category: 'Utility',
+      description: 'Choose one option from a short list',
+      usage: 'choose <option 1 | option 2 | option 3>',
+      dmAllowed: true,
+      slash: { root: 'utility', sub: 'choose', description: 'Pick one option', options: [{ type: 'string', name: 'options', description: 'option 1 | option 2 | option 3', required: true }] },
+      helpIntro: 'Petit helper pratique quand tu veux trancher vite entre plusieurs options.',
+      helpSyntaxGroups: [
+        { labelFr: 'Base', labelEn: 'Base', lines: ['{prefix}choose rouge | bleu | violet', '{prefix}choose pizza | tacos', '{prefix}choose logs | support | roles'] }
+      ],
+      async execute(ctx) {
+        const raw = ctx.interaction ? ctx.interaction.options.getString('options') : ctx.getRest(0);
+        if (!raw) return ctx.invalidUsage(`Example: \`${ctx.prefix}choose rouge | bleu | violet\`.`);
+        const options = String(raw).split(/\||,|\n/).map((entry) => entry.trim()).filter(Boolean).slice(0, 20);
+        if (options.length < 2) return ctx.invalidUsage(`Example: \`${ctx.prefix}choose rouge | bleu | violet\`.`);
+        const picked = randomOf(options);
+        return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🎲 Choix', '🎲 Choice'), [
+          `${uiText(ctx.guildConfig, 'Sélection', 'Selected')} • **${picked}**`,
+          '',
+          `${uiText(ctx.guildConfig, 'Options', 'Options')} • ${options.map((entry) => `\`${entry}\``).join(' • ')}`
+        ].join('\n'))] });
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'servericon',
+      aliases: ['guildicon', 'iconserver', 'serverpfp'],
+      category: 'Info',
+      description: 'Show the server icon in full size',
+      usage: 'servericon',
+      guildOnly: true,
+      slash: { root: 'info', sub: 'servericon', description: 'Show the server icon' },
+      async execute(ctx) {
+        const icon = ctx.guild.iconURL({ size: 4096, extension: 'png' });
+        if (!icon) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🏰 Icône serveur', '🏰 Server icon'), uiText(ctx.guildConfig, 'Ce serveur n’a pas d’icône.', 'This server has no icon.'))] });
+        return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🏰 Icône serveur', '🏰 Server icon'), `${ctx.guild}`).setImage(icon)] });
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'serverbanner',
+      aliases: ['guildbanner', 'bannerserver'],
+      category: 'Info',
+      description: 'Show the server banner in full size',
+      usage: 'serverbanner',
+      guildOnly: true,
+      slash: { root: 'info', sub: 'serverbanner', description: 'Show the server banner' },
+      async execute(ctx) {
+        const fetched = await ctx.guild.fetch().catch(() => ctx.guild);
+        const banner = fetched.bannerURL?.({ size: 4096, extension: 'png' }) || fetched.splashURL?.({ size: 4096, extension: 'png' }) || null;
+        if (!banner) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🪄 Bannière serveur', '🪄 Server banner'), uiText(ctx.guildConfig, 'Ce serveur n’a pas de bannière visible.', 'This server has no visible banner.'))] });
+        return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🪄 Bannière serveur', '🪄 Server banner'), `${ctx.guild}`).setImage(banner)] });
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'emojiinfo',
+      aliases: ['jumbo', 'emoteinfo'],
+      category: 'Info',
+      description: 'Show info about a custom server emoji',
+      usage: 'emojiinfo <emoji|name|id>',
+      guildOnly: true,
+      slash: { root: 'info', sub: 'emojiinfo', description: 'Show emoji details', options: [{ type: 'string', name: 'emoji', description: 'Custom emoji mention, name or id', required: true }] },
+      async execute(ctx) {
+        const raw = (ctx.interaction ? ctx.interaction.options.getString('emoji') : ctx.getRest(0) || ctx.getText('emoji', 0) || '').trim();
+        if (!raw) return ctx.invalidUsage(`Example: \`${ctx.prefix}emojiinfo <:emoji:123456789012345678>\`.`);
+        const mentionMatch = raw.match(/^<a?:[^:]+:(\d{17,20})>$/);
+        const idMatch = raw.match(/^(\d{17,20})$/);
+        const targetId = mentionMatch?.[1] || idMatch?.[1] || null;
+        let emoji = targetId ? (ctx.guild.emojis.cache.get(targetId) || await ctx.guild.emojis.fetch(targetId).catch(() => null)) : null;
+        if (!emoji) emoji = ctx.guild.emojis.cache.find((entry) => entry.name.toLowerCase() === raw.toLowerCase()) || null;
+        if (!emoji) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '😀 Emoji', '😀 Emoji'), uiText(ctx.guildConfig, 'Je n’ai pas trouvé cet emoji custom dans le serveur.', 'I could not find that custom emoji in this server.'))] });
+        return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '😀 Infos emoji', '😀 Emoji info'), `${emoji}`)
+          .addFields(
+            { name: 'Nom', value: `\`${emoji.name}\``, inline: true },
+            { name: 'ID', value: code(emoji.id), inline: true },
+            { name: uiText(ctx.guildConfig, 'Animé', 'Animated'), value: emoji.animated ? uiText(ctx.guildConfig, 'oui', 'yes') : uiText(ctx.guildConfig, 'non', 'no'), inline: true },
+            { name: uiText(ctx.guildConfig, 'Créé', 'Created'), value: `<t:${Math.floor(emoji.createdTimestamp / 1000)}:F>`, inline: false }
+          )
+          .setImage(emoji.imageURL({ size: 4096, extension: 'png' }))] });
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'membercount',
+      aliases: ['members', 'countmembers', 'servercount'],
+      category: 'Info',
+      description: 'Show a clean server member breakdown',
+      usage: 'membercount',
+      guildOnly: true,
+      slash: { root: 'info', sub: 'membercount', description: 'Show member counts' },
+      async execute(ctx) {
+        const members = await ctx.guild.members.fetch().catch(() => ctx.guild.members.cache);
+        const humans = [...members.values()].filter((member) => !member.user.bot);
+        const bots = [...members.values()].filter((member) => member.user.bot);
+        const boosters = humans.filter((member) => member.premiumSinceTimestamp);
+        const online = ctx.guild.presences?.cache ? ctx.guild.presences.cache.filter((presence) => presence?.status && presence.status !== 'offline').size : 0;
+        const voice = ctx.guild.voiceStates?.cache ? ctx.guild.voiceStates.cache.filter((state) => state?.channelId && !state?.member?.user?.bot).size : 0;
+        return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '👥 Compteur membres', '👥 Member count'), [
+          `**${uiText(ctx.guildConfig, 'Total', 'Total')}** • ${formatStatNumber(members.size)}`,
+          `**${uiText(ctx.guildConfig, 'Humains', 'Humans')}** • ${formatStatNumber(humans.length)}`,
+          `**Bots** • ${formatStatNumber(bots.length)}`,
+          `**${uiText(ctx.guildConfig, 'En ligne', 'Online')}** • ${formatStatNumber(online)}`,
+          `**${uiText(ctx.guildConfig, 'En vocal', 'In voice')}** • ${formatStatNumber(voice)}`,
+          `**Boosters** • ${formatStatNumber(boosters.length)}`
+        ].join('\n'))] });
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'boosters',
+      aliases: ['serverboosters', 'nitroboosters'],
+      category: 'Info',
+      description: 'List the current server boosters',
+      usage: 'boosters',
+      guildOnly: true,
+      slash: { root: 'info', sub: 'boosters', description: 'List server boosters' },
+      async execute(ctx) {
+        const members = await ctx.guild.members.fetch().catch(() => ctx.guild.members.cache);
+        const boosters = [...members.values()].filter((member) => member.premiumSinceTimestamp).sort((a, b) => (b.premiumSinceTimestamp || 0) - (a.premiumSinceTimestamp || 0));
+        const lines = boosters.slice(0, 30).map((member) => `• ${member} • <t:${Math.floor(member.premiumSinceTimestamp / 1000)}:R>`);
+        const embed = baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '✨ Boosters serveur', '✨ Server boosters'), boosters.length ? lines.join('\n') : uiText(ctx.guildConfig, 'Aucun booster trouvé pour le moment.', 'No boosters found right now.'));
+        if (boosters.length > 30) embed.addFields({ name: uiText(ctx.guildConfig, 'Plus', 'More'), value: uiText(ctx.guildConfig, `+${boosters.length - 30} autre(s) booster(s)`, `+${boosters.length - 30} more booster(s)`), inline: false });
+        embed.setFooter({ text: uiText(ctx.guildConfig, `DvL • ${boosters.length} booster(s)`, `DvL • ${boosters.length} booster(s)`) });
+        return ctx.reply({ embeds: [embed] });
+      }
+    }),
+
+    makeSimpleCommand({
+      name: 'rolemembers',
+      aliases: ['membersrole', 'listrole', 'rolememberslist'],
+      category: 'Info',
+      description: 'List the members that currently have a role',
+      usage: 'rolemembers <@role|id>',
+      guildOnly: true,
+      slash: { root: 'info', sub: 'rolemembers', description: 'List members from a role', options: [{ type: 'role', name: 'role', description: 'Target role', required: true }] },
+      async execute(ctx) {
+        const role = await ctx.getRole('role', 0);
+        if (!role) return ctx.invalidUsage(`Example: \`${ctx.prefix}rolemembers @Membre\`.`);
+        const members = await ctx.guild.members.fetch().catch(() => ctx.guild.members.cache);
+        const list = [...members.values()].filter((member) => member.roles.cache.has(role.id));
+        const lines = list.slice(0, 30).map((member) => `• ${member} • \`${member.user.tag}\``);
+        const embed = baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🎭 Membres du rôle', '🎭 Role members'), lines.length ? lines.join('\n') : uiText(ctx.guildConfig, 'Aucun membre trouvé avec ce rôle.', 'No members found with this role.'));
+        embed.addFields({ name: uiText(ctx.guildConfig, 'Rôle', 'Role'), value: `${role} • ${code(role.id)}`, inline: false });
+        embed.addFields({ name: uiText(ctx.guildConfig, 'Total', 'Total'), value: `**${list.length}**`, inline: true });
+        if (list.length > 30) embed.addFields({ name: uiText(ctx.guildConfig, 'Plus', 'More'), value: uiText(ctx.guildConfig, `+${list.length - 30} membre(s) non affiché(s)`, `+${list.length - 30} member(s) not shown`), inline: true });
+        return ctx.reply({ embeds: [embed] });
+      }
+    }),
+
     makeSimpleCommand({
       name: 'avatar',
       aliases: ['pfp'],
@@ -10981,7 +11636,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       slash: { root: 'security', sub: 'automodconfig', description: 'Show the AutoMod configuration' },
       async execute(ctx) {
         const mod = ctx.guildConfig.automod || {};
-        const ignored = mod.ignoredSalons || [];
+        const ignored = getAutomodIgnoredChannels(mod);
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚨 AutoMod config', [
           `**Anti-spam:** ${automodRuleLabel(mod.antiSpam)}`,
           `**Anti-link:** ${automodRuleLabel(mod.antiLink)}`,
@@ -11163,8 +11818,8 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const channel = await ctx.getChannel('channel', 0);
         if (!channel) return ctx.invalidUsage();
         ctx.store.updateGuild(ctx.guild.id, (guild) => {
-          guild.automod.ignoredSalons = guild.automod.ignoredSalons || [];
-          if (!guild.automod.ignoredSalons.includes(channel.id)) guild.automod.ignoredSalons.push(channel.id);
+          guild.automod.ignoredChannels = getAutomodIgnoredChannels(guild.automod);
+          if (!guild.automod.ignoredChannels.includes(channel.id)) guild.automod.ignoredChannels.push(channel.id);
           return guild;
         });
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚨 AutoMod ignore', `${channel} is now ignored by AutoMod.`)] });
@@ -11183,7 +11838,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const channel = await ctx.getChannel('channel', 0);
         if (!channel) return ctx.invalidUsage();
         ctx.store.updateGuild(ctx.guild.id, (guild) => {
-          guild.automod.ignoredSalons = (guild.automod.ignoredSalons || []).filter((id) => id !== channel.id);
+          guild.automod.ignoredChannels = getAutomodIgnoredChannels(guild.automod).filter((id) => id !== channel.id);
           return guild;
         });
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚨 AutoMod ignore', `${channel} was removed from the ignore list.`)] });
@@ -11199,7 +11854,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       userPermissions: [PermissionFlagsBits.ManageGuild],
       slash: { root: 'security', sub: 'automodignored', description: 'Show ignored AutoMod channels' },
       async execute(ctx) {
-        const list = ctx.guildConfig.automod?.ignoredSalons || [];
+        const list = getAutomodIgnoredChannels(ctx.guildConfig.automod);
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚨 Ignored channels', list.length ? list.map((id) => `• <#${id}>`).join('\n') : 'No ignored channels.')] });
       }
     }),
@@ -12106,6 +12761,19 @@ Matched: **${result.matched}**.`)] });
       category: 'Welcome',
       description: 'Advanced welcome module hub with embed/plain style controls',
       usage: 'welcome [view|on|off|channel <here|#channel>|preset <clean|premium|community|anime|minimal>|mode <embed|plain>|title <text|off>|message <text>|footer <text|off>|image <url|off>|color <hex|default>|dm on|off|dmpreset <clean|premium|community|anime|minimal>|dmmode <embed|plain>|dmtitle <text|off>|dmmessage <text>|dmfooter <text|off>|dmimage <url|off>|dmcolor <hex|default>|vars|example|reset|test|testdm [@member]]',
+      helpUsageShort: 'welcome <view|on|off|channel|preset|mode|text|dm|test>',
+      helpQuickSections: [
+        { titleFr: '🧱 Base', titleEn: '🧱 Basics', lines: ['{prefix}welcome', '{prefix}welcome on', '{prefix}welcome off', '{prefix}welcome channel here'] },
+        { titleFr: '🎨 Salon', titleEn: '🎨 Channel', lines: ['{prefix}welcome preset premium', '{prefix}welcome mode embed', '{prefix}welcome title 👋 Bienvenue', '{prefix}welcome message Bienvenue {user} sur {server}'] },
+        { titleFr: '💌 MP', titleEn: '💌 DM', lines: ['{prefix}welcome dm on', '{prefix}welcome dmpreset premium', '{prefix}welcome dmmode embed', '{prefix}welcome testdm'] },
+        { titleFr: '🧪 Outils', titleEn: '🧪 Tools', lines: ['{prefix}welcome vars', '{prefix}welcome example', '{prefix}welcome test', '{prefix}welcome reset'] }
+      ],
+      helpSyntaxGroups: [
+        { labelFr: 'Base', labelEn: 'Basics', lines: ['{prefix}welcome', '{prefix}welcome on', '{prefix}welcome channel here'] },
+        { labelFr: 'Salon', labelEn: 'Channel', lines: ['{prefix}welcome preset premium', '{prefix}welcome mode embed', '{prefix}welcome title 👋 Bienvenue'] },
+        { labelFr: 'MP', labelEn: 'DM', lines: ['{prefix}welcome dm on', '{prefix}welcome dmpreset premium', '{prefix}welcome testdm'] },
+        { labelFr: 'Outils', labelEn: 'Tools', lines: ['{prefix}welcome vars', '{prefix}welcome test', '{prefix}welcome reset'] }
+      ],
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
       async execute(ctx) {
@@ -12296,6 +12964,19 @@ Matched: **${result.matched}**.`)] });
       category: 'Welcome',
       description: 'Advanced leave module hub with embed/plain controls and DM styling',
       usage: 'leave [view|on|off|channel <here|#channel>|preset <clean|soft|premium|anime|minimal>|mode <embed|plain>|title <text|off>|message <text>|footer <text|off>|image <url|off>|color <hex|default>|dm on|off|dmpreset <clean|soft|premium|anime|minimal>|dmmode <embed|plain>|dmtitle <text|off>|dmmessage <text>|dmfooter <text|off>|dmimage <url|off>|dmcolor <hex|default>|vars|example|reset|test|testdm [@member]]',
+      helpUsageShort: 'leave <view|on|off|channel|preset|mode|text|dm|test>',
+      helpQuickSections: [
+        { titleFr: '🧱 Base', titleEn: '🧱 Basics', lines: ['{prefix}leave', '{prefix}leave on', '{prefix}leave off', '{prefix}leave channel here'] },
+        { titleFr: '🎨 Salon', titleEn: '🎨 Channel', lines: ['{prefix}leave preset soft', '{prefix}leave mode embed', '{prefix}leave title 👋 Un membre est parti', '{prefix}leave message {userTag} a quitté {server}'] },
+        { titleFr: '💌 MP', titleEn: '💌 DM', lines: ['{prefix}leave dm on', '{prefix}leave dmpreset premium', '{prefix}leave dmmode embed', '{prefix}leave testdm'] },
+        { titleFr: '🧪 Outils', titleEn: '🧪 Tools', lines: ['{prefix}leave vars', '{prefix}leave example', '{prefix}leave test', '{prefix}leave reset'] }
+      ],
+      helpSyntaxGroups: [
+        { labelFr: 'Base', labelEn: 'Basics', lines: ['{prefix}leave', '{prefix}leave on', '{prefix}leave channel here'] },
+        { labelFr: 'Salon', labelEn: 'Channel', lines: ['{prefix}leave preset soft', '{prefix}leave mode embed', '{prefix}leave title 👋 Un membre est parti'] },
+        { labelFr: 'MP', labelEn: 'DM', lines: ['{prefix}leave dm on', '{prefix}leave dmpreset premium', '{prefix}leave testdm'] },
+        { labelFr: 'Outils', labelEn: 'Tools', lines: ['{prefix}leave vars', '{prefix}leave test', '{prefix}leave reset'] }
+      ],
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
       async execute(ctx) {
@@ -13126,10 +13807,23 @@ Matched: **${result.matched}**.`)] });
     }),
     makeSimpleCommand({
       name: 'support',
-      aliases: ['helpme', 'mp', 'supporthelp', 'supportview', 'supportstatus', 'supportsetup', 'supportconfig'],
+      aliases: ['helpme', 'mp', 'supporthelp', 'supportview', 'supportstatus', 'supportsetup', 'supportconfig', 'contact', 'contactstaff', 'contacte', 'sav', 'ticket'],
       category: 'Support',
-      description: 'Support hub for config, panel editing and member DMs',
+      description: 'Support hub for setup plus member contact in-channel or by DM.',
       usage: 'support [message|panel|view|guide|on|off|relay <here|#channel|id|off>|entry <here|#channel|id|off>|quicksetup <#relay|here>|quicksetup <#entry|here> <#relay|here>|role <@role|off>|restrict <on|off>|only <on|off>|preset <clean|premium|community|anime|minimal>|preview|send|text [config|send]|test|member|status]',
+      helpUsageShort: 'support <message|panel|view|relay|entry|quicksetup|role|restrict|only|preset|preview|send|test>',
+      helpQuickSections: [
+        { titleFr: '👥 Membres', titleEn: '👥 Members', lines: ["{prefix}support Bonjour j'ai un souci", 'Écrire directement dans le salon support marche aussi', 'MP au bot directement', '{prefix}support member'] },
+        { titleFr: '🧱 Base staff', titleEn: '🧱 Staff basics', lines: ['{prefix}support view', '{prefix}support panel', '{prefix}support on', '{prefix}support off'] },
+        { titleFr: '⚙️ Routage', titleEn: '⚙️ Routing', lines: ['{prefix}support relay here', '{prefix}support entry here', '{prefix}support quicksetup #support-logs', '{prefix}support role @Staff'] },
+        { titleFr: '🧪 Prompt & tests', titleEn: '🧪 Prompt & tests', lines: ['{prefix}support preset clean', '{prefix}support preview', '{prefix}support send', '{prefix}support test'] }
+      ],
+      helpSyntaxGroups: [
+        { labelFr: 'Membres', labelEn: 'Members', lines: ["{prefix}support Bonjour j'ai un souci", 'Écrire directement dans le salon support marche aussi', 'MP au bot directement'] },
+        { labelFr: 'Staff', labelEn: 'Staff', lines: ['{prefix}support view', '{prefix}support panel', '{prefix}support on'] },
+        { labelFr: 'Routage', labelEn: 'Routing', lines: ['{prefix}support relay here', '{prefix}support entry here', '{prefix}support role @Staff'] },
+        { labelFr: 'Prompt', labelEn: 'Prompt', lines: ['{prefix}support preset clean', '{prefix}support preview', '{prefix}support send'] }
+      ],
       dmAllowed: true,
       slash: { root: 'support', sub: 'support', description: 'Support via DMs', options: [{ type: 'string', name: 'message', description: 'Optional first message', required: false }] },
       async execute(ctx) {
@@ -13154,7 +13848,7 @@ Matched: **${result.matched}**.`)] });
 
         if (sub === 'member') {
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support • Member flow', [
-            `1. member runs \`${ctx.prefix}support <message>\` or DMs the bot directly`,
+            `1. member types in the support channel, runs \`${ctx.prefix}support <message>\`, or DMs the bot directly`,
             `2. bot opens/uses DM with the member`,
             `3. bot forwards the message to the relay channel`,
             `4. staff answer with \`${ctx.prefix}reply\` or by replying to a forwarded support message`
@@ -14535,9 +15229,8 @@ ${value.slice(0, 1800)}`,
           return ctx.invalidUsage(`Example: \`${ctx.prefix}piconly #photos on\` or \`${ctx.prefix}piconly off\``);
         }
         ctx.store.updateGuild(ctx.guild.id, (guild) => {
-          guild.automod.picOnlySalons = guild.automod.picOnlySalons || [];
-          guild.automod.picOnlySalons = guild.automod.picOnlySalons.filter((id) => id !== channel.id);
-          if (state === 'on') guild.automod.picOnlySalons.push(channel.id);
+          guild.automod.picOnlyChannels = getAutomodPicOnlyChannels(guild.automod).filter((id) => id !== channel.id);
+          if (state === 'on') guild.automod.picOnlyChannels.push(channel.id);
           return guild;
         });
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🖼️ Pic only', `${channel} is now **${state === 'on' ? 'image only' : 'normal'}**.`)] });
@@ -14553,7 +15246,7 @@ ${value.slice(0, 1800)}`,
       userPermissions: [PermissionFlagsBits.ManageSalons],
       slash: { root: 'security', sub: 'piconlylist', description: 'List image-only channels' },
       async execute(ctx) {
-        const ids = ctx.guildConfig.automod?.picOnlySalons || [];
+        const ids = getAutomodPicOnlyChannels(ctx.guildConfig.automod);
         const lines = ids.map((id) => ctx.guild.channels.cache.get(id)).filter(Boolean).map((channel) => `• ${channel}`);
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🖼️ Pic only channels', lines.length ? lines.join('\n') : 'No channels are in image-only mode.')] });
       }
@@ -15722,8 +16415,8 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
             `**Ghost ping :** ${uiState(g.automod?.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}${ghostChannelId ? ` • <#${ghostChannelId}>` : ''}`,
             `**Whitelist users :** ${whitelistUsers}`,
             `**Whitelist roles :** ${whitelistRoles}`,
-            `**${uiText(g, 'Salons image only', 'Pic-only channels')} :** ${Array.isArray(g.automod?.picOnlySalons) ? g.automod.picOnlySalons.length : 0}`,
-            `**${uiText(g, 'Salons ignorés', 'Ignored channels')} :** ${Array.isArray(g.automod?.ignoredSalons) ? g.automod.ignoredSalons.length : 0}`
+            `**${uiText(g, 'Salons image only', 'Pic-only channels')} :** ${getAutomodPicOnlyChannels(g.automod).length}`,
+            `**${uiText(g, 'Salons ignorés', 'Ignored channels')} :** ${getAutomodIgnoredChannels(g.automod).length}`
           ].join('\n'),
           inline: false
         },
@@ -16626,8 +17319,13 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
           commandPill(g.prefix || '+', 'custom'),
           commandPill(g.prefix || '+', 'panel'),
           commandPill(g.prefix || '+', 'support panel'),
-          commandPill(g.prefix || '+', 'logs panel'),
-          commandPill(g.prefix || '+', 'backup list')
+          commandPill(g.prefix || '+', 'info'),
+          commandPill(g.prefix || '+', 'utility')
+        ], false),
+        sectionField(uiText(g, '📌 Infos rapides', '📌 Quick info'), [
+          metricLine(uiText(g, 'Serveur', 'Server'), `\`${g.prefix || '+'}serverinfo\` • \`${g.prefix || '+'}servericon\``),
+          metricLine(uiText(g, 'Membres', 'Members'), `\`${g.prefix || '+'}membercount\` • \`${g.prefix || '+'}boosters\``),
+          metricLine(uiText(g, 'Rôles / emojis', 'Roles / emojis'), `\`${g.prefix || '+'}rolemembers @role\` • \`${g.prefix || '+'}emojiinfo <:emoji:123>\``)
         ], false),
         sectionField(uiText(g, '📨 Support & logs', '📨 Support & logs'), [
           metricLine(uiText(g, 'Support prêt', 'Support ready'), uiBool(supportReady && supportEntryReady, uiText(g, 'oui', 'yes'), uiText(g, 'non', 'no'))),
@@ -16738,5 +17436,6 @@ module.exports = {
   createConfessionPanelComponents: safeCreateConfessionPanelComponents,
   buildCustomizationPayload: safeBuildCustomizationPayload,
   getHelpTargetInfo,
-  quickExamplesForCommand
+  quickExamplesForCommand,
+  formatInvalidUsageText
 };

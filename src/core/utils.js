@@ -470,8 +470,7 @@ function normalizeSystemNoticePayload(payload = {}, guildConfig, options = {}) {
     const text = [embed.data?.title || '', embed.data?.description || ''].join('\n').trim();
     kind = kind || inferSystemNoticeKind(text) || 'info';
     if (!embed.data?.color) {
-      const colors = { error: '#EF4444', warning: '#F59E0B', success: '#22C55E', info: '#5865F2' };
-      embed.setColor(colors[kind] || ensureHexColor(guildConfig?.embedColor));
+      embed.setColor(ensureHexColor(guildConfig?.embedColor));
     }
     const currentFooter = embed.data?.footer?.text ? String(embed.data.footer.text) : '';
     if (!currentFooter || /^DvL(?:\s|•|$)/i.test(currentFooter)) {
@@ -630,14 +629,7 @@ function applyGuildPayloadBranding(payload = {}, guild, guildConfig = {}) {
 
 function resolveBaseEmbedColor(guildConfig, title, description) {
   const palette = getVisualPalette(guildConfig);
-  const brandColor = ensureHexColor(guildConfig?.embedColor, palette.base || '#5865F2');
-  const resolved = Array.isArray(description) ? description.filter(Boolean).join('\n') : String(description || '');
-  const sample = `${String(title || '')}\n${resolved}`.toLowerCase();
-  if (/(✅|success|done|saved|sent|created|enabled|updated|restored|successfully|terminé|envoyé|créé|activé|mis à jour|rétabli)/i.test(sample)) return palette.success || '#22C55E';
-  if (/(⚠️|warning|warn|careful|attention|avertissement)/i.test(sample)) return palette.warning || '#F59E0B';
-  if (/(❌|🚫|⛔|error|failed|failure|forbidden|denied|missing|invalid|refused|permission|owner only|unable|introuvable|erreur|échec|refus|interdit|invalide|impossible)/i.test(sample)) return palette.error || '#EF4444';
-  if (/(ℹ️|info|information|config|setup|panel|dashboard|hub|statut|status)/i.test(sample)) return brandColor;
-  return brandColor;
+  return ensureHexColor(guildConfig?.embedColor, palette.base || '#5865F2');
 }
 
 function baseEmbed(guildConfig, title, description) {

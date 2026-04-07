@@ -142,7 +142,7 @@ const DEFAULT_GUILD = {
     entryCommandOnly: false,
     promptMode: 'embed',
     promptTitle: '📨 Besoin d’aide ?',
-    promptMessage: 'Pour contacter le staff, va dans {supportChannel} et utilise `{prefix}support ton message`.',
+    promptMessage: 'Pour contacter le staff, écris dans {supportChannel} ou envoie un MP au bot. `{prefix}support ton message` marche aussi.',
     promptFooter: 'DvL Support',
     promptColor: null,
     promptImageUrl: null
@@ -278,8 +278,8 @@ const LOCALIZED_DEFAULT_TEXTS = {
   support: {
     promptTitle: { fr: '📨 Besoin d’aide ?', en: '📨 Need help?' },
     promptMessage: {
-      fr: 'Pour contacter le staff, va dans {supportChannel} et utilise `{prefix}support ton message`.',
-      en: 'To contact the staff, go to {supportChannel} and run `{prefix}support your message`.'
+      fr: 'Pour contacter le staff, écris dans {supportChannel} ou envoie un MP au bot. `{prefix}support ton message` marche aussi.',
+      en: 'To contact the staff, write in {supportChannel} or DM the bot. `{prefix}support your message` also works.'
     },
     promptFooter: { fr: 'DvL Support', en: 'DvL Support' }
   },

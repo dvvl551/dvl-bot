@@ -23,7 +23,7 @@ const {
 } = require('discord.js');
 
 const { Store } = require('./core/store');
-const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, createConfessionPanelEmbed, createConfessionPanelComponents, buildCustomizationPayload, getHelpTargetInfo, buildSafeConfigPanelPayload, normalizeConfigPanelPage, quickExamplesForCommand } = require('./core/commands');
+const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, createConfessionPanelEmbed, createConfessionPanelComponents, buildCustomizationPayload, getHelpTargetInfo, buildSafeConfigPanelPayload, normalizeConfigPanelPage, quickExamplesForCommand, formatInvalidUsageText } = require('./core/commands');
 const {
   ACTIVITY_TYPES,
   baseEmbed,
@@ -164,6 +164,14 @@ const PREFIX_SHORTCUT_MAP = {
   securitypreset: 'security preset',
   securityghostping: 'security ghostping',
   securitycheck: 'security check',
+  securitydoctor: 'security doctor',
+  securitybypass: 'security bypass',
+  securityraid: 'security raid',
+  roleslist: 'roles list',
+  rolesclean: 'roles clean',
+  configdoctor: 'config doctor',
+  configexport: 'config export',
+  starthelp: 'start',
   customtexts: 'custom texts',
   customsupport: 'custom support',
   customconfessions: 'custom confessions',
@@ -193,6 +201,15 @@ const PREFIX_SHORTCUT_MAP = {
   systemmodules: 'system modules',
   systembackup: 'system backup',
   systemcheck: 'system check',
+  infohub: 'info',
+  infoshub: 'info',
+  utilityhub: 'utility',
+  utilhub: 'utility',
+  servericon: 'servericon',
+  serverbanner: 'serverbanner',
+  emojiinfo: 'emojiinfo',
+  membercount: 'membercount',
+  rolemembers: 'rolemembers',
   textsvars: 'texts vars',
   textsexamples: 'texts examples',
   textswelcome: 'texts welcome',
@@ -251,6 +268,12 @@ const FAMILY_SHORTCUT_MAP = {
   },
   tiktok: {
     view: 'view', list: 'list', add: 'add', remove: 'remove', role: 'role', channel: 'channel', live: 'live', video: 'video', test: 'test', check: 'check'
+  },
+  info: {
+    view: 'view', assets: 'assets', server: 'server', user: 'user', member: 'user', members: 'members', role: 'role', channel: 'channel', boosters: 'boosters'
+  },
+  utility: {
+    view: 'view', create: 'create', text: 'text', fun: 'fun', calc: 'calc', staff: 'staff'
   }
 };
 
@@ -2283,8 +2306,10 @@ async function repairGuildConfiguration(guild, scope = 'all') {
       const automod = ensureGuildSectionShape(g, 'automod', DEFAULT_GUILD.automod);
       automod.whitelistUserIds = Array.from(new Set((automod.whitelistUserIds || []).map(String).filter(Boolean)));
       automod.whitelistRoleIds = Array.from(new Set((automod.whitelistRoleIds || []).map(String).filter(Boolean)));
-      automod.ignoredChannels = Array.from(new Set((automod.ignoredChannels || []).map(String).filter(Boolean)));
-      automod.picOnlyChannels = Array.from(new Set((automod.picOnlyChannels || []).map(String).filter(Boolean)));
+      automod.ignoredChannels = Array.from(new Set([...(automod.ignoredChannels || []), ...(automod.ignoredSalons || [])].map(String).filter(Boolean)));
+      automod.picOnlyChannels = Array.from(new Set([...(automod.picOnlyChannels || []), ...(automod.picOnlySalons || [])].map(String).filter(Boolean)));
+      automod.ignoredSalons = undefined;
+      automod.picOnlySalons = undefined;
       automod.ghostPing = { enabled: false, channelId: null, ...(automod.ghostPing || {}) };
       report.fixed.push('security lists normalized');
     }
@@ -3119,14 +3144,7 @@ function buildCtx(source, command) {
       return targetMember.roles.highest.position < member.roles.highest.position && targetMember.roles.highest.position < me.roles.highest.position;
     },
     async invalidUsage(extra = '') {
-      const quickExamples = quickExamplesForCommand(command, prefix).slice(0, 3);
-      const usage = [
-        `Usage: \`${prefix}${command.usage || command.name}\``,
-        command.description ? `What it does: ${command.description}` : null,
-        quickExamples.length ? `Examples:\n${quickExamples.map((entry) => `• \`${entry}\``).join('\n')}` : null,
-        extra || null,
-        command.aliases?.length ? `Aliases: ${command.aliases.map((alias) => `\`${prefix}${alias}\``).join(', ')}` : null
-      ].filter(Boolean).join('\n');
+      const usage = formatInvalidUsageText(command, guildConfig, prefix, extra);
       const payload = { embeds: [baseEmbed(guildConfig, '❌ Invalid usage', usage)], deleteAfter: TRANSIENT_SYSTEM_DELETE_MS };
       if (interaction) {
         return this.reply({ ...payload, ephemeral: true });
@@ -3246,24 +3264,45 @@ async function punishAutomod(message, config, reason, action = 'delete') {
   await sendLog(message.guild, 'security', 'AutoMod', `${message.author.tag} • ${reason}\nChannel: ${message.channel}`);
 }
 
+function extractMessageUrls(content) {
+  const rawUrls = String(content || '').match(/https?:\/\/\S+/gi) || [];
+  return rawUrls.map((url) => url.replace(/[)>.,!?]+$/g, '')).filter(Boolean);
+}
+
+function isAllowedMediaUrl(url) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    const pathname = parsed.pathname.toLowerCase();
+    if (/(cdn\.discordapp\.com|media\.discordapp\.net|images-ext-1\.discordapp\.net|images-ext-2\.discordapp\.net|i\.imgur\.com|media\.tenor\.com|c\.tenor\.com|tenor\.com|giphy\.com|media\.giphy\.com|i\.giphy\.com)$/i.test(hostname)) {
+      return true;
+    }
+    return /\.(png|jpe?g|gif|gifv|webp|bmp|svg|mp4|mov|webm)(\?.*)?$/i.test(pathname);
+  } catch {
+    return /\.(png|jpe?g|gif|gifv|webp|bmp|svg|mp4|mov|webm)(\?.*)?$/i.test(String(url));
+  }
+}
+
+function messageHasOnlyAllowedMediaUrls(message) {
+  const content = String(message.content || '').trim();
+  if (!content) return false;
+  const cleaned = extractMessageUrls(content);
+  if (!cleaned.length) return false;
+  return cleaned.every((url) => isAllowedMediaUrl(url));
+}
+
 function messageHasAllowedImageContent(message) {
   const attachments = [...(message.attachments?.values?.() || [])];
   if (attachments.some((file) => String(file.contentType || '').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(String(file.name || '')))) return true;
   if ((message.stickers?.size || 0) > 0) return true;
-
-  const content = String(message.content || '').trim();
-  if (!content) return false;
-  const urls = content.match(/https?:\/\/\S+/gi) || [];
-  if (!urls.length) return false;
-  const cleaned = urls.map((url) => url.replace(/[)>.,!?]+$/g, ''));
-  if (!cleaned.length) return false;
-  return cleaned.every((url) => /(cdn\.discordapp\.com|media\.discordapp\.net|i\.imgur\.com|images-ext-1\.discordapp\.net|images-ext-2\.discordapp\.net|tenor\.com|giphy\.com|media\.tenor\.com)/i.test(url) || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url));
+  return messageHasOnlyAllowedMediaUrls(message);
 }
 
 async function handlePicOnly(message) {
   if (!message.guild || message.author?.bot) return false;
   const config = getGuildConfig(message.guild.id);
-  const picOnlyChannels = config.automod?.picOnlyChannels || [];
+  const picOnlyChannels = Array.from(new Set([...(config.automod?.picOnlyChannels || []), ...(config.automod?.picOnlySalons || [])]));
   if (!picOnlyChannels.includes(message.channel.id)) return false;
 
   const prefix = config.prefix || DEFAULT_PREFIX;
@@ -3287,14 +3326,19 @@ async function handleSupportEntryOnly(message) {
   if (!message.guild || message.author?.bot) return false;
   const config = getGuildConfig(message.guild.id);
   const support = config.support || {};
-  if (!support.entryCommandOnly || !support.entryChannelId || message.channel.id !== support.entryChannelId) return false;
+  const isEntryChannel = Boolean(support.entryChannelId && message.channel.id === support.entryChannelId);
+  if (!isEntryChannel) return false;
   if (message.member?.permissions.has(PermissionFlagsBits.ManageMessages) || message.member?.permissions.has(PermissionFlagsBits.ManageGuild)) return false;
 
   const prefix = config.prefix || DEFAULT_PREFIX;
   const content = String(message.content || '').trim();
-  if (!content) {
-    await message.delete().catch(() => null);
-    return true;
+  const hasFiles = Boolean(message.attachments?.size);
+  if (!content && !hasFiles) {
+    if (support.entryCommandOnly) {
+      await message.delete().catch(() => null);
+      return true;
+    }
+    return false;
   }
 
   const lowered = content.toLowerCase();
@@ -3305,13 +3349,25 @@ async function handleSupportEntryOnly(message) {
     `${prefix}supporthelp`
   ].map((v) => v.toLowerCase());
 
-  const ok = content.startsWith(prefix) && allowed.some((cmd) => lowered === cmd || lowered.startsWith(cmd + ' '));
-  if (ok) return false;
+  const isSupportCommand = content.startsWith(prefix) && allowed.some((cmd) => lowered === cmd || lowered.startsWith(cmd + ' '));
+  if (isSupportCommand) return false;
+
+  if ((!content || !content.startsWith(prefix)) && support.enabled && support.channelId) {
+    const resolution = resolvePrefixCommand('support');
+    if (resolution?.command) {
+      const proxyContent = content ? `${prefix}support ${content}`.trim() : `${prefix}support`;
+      const proxy = createPrefixedMessageProxy(message, proxyContent);
+      await runCommand(proxy, resolution.command);
+      return true;
+    }
+  }
+
+  if (!support.entryCommandOnly) return false;
 
   await message.delete().catch(() => null);
   const notice = await message.channel.send({
     content: `${message.author}`,
-    embeds: [baseEmbed(config, uiLangText(config, '📨 Salon support', '📨 Support channel'), uiLangText(config, `Ici, utilise uniquement \`${prefix}support ton message\`.`, `Only use \`${prefix}support your message\` here.`))]
+    embeds: [baseEmbed(config, uiLangText(config, '📨 Salon support', '📨 Support channel'), uiLangText(config, `Écris directement ici, utilise \`${prefix}support ton message\`, ou contacte le bot en MP.`, `Write directly here, use \`${prefix}support your message\`, or DM the bot.`))]
   }).catch(() => null);
   if (notice) setTimeout(() => notice.delete().catch(() => null), 7_000).unref?.();
   return true;
@@ -3323,7 +3379,7 @@ async function handleAutomod(message) {
   const mod = config.automod;
   const content = message.content || '';
   if (!content) return false;
-  if (mod.ignoredChannels?.includes(message.channel.id)) return false;
+  if ((mod.ignoredChannels?.includes(message.channel.id)) || (mod.ignoredSalons?.includes?.(message.channel.id))) return false;
   if (mod.whitelistUserIds?.includes(message.author.id)) return false;
   if (message.member?.roles.cache.some((role) => mod.whitelistRoleIds?.includes(role.id))) return false;
   if (message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) return false;
@@ -3339,8 +3395,10 @@ async function handleAutomod(message) {
     return true;
   }
   if (mod.antiLink?.enabled && /https?:\/\//i.test(content)) {
-    await punishAutomod(message, config, 'link detected', mod.antiLink.punish);
-    return true;
+    if (!messageHasOnlyAllowedMediaUrls(message)) {
+      await punishAutomod(message, config, 'link detected', mod.antiLink.punish);
+      return true;
+    }
   }
   if (mod.antiMention?.enabled) {
     const mentions = message.mentions.users.size + (message.mentions.everyone ? 2 : 0) + message.mentions.roles.size;
@@ -3540,6 +3598,16 @@ async function handlePrefixCommand(message) {
     return true;
   }
 
+  if (!message.guild && command.name === 'support') {
+    const dmContent = parts.join(' ').trim();
+    const hasFiles = Boolean(message.attachments?.size);
+    if (dmContent || hasFiles) {
+      const relayMessage = createPrefixedMessageProxy(message, dmContent);
+      await relaySupportDM(relayMessage);
+      return true;
+    }
+  }
+
   await runCommand(sourceMessage, command);
   return true;
 }
@@ -3571,16 +3639,24 @@ async function relaySupportDM(message) {
   let config = guild ? getGuildConfig(guild.id) : null;
 
   if (!guild || !config?.support?.enabled || !config?.support?.channelId) {
-    guild = client.guilds.cache.find((g) => {
+    const candidates = [];
+    for (const g of client.guilds.cache.values()) {
       const candidate = getGuildConfig(g.id);
-      return candidate.support.enabled && candidate.support.channelId;
-    }) || null;
+      if (!candidate.support.enabled || !candidate.support.channelId) continue;
+      const member = await g.members.fetch(message.author.id).catch(() => null);
+      if (member) candidates.push(g);
+    }
+    if (candidates.length > 1) {
+      await message.channel.send({ embeds: [baseEmbed({ embedColor: '#5865F2' }, '📨 Support routing needed', 'Send one message in the server support channel first so I know where to route your DMs. After that, direct DMs will work normally.')] }).catch(() => null);
+      return false;
+    }
+    guild = candidates[0] || null;
     guildId = guild?.id || null;
     config = guild ? getGuildConfig(guild.id) : null;
   }
 
   if (!guild || !config?.support?.enabled || !config?.support?.channelId) {
-    await message.channel.send({ embeds: [baseEmbed({ embedColor: '#5865F2' }, '📨 Support unavailable', 'This bot is not configured for DM support yet.')] }).catch(() => null);
+    await message.channel.send({ embeds: [baseEmbed({ embedColor: '#5865F2' }, '📨 Support unavailable', 'This bot is not configured for DM support yet. Write once in the server support channel first if needed.')] }).catch(() => null);
     return false;
   }
 
