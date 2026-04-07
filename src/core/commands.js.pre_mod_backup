@@ -258,18 +258,10 @@ const MODULE_RESPONSE_META = {
   logs: { emoji: '🧾', fr: 'Logs', en: 'Logs' },
   support: { emoji: '📨', fr: 'Support', en: 'Support' },
   roles: { emoji: '🎭', fr: 'Rôles', en: 'Roles' },
-  moderation: { emoji: '🛡️', fr: 'Modération', en: 'Moderation' },
   giveaway: { emoji: '🎁', fr: 'Giveaway', en: 'Giveaway' },
   welcome: { emoji: '👋', fr: 'Accueil', en: 'Welcome' },
   leave: { emoji: '👋', fr: 'Départ', en: 'Leave' },
-  mpall: { emoji: '📨', fr: 'MP all', en: 'MP all' },
-  backup: { emoji: '💾', fr: 'Backup', en: 'Backup' },
-  tiktok: { emoji: '🎵', fr: 'TikTok', en: 'TikTok' },
-  voice: { emoji: '🔊', fr: 'Vocal', en: 'Voice' },
-  security: { emoji: '🚨', fr: 'Sécurité', en: 'Security' },
-  tracking: { emoji: '📈', fr: 'Tracking', en: 'Tracking' },
-  system: { emoji: '🧰', fr: 'Système', en: 'System' },
-  custom: { emoji: '🎨', fr: 'Custom', en: 'Custom' }
+  mpall: { emoji: '📨', fr: 'MP all', en: 'MP all' }
 };
 
 function createModuleActionEmbed(guildConfig, {
@@ -361,29 +353,6 @@ function buildMpallStateLines(guildConfig, mpall = {}) {
     metricLine(uiText(guildConfig, 'Titre', 'Title'), formatTemplatePreview(mpall.title, '📨 Message from {server}')),
     metricLine(uiText(guildConfig, 'Message', 'Message'), formatTemplatePreview(mpall.message, uiText(guildConfig, 'non défini', 'not set'))),
     metricLine(uiText(guildConfig, 'Footer', 'Footer'), mode === 'embed' ? formatTemplatePreview(mpall.footer, 'DvL') : uiText(guildConfig, 'inutile en mode simple', 'unused in simple mode'))
-  ];
-}
-
-function buildBackupStateLines(guildConfig, entry = {}) {
-  const meta = entry?.meta || {};
-  return [
-    metricLine(uiText(guildConfig, 'ID', 'ID'), entry?.id ? `\`${entry.id}\`` : uiText(guildConfig, 'inconnu', 'unknown')),
-    metricLine(uiText(guildConfig, 'Nom', 'Name'), `**${clipText(entry?.name || uiText(guildConfig, 'sans nom', 'unnamed'), 48)}**`),
-    metricLine(uiText(guildConfig, 'Source', 'Source'), `**${clipText(entry?.sourceGuildName || entry?.snapshot?.server?.name || uiText(guildConfig, 'inconnue', 'unknown'), 48)}**`),
-    metricLine(uiText(guildConfig, 'Structure', 'Structure'), `${meta.channels || 0} ${uiText(guildConfig, 'salons', 'channels')} • ${meta.roles || 0} ${uiText(guildConfig, 'rôles', 'roles')}`),
-    metricLine(uiText(guildConfig, 'Version', 'Version'), `v${meta.backupVersion || 1}`)
-  ];
-}
-
-function buildTikTokWatcherStateLines(guildConfig, watcher = {}) {
-  const notSet = uiText(guildConfig, 'non défini', 'not set');
-  const none = uiText(guildConfig, 'aucun', 'none');
-  return [
-    metricLine(uiText(guildConfig, 'Watcher', 'Watcher'), `**@${watcher.username || 'unknown'}**`),
-    metricLine(uiText(guildConfig, 'Salon', 'Channel'), watcher.channelId ? `<#${watcher.channelId}>` : notSet),
-    metricLine(uiText(guildConfig, 'Ping', 'Ping'), watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : none),
-    metricLine(uiText(guildConfig, 'Live', 'Live'), uiState(Boolean(watcher.announceLive), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))),
-    metricLine(uiText(guildConfig, 'Vidéos', 'Videos'), uiState(Boolean(watcher.announceVideos), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled')))
   ];
 }
 
@@ -1105,71 +1074,6 @@ function getTargetMention(target) {
 
 function getDmStatusLabel(dmSent, unavailableLabel = 'failed / closed') {
   return dmSent ? 'sent' : unavailableLabel;
-}
-
-function buildModerationActionEmbed(guildConfig, {
-  titleFr,
-  titleEn,
-  summary,
-  target = null,
-  tone = 'info',
-  stateLines = [],
-  nextLines = [],
-  extraFields = [],
-  footerText = null
-} = {}) {
-  const embed = createModuleActionEmbed(guildConfig, {
-    moduleKey: 'moderation',
-    titleFr,
-    titleEn,
-    summary,
-    stateLines,
-    nextLines,
-    extraFields,
-    tone
-  });
-  const tag = getTargetTag(target);
-  const avatarUrl = getTargetAvatarUrl(target);
-  if (tag) embed.setAuthor({ name: tag, iconURL: avatarUrl || undefined });
-  if (avatarUrl) embed.setThumbnail(avatarUrl);
-  if (footerText) embed.setFooter({ text: String(footerText).slice(0, 2048) });
-  return embed;
-}
-
-function buildModerationStateLines(guildConfig, {
-  target = null,
-  moderator = null,
-  reason = null,
-  dmSent = null,
-  warningsNow = null,
-  clearedWarnings = null,
-  duration = null,
-  until = null,
-  requestedAmount = null,
-  affectedAmount = null,
-  channel = null,
-  slowmode = null,
-  before = null,
-  after = null,
-  extra = []
-} = {}) {
-  const lines = [];
-  if (target) lines.push(metricLine(uiText(guildConfig, 'Membre', 'Member'), target.id ? `<@${target.id}>` : String(target)));
-  if (moderator) lines.push(metricLine(uiText(guildConfig, 'Modérateur', 'Moderator'), `${moderator}`));
-  if (channel) lines.push(metricLine(uiText(guildConfig, 'Salon', 'Channel'), `${channel}`));
-  if (requestedAmount !== null && typeof requestedAmount !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Demandé', 'Requested'), `**${requestedAmount}**`));
-  if (affectedAmount !== null && typeof affectedAmount !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Traités', 'Affected'), `**${affectedAmount}**`));
-  if (warningsNow !== null && typeof warningsNow !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Warns maintenant', 'Warnings now'), `**${warningsNow}**`));
-  if (clearedWarnings !== null && typeof clearedWarnings !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Warns retirés', 'Warnings cleared'), `**${clearedWarnings}**`));
-  if (duration) lines.push(metricLine(uiText(guildConfig, 'Durée', 'Duration'), duration));
-  if (until) lines.push(metricLine(uiText(guildConfig, 'Jusqu’à', 'Until'), until));
-  if (slowmode !== null && typeof slowmode !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Slowmode', 'Slowmode'), Number(slowmode) > 0 ? `**${slowmode}s**` : uiText(guildConfig, 'off', 'off')));
-  if (dmSent !== null && typeof dmSent !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'DM', 'DM'), getDmStatusLabel(dmSent)));
-  if (before !== null && typeof before !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Avant', 'Before'), clipText(String(before), 90)));
-  if (after !== null && typeof after !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Après', 'After'), clipText(String(after), 90)));
-  if (reason) lines.push(metricLine(uiText(guildConfig, 'Raison', 'Reason'), clipText(String(reason), 120)));
-  const extraLines = Array.isArray(extra) ? extra : [extra];
-  return [...lines, ...extraLines.filter(Boolean)].slice(0, 8);
 }
 
 function buildMemberActionEmbed(guildConfig, title, description, target, fields = [], options = {}) {
@@ -6473,93 +6377,33 @@ function createCommands() {
       aliases: ['modhub', 'modhelp', 'staffmod'],
       category: 'Moderation',
       description: 'Clean moderation hub for warns, timeouts, kicks and bans',
-      usage: 'moderation [view|warn|timeout|ban|kick|clear|channel|nick|status]',
+      usage: 'moderation [view|warn|timeout|ban|kick|status]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ModerateMembers],
       async execute(ctx) {
         const action = String(ctx.args[0] || 'view').toLowerCase();
         if (['view', 'config', 'show', 'list', 'status', 'setup', 'home'].includes(action)) return ctx.reply({ embeds: [buildModerationHubEmbed(ctx.guildConfig, ctx.prefix)] });
-        if (action === 'warn') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Warn flow',
-          titleEn: 'Warn flow',
-          summary: 'Warn a member, keep the reason visible, and keep the history easy to inspect.',
-          stateLines: [
-            metricLine(uiText(ctx.guildConfig, 'Commande', 'Command'), commandPill(ctx.prefix, 'warn @member raison')),
-            metricLine(uiText(ctx.guildConfig, 'Lecture', 'Readback'), commandPill(ctx.prefix, 'warnings @member')),
-            metricLine(uiText(ctx.guildConfig, 'Reset', 'Reset'), commandPill(ctx.prefix, 'clearwarnings @member'))
-          ],
-          nextLines: [`• \`${ctx.prefix}warn @member spam\``, `• \`${ctx.prefix}warnings @member\``],
-          footerText: 'DvL • moderation hub'
-        })] });
-        if (action === 'timeout') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Timeout flow',
-          titleEn: 'Timeout flow',
-          summary: 'Timeout with a duration, DM when possible, and keep a clean recap for staff.',
-          stateLines: [
-            metricLine(uiText(ctx.guildConfig, 'Commande', 'Command'), commandPill(ctx.prefix, 'timeout @member 10m raison')),
-            metricLine(uiText(ctx.guildConfig, 'Retrait', 'Removal'), commandPill(ctx.prefix, 'untimeout @member')),
-            metricLine(uiText(ctx.guildConfig, 'Format', 'Format'), '`10m` • `1h` • `1d` • `7d`')
-          ],
-          nextLines: [`• \`${ctx.prefix}timeout @member 10m spam\``, `• \`${ctx.prefix}untimeout @member\``],
-          footerText: 'DvL • moderation hub'
-        })] });
-        if (action === 'ban') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Ban flow',
-          titleEn: 'Ban flow',
-          summary: 'Ban directly, or use a duration in text mode for a temp ban.',
-          stateLines: [
-            metricLine(uiText(ctx.guildConfig, 'Commande', 'Command'), commandPill(ctx.prefix, 'ban @member raison')),
-            metricLine(uiText(ctx.guildConfig, 'Temp ban', 'Temp ban'), commandPill(ctx.prefix, 'ban @member 7d raison')),
-            metricLine(uiText(ctx.guildConfig, 'Retrait', 'Removal'), commandPill(ctx.prefix, 'unban userId'))
-          ],
-          nextLines: [`• \`${ctx.prefix}ban @member raid\``, `• \`${ctx.prefix}unban 123456789012345678\``],
-          footerText: 'DvL • moderation hub'
-        })] });
-        if (action === 'kick') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Kick flow',
-          titleEn: 'Kick flow',
-          summary: 'Kick a member and keep a clean recap for logs and staff.',
-          stateLines: [
-            metricLine(uiText(ctx.guildConfig, 'Commande', 'Command'), commandPill(ctx.prefix, 'kick @member raison')),
-            metricLine(uiText(ctx.guildConfig, 'À vérifier', 'Check first'), commandPill(ctx.prefix, 'warnings @member'))
-          ],
-          nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}kick @member insultes\``],
-          footerText: 'DvL • moderation hub'
-        })] });
-        if (action === 'clear') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Nettoyage salon',
-          titleEn: 'Channel cleanup',
-          summary: 'Bulk-delete messages, clean one member, or reset the current channel state.',
-          stateLines: [
-            metricLine(uiText(ctx.guildConfig, 'Bulk', 'Bulk'), commandPill(ctx.prefix, 'clear 20')),
-            metricLine(uiText(ctx.guildConfig, 'Ciblé', 'Targeted'), commandPill(ctx.prefix, 'purge @member 5')),
-            metricLine(uiText(ctx.guildConfig, 'Reset', 'Reset'), commandPill(ctx.prefix, 'renew raison'))
-          ],
-          nextLines: [`• \`${ctx.prefix}clear 20\``, `• \`${ctx.prefix}purge @member 5\``],
-          footerText: 'DvL • moderation hub'
-        })] });
-        if (action === 'channel') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Actions salon',
-          titleEn: 'Channel actions',
-          summary: 'Lock, unlock, slowmode, or renew the current channel without digging through many commands.',
-          stateLines: [
-            metricLine(uiText(ctx.guildConfig, 'Lock', 'Lock'), commandPill(ctx.prefix, 'lock')),
-            metricLine(uiText(ctx.guildConfig, 'Unlock', 'Unlock'), commandPill(ctx.prefix, 'unlock')),
-            metricLine(uiText(ctx.guildConfig, 'Slowmode', 'Slowmode'), commandPill(ctx.prefix, 'slowmode 5')),
-            metricLine(uiText(ctx.guildConfig, 'Renew', 'Renew'), commandPill(ctx.prefix, 'renew raison'))
-          ],
-          nextLines: [`• \`${ctx.prefix}slowmode 5\``, `• \`${ctx.prefix}lock\``],
-          footerText: 'DvL • moderation hub'
-        })] });
-        if (action === 'nick') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Flow pseudo',
-          titleEn: 'Nickname flow',
-          summary: 'Change a nickname and keep the before / after visible for staff.',
-          stateLines: [metricLine(uiText(ctx.guildConfig, 'Commande', 'Command'), commandPill(ctx.prefix, 'nick @member NouveauPseudo'))],
-          nextLines: [`• \`${ctx.prefix}nick @member NewName\``],
-          footerText: 'DvL • moderation hub'
-        })] });
-        return ctx.invalidUsage(`Examples: \`${ctx.prefix}moderation\`, \`${ctx.prefix}moderation warn\`, \`${ctx.prefix}moderation timeout\`, \`${ctx.prefix}moderation clear\`.`);
+        if (action === 'warn') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🛡️ Moderation • Warn', [
+          `Warn a member and keep a stored history.`,
+          `Use: \`${ctx.prefix}warn @member reason\``,
+          `Check: \`${ctx.prefix}warnings @member\``
+        ].join('\n'))] });
+        if (action === 'timeout') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🛡️ Moderation • Timeout', [
+          `Timeout a member with a duration like 10m / 1h / 1d.`,
+          `Use: \`${ctx.prefix}timeout @member 10m spam\``,
+          `Remove: \`${ctx.prefix}untimeout @member\``
+        ].join('\n'))] });
+        if (action === 'ban') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🛡️ Moderation • Ban', [
+          `Ban a member and optionally use a duration in text mode.`,
+          `Use: \`${ctx.prefix}ban @member reason\``,
+          `Temp ban: \`${ctx.prefix}ban @member 7d reason\``,
+          `Unban: \`${ctx.prefix}unban userId\``
+        ].join('\n'))] });
+        if (action === 'kick') return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🛡️ Moderation • Kick', [
+          `Kick a member from the server.`,
+          `Use: \`${ctx.prefix}kick @member reason\``
+        ].join('\n'))] });
+        return ctx.invalidUsage(`Examples: \`${ctx.prefix}moderation\`, \`${ctx.prefix}moderation warn\`, \`${ctx.prefix}moderation timeout\`, \`${ctx.prefix}moderation ban\`.`);
       }
     }),
 
@@ -6651,19 +6495,8 @@ function createCommands() {
         const watchers = ctx.guildConfig.tiktok?.watchers || [];
         if (['view', 'config', 'show', 'status', 'setup'].includes(action)) return ctx.reply({ embeds: [buildTikTokHubEmbed(ctx.guildConfig, ctx.prefix)] });
         if (action === 'list') {
-          const lines = watchers.slice(0, 8).map((watcher) => `• **@${watcher.username}** → <#${watcher.channelId}> • ping: ${watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : 'none'} • live ${boolEmoji(watcher.announceLive)} • video ${boolEmoji(watcher.announceVideos)}`);
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Watchers TikTok',
-            titleEn: 'TikTok watchers',
-            summary: watchers.length ? uiText(ctx.guildConfig, `**${watchers.length}** watcher(s) TikTok configuré(s).`, `**${watchers.length}** TikTok watcher(s) configured.`) : uiText(ctx.guildConfig, 'Aucun watcher TikTok configuré.', 'No TikTok watchers configured.'),
-            stateLines: watchers[0] ? buildTikTokWatcherStateLines(ctx.guildConfig, watchers[0]) : [],
-            extraFields: lines.length ? [sectionField(uiText(ctx.guildConfig, '🎯 Watchers récents', '🎯 Recent watchers'), lines, false)] : [],
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'tiktok add username here')}`,
-              `• ${commandPill(ctx.prefix, 'tiktok check')}`
-            ]
-          })] });
+          const lines = watchers.length ? watchers.map((watcher) => `• **@${watcher.username}** → <#${watcher.channelId}> • ping: ${watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : 'none'} • live ${boolEmoji(watcher.announceLive)} • video ${boolEmoji(watcher.announceVideos)}`).join('\n') : 'No TikTok watchers.';
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watchers', lines.slice(0, 4000))] });
         }
         if (action === 'add') {
           const username = String(ctx.args[1] || '').replace(/^@/, '');
@@ -6677,19 +6510,7 @@ function createCommands() {
             guild.tiktok.watchers.push({ username, channelId: channel.id, announceVideos: true, announceLive: true, mentionRoleId: null, lastVideoId: status?.latestVideoId || null, wasLive: Boolean(status?.isLive), lastLiveRoomId: status?.liveRoomId || null, lastSource: status?.source || null, lastCheckAt: Date.now(), lastError: null });
             return guild;
           });
-          const freshWatcher = (ctx.store.getGuild(ctx.guild.id).tiktok?.watchers || []).find((entry) => entry.username.toLowerCase() === username.toLowerCase()) || null;
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Watcher ajouté',
-            titleEn: 'Watcher added',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `Le watcher **@${username}** a été ajouté.`, `Watcher **@${username}** was added.`),
-            stateLines: freshWatcher ? buildTikTokWatcherStateLines(ctx.guildConfig, freshWatcher) : [],
-            nextLines: [
-              `• ${commandPill(ctx.prefix, `tiktok role ${username} @Role`)}`,
-              `• ${commandPill(ctx.prefix, `tiktok test ${username}`)}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watcher', `Added **@${username}** → ${channel}`)] });
         }
         if (action === 'remove') {
           const username = String(ctx.args[1] || '').replace(/^@/, '');
@@ -6698,17 +6519,7 @@ function createCommands() {
             guild.tiktok.watchers = (guild.tiktok.watchers || []).filter((entry) => entry.username.toLowerCase() !== username.toLowerCase());
             return guild;
           });
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Watcher supprimé',
-            titleEn: 'Watcher removed',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `Le watcher **@${username}** a été supprimé.`, `Watcher **@${username}** was removed.`),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'tiktok list')}`,
-              `• ${commandPill(ctx.prefix, 'tiktok add username here')}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watcher', `Removed **@${username}**.`)] });
         }
         if (action === 'role') {
           const username = String(ctx.args[1] || '').replace(/^@/, '');
@@ -6721,24 +6532,8 @@ function createCommands() {
             if (watcher) { watcher.mentionRoleId = clear ? null : role.id; found = true; }
             return guild;
           });
-          if (!found) return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Watcher introuvable',
-            titleEn: 'Watcher not found',
-            tone: 'warning',
-            summary: uiText(ctx.guildConfig, `Aucun watcher trouvé pour **@${username}**.`, `No watcher found for **@${username}**.`),
-            nextLines: [`• ${commandPill(ctx.prefix, 'tiktok list')}`]
-          })] });
-          const freshWatcher = (ctx.store.getGuild(ctx.guild.id).tiktok?.watchers || []).find((entry) => entry.username.toLowerCase() === username.toLowerCase()) || null;
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Ping watcher mis à jour',
-            titleEn: 'Watcher ping updated',
-            tone: 'success',
-            summary: clear ? uiText(ctx.guildConfig, `Le rôle ping de **@${username}** a été retiré.`, `The ping role for **@${username}** was cleared.`) : uiText(ctx.guildConfig, `Le rôle ping de **@${username}** a été mis à jour.`, `The ping role for **@${username}** was updated.`),
-            stateLines: freshWatcher ? buildTikTokWatcherStateLines(ctx.guildConfig, freshWatcher) : [],
-            nextLines: [`• ${commandPill(ctx.prefix, `tiktok test ${username}`)}`]
-          })] });
+          if (!found) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watcher', 'Watcher not found.')] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watcher', clear ? `Role cleared for **@${username}**.` : `${role} saved for **@${username}**.`)] });
         }
         if (action === 'channel') {
           const username = String(ctx.args[1] || '').replace(/^@/, '');
@@ -6751,24 +6546,8 @@ function createCommands() {
             if (watcher) { watcher.channelId = channel.id; found = true; }
             return guild;
           });
-          if (!found) return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Watcher introuvable',
-            titleEn: 'Watcher not found',
-            tone: 'warning',
-            summary: uiText(ctx.guildConfig, `Aucun watcher trouvé pour **@${username}**.`, `No watcher found for **@${username}**.`),
-            nextLines: [`• ${commandPill(ctx.prefix, 'tiktok list')}`]
-          })] });
-          const freshWatcher = (ctx.store.getGuild(ctx.guild.id).tiktok?.watchers || []).find((entry) => entry.username.toLowerCase() === username.toLowerCase()) || null;
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Salon watcher mis à jour',
-            titleEn: 'Watcher channel updated',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `Le salon de **@${username}** est maintenant ${channel}.`, `The channel for **@${username}** is now ${channel}.`),
-            stateLines: freshWatcher ? buildTikTokWatcherStateLines(ctx.guildConfig, freshWatcher) : [],
-            nextLines: [`• ${commandPill(ctx.prefix, `tiktok test ${username}`)}`]
-          })] });
+          if (!found) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watcher', 'Watcher not found.')] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watcher', `Channel updated for **@${username}** → ${channel}`)] });
         }
         if (action === 'live' || action === 'video') {
           const username = String(ctx.args[1] || '').replace(/^@/, '');
@@ -6784,63 +6563,24 @@ function createCommands() {
             }
             return guild;
           });
-          if (!found) return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Watcher introuvable',
-            titleEn: 'Watcher not found',
-            tone: 'warning',
-            summary: uiText(ctx.guildConfig, `Aucun watcher trouvé pour **@${username}**.`, `No watcher found for **@${username}**.`),
-            nextLines: [`• ${commandPill(ctx.prefix, 'tiktok list')}`]
-          })] });
-          const freshWatcher = (ctx.store.getGuild(ctx.guild.id).tiktok?.watchers || []).find((entry) => entry.username.toLowerCase() === username.toLowerCase()) || null;
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: action === 'live' ? 'Annonces live mises à jour' : 'Annonces vidéo mises à jour',
-            titleEn: action === 'live' ? 'Live announcements updated' : 'Video announcements updated',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `Les annonces ${action === 'live' ? 'live' : 'vidéo'} pour **@${username}** sont maintenant **${state}**.`, `The ${action === 'live' ? 'live' : 'video'} announcements for **@${username}** are now **${state}**.`),
-            stateLines: freshWatcher ? buildTikTokWatcherStateLines(ctx.guildConfig, freshWatcher) : [],
-            nextLines: [`• ${commandPill(ctx.prefix, `tiktok test ${username}`)}`]
-          })] });
+          if (!found) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watcher', 'Watcher not found.')] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok watcher', `${action === 'live' ? 'Live' : 'Video'} announcements for **@${username}** are now **${state}**.`)] });
         }
         if (action === 'test') {
           const username = String(ctx.args[1] || '').replace(/^@/, '');
           if (!username) return ctx.invalidUsage(`Example: \`${ctx.prefix}tiktok test username\`.`);
           const status = await fetchTikTokStatus(username).catch((error) => ({ error: error.message }));
           const preferredUrl = status?.isLive ? (`https://www.tiktok.com/@${username}/live`) : (status?.latestVideoUrl || status?.finalUrl || `https://www.tiktok.com/@${username}`);
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Test watcher TikTok',
-            titleEn: 'TikTok watcher test',
-            tone: status.error ? 'warning' : 'success',
-            summary: status.error ? uiText(ctx.guildConfig, `Erreur détectée pour **@${username}** : **${status.error}**`, `Detected error for **@${username}**: **${status.error}**`) : uiText(ctx.guildConfig, `Test direct terminé pour **@${username}**.`, `Direct test finished for **@${username}**.`),
-            stateLines: [
-              metricLine(uiText(ctx.guildConfig, 'Compte', 'Account'), `**@${username}**`),
-              metricLine(uiText(ctx.guildConfig, 'Dernière vidéo', 'Latest video'), status.latestVideoId || uiText(ctx.guildConfig, 'aucune', 'none')),
-              metricLine(uiText(ctx.guildConfig, 'Live', 'Live'), status.error ? uiText(ctx.guildConfig, 'inconnu', 'unknown') : (status.isLive ? uiText(ctx.guildConfig, 'oui', 'yes') : uiText(ctx.guildConfig, 'non', 'no'))),
-              metricLine(uiText(ctx.guildConfig, 'Source', 'Source'), status.source || 'n/a')
-            ],
-            extraFields: [sectionField(uiText(ctx.guildConfig, '🔗 URL', '🔗 URL'), [preferredUrl], false)],
-            nextLines: [
-              `• ${commandPill(ctx.prefix, `tiktok role ${username} @Role`)}`,
-              `• ${commandPill(ctx.prefix, `tiktok channel ${username} here`)}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok test', status.error ? `Error: **${status.error}**` : `Account: **@${username}**
+Latest video: ${status.latestVideoId || 'none'}
+Live: ${status.isLive ? 'yes' : 'no'}
+Live room: ${status.liveRoomId || 'none'}
+Source: ${status.source || 'n/a'}
+URL: ${preferredUrl}`)] });
         }
         if (action === 'check') {
           await ctx.client.runTikTokCheck();
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Check TikTok terminé',
-            titleEn: 'TikTok check completed',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `Le check forcé TikTok est terminé pour **${watchers.length}** watcher(s).`, `Forced TikTok check completed for **${watchers.length}** watcher(s).`),
-            stateLines: watchers[0] ? buildTikTokWatcherStateLines(ctx.guildConfig, watchers[0]) : [],
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'tiktok list')}`,
-              `• ${commandPill(ctx.prefix, 'tiktok test username')}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok', `Forced watcher check complete for **${watchers.length}** watcher(s).`)] });
         }
         return ctx.invalidUsage(`Examples: \`${ctx.prefix}tiktok\`, \`${ctx.prefix}tiktok add username here\`, \`${ctx.prefix}tiktok role username @Ping\`, \`${ctx.prefix}tiktok test username\`.`);
       }
@@ -7974,35 +7714,22 @@ ${render('Bots only', buckets.bots)}`
       },
       async execute(ctx) {
         const rawAction = ctx.getText('action', 0);
-        const backups = getGlobalBackups(ctx.store);
         if (!ctx.interaction && !rawAction && !ctx.args.length) {
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'backup',
-            titleFr: 'Hub backup',
-            titleEn: 'Backup hub',
-            summary: [
-              uiText(ctx.guildConfig, 'Sauvegarde, export, import et restore serveur dans une vue simple.', 'Server save, export, import and restore in one simple view.'),
-              '',
-              uiText(ctx.guildConfig, `Backups stockés : **${backups.length}**`, `Stored backups: **${backups.length}**`)
-            ],
-            stateLines: backups[0] ? buildBackupStateLines(ctx.guildConfig, backups[0]) : [],
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'backup create')}`,
-              `• ${commandPill(ctx.prefix, 'backup list')}`,
-              `• ${commandPill(ctx.prefix, 'backup load latest')}`
-            ],
-            extraFields: [sectionField(uiText(ctx.guildConfig, '⚡ Exemples rapides', '⚡ Quick examples'), [
-              `• \`${ctx.prefix}backup create my-main\``,
-              `• \`${ctx.prefix}backup export latest\``,
-              `• \`${ctx.prefix}backup import imported-main\``
-            ], false)]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Backup hub', [
+            `Quick examples:`,
+            `• \`${ctx.prefix}backup create\``,
+            `• \`${ctx.prefix}backup create my-main\``,
+            `• \`${ctx.prefix}backup list\``,
+            `• \`${ctx.prefix}backup load latest\``,
+            `• \`${ctx.prefix}backup info <id>\``
+          ].join('\n'))] });
         }
         const action = String(rawAction || ctx.args[0] || 'list').toLowerCase();
         const rawId = String(ctx.getText('id', 1) || (!ctx.interaction ? (ctx.args[1] || '') : '')).trim();
         const nameArg = ctx.interaction
           ? String(ctx.interaction.options.getString('name') || '').trim()
           : String(['create', 'save', 'make'].includes(action) ? (ctx.getRest(1) || '') : (ctx.getRest(2) || '')).trim();
+        const backups = getGlobalBackups(ctx.store);
 
         if (['create', 'save', 'make'].includes(action)) {
           const { snapshot, meta } = buildGuildBackupSnapshot(ctx.guildConfig, ctx.guild);
@@ -8018,21 +7745,15 @@ ${render('Bots only', buckets.bots)}`
             meta
           };
           saveGlobalBackups(ctx.store, (items) => [entry, ...items.filter((item) => item.id !== entry.id)]);
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'backup',
-            titleFr: 'Backup créé',
-            titleEn: 'Backup created',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `Le serveur a été sauvegardé dans **${entry.name}**.`, `The server was saved as **${entry.name}**.`),
-            stateLines: buildBackupStateLines(ctx.guildConfig, entry).concat([
-              metricLine(uiText(ctx.guildConfig, 'Backups stockés', 'Stored backups'), `**${Math.min(backups.length + 1, 50)}**/50`)
-            ]),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'backup list')}`,
-              `• ${commandPill(ctx.prefix, `backup load ${id}`)}`,
-              `• ${commandPill(ctx.prefix, `backup export ${id}`)}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Backup created', [
+            `**ID:** \`${id}\``,
+            `**Name:** ${entry.name}`,
+            `**Source server:** **${ctx.guild.name}**`,
+            `**Stored backups:** **${Math.min(backups.length + 1, 50)}**/50`,
+            `**Structure:** ${meta.channels} channels • ${meta.roles} roles • ${meta.members} members`,
+            '',
+            `Use \`${ctx.prefix}backup list\` anywhere, then \`${ctx.prefix}backup load ${id}\` on another server.`
+          ].join('\n'))] });
         }
 
         if (action === 'import') {
@@ -8064,18 +7785,8 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
             }
           };
           saveGlobalBackups(ctx.store, (items) => [entry, ...items.filter((item) => item.id !== entry.id)]);
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'backup',
-            titleFr: 'Backup importé',
-            titleEn: 'Backup imported',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `**${entry.name}** a été importé comme backup global.`, `**${entry.name}** was imported as a global backup.`),
-            stateLines: buildBackupStateLines(ctx.guildConfig, entry),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, `backup load ${entry.id}`)}`,
-              `• ${commandPill(ctx.prefix, `backup info ${entry.id}`)}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Backup imported', `Imported **${entry.name}** as \`${entry.id}\`.
+You can now run \`${ctx.prefix}backup load ${entry.id}\` on any server where the bot has **Manage Server**.`)] });
         }
 
         if (['list', 'ls', 'view', 'show'].includes(action)) {
@@ -8084,100 +7795,48 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
 
         const found = resolveGlobalBackupEntry(backups, rawId || (['latest', 'last'].includes(action) ? 'latest' : ''));
         if (!found && !['create', 'save', 'make', 'import', 'list', 'ls', 'view', 'show'].includes(action)) {
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'backup',
-            titleFr: 'Backup introuvable',
-            titleEn: 'Backup not found',
-            tone: 'warning',
-            summary: uiText(ctx.guildConfig, `Aucun backup global trouvé pour \`${rawId || 'latest'}\`.`, `No global backup found for \`${rawId || 'latest'}\`.`),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'backup list')}`,
-              `• ${commandPill(ctx.prefix, 'backup create')}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Backup', `No global backup found with id or name \`${rawId || 'latest'}\`.`)] });
         }
 
         if (['latest', 'last', 'recent'].includes(action)) {
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'backup',
-            titleFr: 'Dernier backup',
-            titleEn: 'Latest backup',
-            summary: uiText(ctx.guildConfig, `Dernier backup global prêt à être chargé ici.`, `Latest global backup ready to be loaded here.`),
-            stateLines: buildBackupStateLines(ctx.guildConfig, found).concat([
-              metricLine(uiText(ctx.guildConfig, 'Créé', 'Created'), `<t:${Math.floor(new Date(found.createdAt).getTime() / 1000)}:F>`)
-            ]),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, `backup load ${found.id}`)}`,
-              `• ${commandPill(ctx.prefix, `backup export ${found.id}`)}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Latest backup', [
+            `**ID:** \`${found.id}\``,
+            `**Name:** ${found.name || 'Unnamed'}`,
+            `**Source server:** **${found.sourceGuildName || 'Unknown'}**`,
+            `**Created:** <t:${Math.floor(new Date(found.createdAt).getTime() / 1000)}:F>`,
+            `Use \`${ctx.prefix}backup load ${found.id}\` to restore it here.`
+          ].join('\n'))] });
         }
 
         if (['info', 'showone', 'inspect'].includes(action)) {
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'backup',
-            titleFr: 'Infos backup',
-            titleEn: 'Backup info',
-            summary: uiText(ctx.guildConfig, `Détails du backup **${found.name || found.id}**.`, `Details for backup **${found.name || found.id}**.`),
-            stateLines: buildBackupStateLines(ctx.guildConfig, found).concat([
-              metricLine(uiText(ctx.guildConfig, 'Créé', 'Created'), `<t:${Math.floor(new Date(found.createdAt).getTime() / 1000)}:F>`),
-              metricLine(uiText(ctx.guildConfig, 'Par', 'By'), found.createdBy ? `<@${found.createdBy}>` : uiText(ctx.guildConfig, 'inconnu', 'unknown')),
-              metricLine(uiText(ctx.guildConfig, 'Membres', 'Members'), `**${found.meta?.members || 0}**`)
-            ]),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, `backup export ${found.id}`)}`,
-              `• ${commandPill(ctx.prefix, `backup load ${found.id}`)}`,
-              `• ${commandPill(ctx.prefix, `backup delete ${found.id}`)}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Backup info', [
+            `**ID:** \`${found.id}\``,
+            `**Name:** ${found.name || 'Unnamed'}`,
+            `**Created:** <t:${Math.floor(new Date(found.createdAt).getTime() / 1000)}:F>`,
+            `**By:** <@${found.createdBy}>`,
+            `**Source server:** **${found.sourceGuildName || found.snapshot?.server?.name || 'unknown'}**`,
+            `**Salons at save:** ${found.meta?.channels || 0}`,
+            `**Roles at save:** ${found.meta?.roles || 0}`,
+            `**Members at save:** ${found.meta?.members || 0}`,
+            `**Backup version:** ${found.meta?.backupVersion || 1}`
+          ].join('\n'))] });
         }
 
         if (['export', 'download'].includes(action)) {
           const attachment = new AttachmentBuilder(Buffer.from(JSON.stringify(found, null, 2), 'utf8'), { name: `dvl-backup-${found.id}.json` });
           return ctx.reply({
-            embeds: [createModuleActionEmbed(ctx.guildConfig, {
-              moduleKey: 'backup',
-              titleFr: 'Backup exporté',
-              titleEn: 'Backup exported',
-              tone: 'success',
-              summary: uiText(ctx.guildConfig, `Le backup \`${found.id}\` a été exporté en JSON.`, `Backup \`${found.id}\` was exported as JSON.`),
-              stateLines: buildBackupStateLines(ctx.guildConfig, found),
-              nextLines: [
-                `• ${commandPill(ctx.prefix, `backup import ${found.name || 'imported-main'}`)}`,
-                `• ${commandPill(ctx.prefix, `backup load ${found.id}`)}`
-              ]
-            })],
+            embeds: [baseEmbed(ctx.guildConfig, '💾 Backup export', `Exported backup \`${found.id}\` as a JSON file.`)],
             files: [attachment]
           });
         }
 
         if (['delete', 'remove'].includes(action)) {
           saveGlobalBackups(ctx.store, (items) => items.filter((entry) => entry.id !== found.id));
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'backup',
-            titleFr: 'Backup supprimé',
-            titleEn: 'Backup deleted',
-            tone: 'success',
-            summary: uiText(ctx.guildConfig, `Le backup \`${found.id}\` a été supprimé.`, `Backup \`${found.id}\` was deleted.`),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'backup list')}`,
-              `• ${commandPill(ctx.prefix, 'backup create')}`
-            ]
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🗑️ Backup deleted', `Removed backup \`${found.id}\` (**${found.name || 'Unnamed'}**).`)] });
         }
 
         if (['restore', 'load', 'apply'].includes(action)) {
-          await ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'backup',
-            titleFr: 'Restore lancé',
-            titleEn: 'Restore started',
-            summary: uiText(ctx.guildConfig, 'Le restore propre du serveur démarre. Les salons et rôles existants seront remplacés quand possible.', 'A clean server restore is starting. Existing channels and roles will be replaced when possible.'),
-            stateLines: buildBackupStateLines(ctx.guildConfig, found),
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'setup check')}`,
-              `• ${commandPill(ctx.prefix, 'panel')}`
-            ]
-          })] });
+          await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '♻️ Backup restore started', 'Starting a clean restore. Old channels and roles will be replaced where possible. This can take a bit on bigger servers.')] });
           const { createdRoles, createdSalons } = await applyBackupStructure(ctx.guild, found.snapshot || {});
           const mappedSnapshot = remapSnapshotIds(found.snapshot || {}, createdRoles, createdSalons);
           ctx.store.updateGuild(ctx.guild.id, (guild) => {
@@ -9719,21 +9378,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           if (recent?.size) deleted = await ctx.channel.bulkDelete(recent, true).catch(() => null);
         }
 
-        const removed = deleted?.size || 0;
-        const sent = await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Salon nettoyé',
-          titleEn: 'Channel cleaned',
-          summary: `Deleted **${removed}** recent message(s) in ${ctx.channel}.`,
-          tone: removed ? 'success' : 'warning',
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            channel: ctx.channel,
-            moderator: ctx.user,
-            requestedAmount: amount,
-            affectedAmount: removed
-          }),
-          nextLines: [`• \`${ctx.prefix}purge @member 5\``, `• \`${ctx.prefix}slowmode 5\``],
-          footerText: 'DvL • channel cleanup'
-        })] });
+        const sent = await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧹 Clear', `Deleted **${deleted?.size || 0}** message(s).`)] });
         if (sent) setTimeout(() => sent.delete().catch(() => null), 10_000).unref?.();
       }
     }),
@@ -9763,16 +9408,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
 
         const fetched = await ctx.channel.messages.fetch({ limit: 100 }).catch(() => null);
         if (!fetched) {
-          const fail = await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-            titleFr: 'Lecture du salon impossible',
-            titleEn: 'Channel read failed',
-            summary: 'I could not read the recent messages in this channel.',
-            tone: 'error',
-            target,
-            stateLines: buildModerationStateLines(ctx.guildConfig, { channel: ctx.channel, moderator: ctx.user, target }),
-            nextLines: [`• \`${ctx.prefix}clear 20\``],
-            footerText: 'DvL • purge failed'
-          })] });
+          const fail = await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧹 Purge', 'I could not read the recent messages in this channel.')] });
           if (fail) setTimeout(() => fail.delete().catch(() => null), 10_000).unref?.();
           return;
         }
@@ -9785,23 +9421,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           ? await ctx.channel.bulkDelete(targets, true).catch(() => null)
           : null;
 
-        const removed = deleted?.size || 0;
-        const sent = await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Messages ciblés supprimés',
-          titleEn: 'Targeted purge complete',
-          summary: `Deleted **${removed}** message(s) from **${escapeMarkdown(target.user.tag)}** in ${ctx.channel}.`,
-          tone: removed ? 'success' : 'warning',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            target,
-            moderator: ctx.user,
-            channel: ctx.channel,
-            requestedAmount: amount,
-            affectedAmount: removed
-          }),
-          nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}clear 20\``],
-          footerText: 'DvL • targeted purge'
-        })] });
+        const sent = await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🧹 Purge', `Deleted **${deleted?.size || 0}** message(s) from **${escapeMarkdown(target.user.tag)}**.`)] });
         if (sent) setTimeout(() => sent.delete().catch(() => null), 10_000).unref?.();
       }
     }),
@@ -9818,15 +9438,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const seconds = Number(ctx.getText('seconds', 0));
         if (Number.isNaN(seconds)) return ctx.invalidUsage();
         await ctx.channel.setRateLimitPerUser(seconds).catch(() => null);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Slowmode mis à jour',
-          titleEn: 'Slowmode updated',
-          summary: `Slowmode updated in ${ctx.channel}.`,
-          tone: 'success',
-          stateLines: buildModerationStateLines(ctx.guildConfig, { channel: ctx.channel, moderator: ctx.user, slowmode: seconds }),
-          nextLines: [`• \`${ctx.prefix}lock\``, `• \`${ctx.prefix}clear 20\``],
-          footerText: 'DvL • slowmode'
-        })] });
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🐢 Slowmode', `Slowmode set to **${seconds}s**.`)] });
       }
     }),
     makeSimpleCommand({
@@ -9840,15 +9452,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       slash: { root: 'mod', sub: 'lock', description: 'Lock the current channel' },
       async execute(ctx) {
         await ctx.channel.permissionOverwrites.edit(ctx.guild.roles.everyone, { SendMessages: false }).catch(() => null);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Salon verrouillé',
-          titleEn: 'Channel locked',
-          summary: `${ctx.channel} is now locked.`,
-          tone: 'success',
-          stateLines: buildModerationStateLines(ctx.guildConfig, { channel: ctx.channel, moderator: ctx.user }),
-          nextLines: [`• \`${ctx.prefix}unlock\``, `• \`${ctx.prefix}slowmode 5\``],
-          footerText: 'DvL • channel locked'
-        })] });
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔒 Channel locked', `${ctx.channel} is now locked.`)] });
       }
     }),
     makeSimpleCommand({
@@ -9862,17 +9466,10 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       slash: { root: 'mod', sub: 'unlock', description: 'Unlock the current channel' },
       async execute(ctx) {
         await ctx.channel.permissionOverwrites.edit(ctx.guild.roles.everyone, { SendMessages: null }).catch(() => null);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Salon déverrouillé',
-          titleEn: 'Channel unlocked',
-          summary: `${ctx.channel} is now unlocked.`,
-          tone: 'success',
-          stateLines: buildModerationStateLines(ctx.guildConfig, { channel: ctx.channel, moderator: ctx.user }),
-          nextLines: [`• \`${ctx.prefix}slowmode 5\``, `• \`${ctx.prefix}clear 20\``],
-          footerText: 'DvL • channel unlocked'
-        })] });
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔓 Channel unlocked', `${ctx.channel} is now unlocked.`)] });
       }
     }),
+
     makeSimpleCommand({
       name: 'renew',
       aliases: ['nukechannel', 'clonechannel'],
@@ -9885,36 +9482,13 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       async execute(ctx) {
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'Channel renewed by DvL.') : (ctx.getRest(0) || 'Channel renewed by DvL.');
         if (!ctx.channel || ![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(ctx.channel.type)) {
-          return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-            titleFr: 'Renew impossible',
-            titleEn: 'Renew unavailable',
-            summary: 'This command only works in a text or announcement channel.',
-            tone: 'warning',
-            stateLines: buildModerationStateLines(ctx.guildConfig, { moderator: ctx.user }),
-            nextLines: [`• \`${ctx.prefix}moderation channel\``],
-            footerText: 'DvL • renew unavailable'
-          })] });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '♻️ Renew', 'This command only works in a text or announcement channel.')] });
         }
         const source = ctx.channel;
         const clone = await source.clone({ reason }).catch(() => null);
-        if (!clone) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Clone impossible',
-          titleEn: 'Clone failed',
-          summary: 'I could not clone this channel.',
-          tone: 'error',
-          stateLines: buildModerationStateLines(ctx.guildConfig, { channel: source, moderator: ctx.user, reason }),
-          footerText: 'DvL • renew failed'
-        })] });
+        if (!clone) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '♻️ Renew', 'I could not clone this channel.')] });
         await clone.setPosition(source.position).catch(() => null);
-        await clone.send({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Salon renouvelé',
-          titleEn: 'Channel renewed',
-          summary: `Channel renewed by ${ctx.user}.`,
-          tone: 'success',
-          stateLines: buildModerationStateLines(ctx.guildConfig, { channel: clone, moderator: ctx.user, reason }),
-          nextLines: [`• \`${ctx.prefix}slowmode 5\``, `• \`${ctx.prefix}lock\``],
-          footerText: 'DvL • channel renewed'
-        })] }).catch(() => null);
+        await clone.send({ embeds: [baseEmbed(ctx.guildConfig, '♻️ Channel renewed', `Channel renewed by ${ctx.user}.\nReason: **${reason}**`)] }).catch(() => null);
         await source.delete(reason).catch(() => null);
       }
     }),
@@ -9931,15 +9505,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const target = await ctx.getMember('target', 0);
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'No reason.') : ctx.args.slice(1).join(' ') || 'No reason.';
         if (!target) return ctx.invalidUsage();
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Warn refusé',
-          titleEn: 'Warn blocked',
-          summary: 'You cannot moderate that member.',
-          tone: 'warning',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, reason }),
-          footerText: 'DvL • warn blocked'
-        })] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⚠️ Warn', 'You cannot moderate that member.')] });
         let warningCount = 0;
         ctx.store.updateGuild(ctx.guild.id, (guild) => {
           guild.moderation.warnings[target.id] = guild.moderation.warnings[target.id] || [];
@@ -9965,22 +9531,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'Reason', value: reason.slice(0, 1024), inline: false }
         ];
         await sendDetailedModerationLog(ctx, '⚠️ Member warned', `${target} received a warning.`, target, commonFields);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Warn envoyé',
-          titleEn: 'Warning sent',
-          summary: `${target} received a warning.`,
-          tone: 'success',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            target,
-            moderator: ctx.user,
-            warningsNow: warningCount,
-            dmSent,
-            reason
-          }),
-          nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}timeout @member 10m raison\``],
-          footerText: 'DvL • warning sent'
-        })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '⚠️ Warning sent', `${target} received a warning.`, target, commonFields, { footerText: 'DvL • warning sent' })] });
       }
     }),
     makeSimpleCommand({
@@ -9998,38 +9549,31 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const list = ctx.guildConfig.moderation.warnings[target.id] || [];
         const latest = list[list.length - 1] || null;
         const recentLines = list.length
-          ? list.slice(-18).reverse().map((warn, index) => `**#${list.length - index}** • <@${warn.by}> • <t:${Math.floor(warn.at / 1000)}:R>\n${clipText(warn.reason, 220)}`)
+          ? list.slice(-18).reverse().map((warn, index) => `**#${list.length - index}** • <@${warn.by}> • <t:${Math.floor(warn.at / 1000)}:R>
+${clipText(warn.reason, 220)}`)
           : [];
-        const first = buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Historique des warns',
-          titleEn: 'Warning history',
-          summary: list.length ? `${target} currently has **${list.length}** stored warning(s).` : `${target} has no stored warnings.`,
+        const embeds = [buildMemberActionEmbed(
+          ctx.guildConfig,
+          '📒 Warning history',
+          `${target} warning overview.`,
           target,
-          tone: list.length ? 'info' : 'warning',
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            target,
-            warningsNow: list.length,
-            reason: latest?.reason || null
-          }),
-          nextLines: [`• \`${ctx.prefix}warn @member raison\``, `• \`${ctx.prefix}clearwarnings @member\``],
-          footerText: 'DvL • warning history'
-        });
-        const embeds = [first];
+          [
+            { name: 'Member', value: `${target}`, inline: true },
+            { name: 'User ID', value: `\`${target.id}\``, inline: true },
+            { name: 'Total warnings', value: String(list.length), inline: true },
+            { name: 'Latest reason', value: latest ? clipText(latest.reason, 180) : 'None', inline: false }
+          ],
+          { footerText: 'DvL • warning history' }
+        )];
         if (recentLines.length) {
           const chunks = chunkLines(recentLines, 4);
           chunks.forEach((chunk, index) => {
-            const embed = index === 0 ? first : buildModerationActionEmbed(ctx.guildConfig, {
-              titleFr: 'Historique des warns',
-              titleEn: 'Warning history',
-              summary: 'Continuation',
-              target,
-              footerText: 'DvL • warning history'
-            });
-            embed.addFields(sectionField(chunks.length > 1 ? `Recent warnings • page ${index + 1}/${chunks.length}` : 'Recent warnings', chunk, false));
+            const embed = index === 0 ? embeds[0] : buildMemberActionEmbed(ctx.guildConfig, '📒 Warning history', 'Continuation', target, [], { footerText: 'DvL • warning history' });
+            embed.addFields({ name: chunks.length > 1 ? `Recent warnings • page ${index + 1}/${chunks.length}` : 'Recent warnings', value: chunk.join('\n\n').slice(0, 1024), inline: false });
             if (index !== 0) embeds.push(embed);
           });
         } else {
-          first.addFields(sectionField('Recent warnings', 'No warnings.', false));
+          embeds[0].addFields({ name: 'Recent warnings', value: 'No warnings.', inline: false });
         }
         await ctx.reply({ embeds });
       }
@@ -10064,21 +9608,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
         ];
         await sendDetailedModerationLog(ctx, '🧽 Warnings cleared', `${target} had their warning history cleared.`, target, commonFields);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Warns nettoyés',
-          titleEn: 'Warnings cleared',
-          summary: `${target}'s warning history was cleared.`,
-          tone: 'success',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            target,
-            moderator: ctx.user,
-            clearedWarnings: clearedCount,
-            dmSent
-          }),
-          nextLines: [`• \`${ctx.prefix}warn @member raison\``, `• \`${ctx.prefix}timeout @member 10m raison\``],
-          footerText: 'DvL • warnings cleared'
-        })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🧽 Warnings cleared', `${target}'s warning history was cleared.`, target, commonFields, { footerText: 'DvL • warnings cleared' })] });
       }
     }),
     makeSimpleCommand({
@@ -10096,15 +9626,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'No reason.') : ctx.args.slice(2).join(' ') || 'No reason.';
         const duration = parseDuration(timeRaw);
         if (!target || !duration) return ctx.invalidUsage('Example: `+timeout @user 10m spam`');
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Timeout refusé',
-          titleEn: 'Timeout blocked',
-          summary: 'You cannot moderate that member.',
-          tone: 'warning',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, duration: formatDuration(duration), reason }),
-          footerText: 'DvL • timeout blocked'
-        })] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⏳ Timeout', 'You cannot moderate that member.')] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '⏳ Timeout',
@@ -10116,15 +9638,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             })
           : false;
         const ok = await target.timeout(duration, reason).then(() => true).catch(() => false);
-        if (!ok) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Timeout impossible',
-          titleEn: 'Timeout failed',
-          summary: 'I could not apply the timeout. Check my permissions and role position.',
-          tone: 'error',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, duration: formatDuration(duration), reason }),
-          footerText: 'DvL • timeout failed'
-        })] });
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⏳ Timeout', 'I could not apply the timeout. Check my permissions and role position.')] });
         const untilTs = Math.floor((Date.now() + duration) / 1000);
         const commonFields = [
           { name: 'Member', value: `${target}`, inline: true },
@@ -10136,23 +9650,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'Reason', value: reason.slice(0, 1024), inline: false }
         ];
         await sendDetailedModerationLog(ctx, '⏳ Member timed out', `${target} was timed out.`, target, commonFields);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Timeout appliqué',
-          titleEn: 'Timeout applied',
-          summary: `${target} was timed out.`,
-          tone: 'success',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            target,
-            moderator: ctx.user,
-            duration: formatDuration(duration),
-            until: `<t:${untilTs}:f>`,
-            dmSent,
-            reason
-          }),
-          nextLines: [`• \`${ctx.prefix}untimeout @member\``, `• \`${ctx.prefix}warnings @member\``],
-          footerText: 'DvL • timeout applied'
-        })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '⏳ Timeout applied', `${target} was timed out.`, target, commonFields, { footerText: 'DvL • timeout applied' })] });
       }
     }),
     makeSimpleCommand({
@@ -10167,25 +9665,9 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       async execute(ctx) {
         const target = await ctx.getMember('target', 0);
         if (!target) return ctx.invalidUsage();
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Retrait timeout refusé',
-          titleEn: 'Timeout removal blocked',
-          summary: 'You cannot moderate that member.',
-          tone: 'warning',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user }),
-          footerText: 'DvL • timeout removal blocked'
-        })] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✅ Timeout removed', 'You cannot moderate that member.')] });
         const ok = await target.timeout(null).then(() => true).catch(() => false);
-        if (!ok) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Retrait timeout impossible',
-          titleEn: 'Timeout removal failed',
-          summary: 'I could not remove the timeout. Check my permissions and role position.',
-          tone: 'error',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user }),
-          footerText: 'DvL • timeout removal failed'
-        })] });
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✅ Timeout removed', 'I could not remove the timeout. Check my permissions and role position.')] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '✅ Timeout removed',
@@ -10201,16 +9683,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
         ];
         await sendDetailedModerationLog(ctx, '✅ Timeout removed', `${target} is no longer timed out.`, target, commonFields);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Timeout retiré',
-          titleEn: 'Timeout removed',
-          summary: `${target} is no longer timed out.`,
-          tone: 'success',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, dmSent }),
-          nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}kick @member raison\``],
-          footerText: 'DvL • timeout removed'
-        })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '✅ Timeout removed', `${target} is no longer timed out.`, target, commonFields, { footerText: 'DvL • timeout removed' })] });
       }
     }),
     makeSimpleCommand({
@@ -10226,15 +9699,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const target = await ctx.getMember('target', 0);
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'No reason.') : ctx.args.slice(1).join(' ') || 'No reason.';
         if (!target) return ctx.invalidUsage();
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Kick refusé',
-          titleEn: 'Kick blocked',
-          summary: 'You cannot moderate that member.',
-          tone: 'warning',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, reason }),
-          footerText: 'DvL • kick blocked'
-        })] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👢 Kick', 'You cannot moderate that member.')] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '👢 Kick',
@@ -10252,26 +9717,9 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'Reason', value: reason.slice(0, 1024), inline: false }
         ];
         const ok = await target.kick(reason).then(() => true).catch(() => false);
-        if (!ok) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Kick impossible',
-          titleEn: 'Kick failed',
-          summary: 'I could not kick that member. Check my permissions and role position.',
-          tone: 'error',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, reason }),
-          footerText: 'DvL • kick failed'
-        })] });
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👢 Kick', 'I could not kick that member. Check my permissions and role position.')] });
         await sendDetailedModerationLog(ctx, '👢 Member kicked', `${target.user.tag} was kicked.`, target, commonFields);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Membre expulsé',
-          titleEn: 'Member kicked',
-          summary: `${target.user.tag} was kicked.`,
-          tone: 'success',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, dmSent, reason }),
-          nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}ban @member raison\``],
-          footerText: 'DvL • member kicked'
-        })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '👢 Member kicked', `${target.user.tag} was kicked.`, target, commonFields, { footerText: 'DvL • member kicked' })] });
       }
     }),
     makeSimpleCommand({
@@ -10289,15 +9737,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const maybeTime = ctx.interaction ? null : ctx.args[1];
         const duration = maybeTime ? parseDuration(maybeTime) : null;
         const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'No reason.') : ctx.args.slice(duration ? 2 : 1).join(' ') || 'No reason.';
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Ban refusé',
-          titleEn: 'Ban blocked',
-          summary: 'You cannot moderate that member.',
-          tone: 'warning',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, duration: duration ? formatDuration(duration) : null, reason }),
-          footerText: 'DvL • ban blocked'
-        })] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔨 Ban', 'You cannot moderate that member.')] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '🔨 Ban',
@@ -10317,33 +9757,10 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'Reason', value: reason.slice(0, 1024), inline: false }
         ].filter(Boolean);
         const ok = await target.ban({ reason }).then(() => true).catch(() => false);
-        if (!ok) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Ban impossible',
-          titleEn: 'Ban failed',
-          summary: 'I could not ban that member. Check my permissions and role position.',
-          tone: 'error',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, duration: duration ? formatDuration(duration) : null, reason }),
-          footerText: 'DvL • ban failed'
-        })] });
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔨 Ban', 'I could not ban that member. Check my permissions and role position.')] });
         if (duration) ctx.client.tempBans.set(`${ctx.guild.id}:${target.id}`, Date.now() + duration);
         await sendDetailedModerationLog(ctx, '🔨 Member banned', `${target.user.tag} was banned.`, target, commonFields);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Membre banni',
-          titleEn: 'Member banned',
-          summary: `${target.user.tag} was banned.`,
-          tone: 'success',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            target,
-            moderator: ctx.user,
-            duration: duration ? formatDuration(duration) : null,
-            dmSent,
-            reason
-          }),
-          nextLines: [`• \`${ctx.prefix}unban ${target.id}\``, `• \`${ctx.prefix}warnings @member\``],
-          footerText: 'DvL • member banned'
-        })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔨 Member banned', `${target.user.tag} was banned.`, target, commonFields, { footerText: 'DvL • member banned' })] });
       }
     }),
     makeSimpleCommand({
@@ -10360,15 +9777,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         if (!userId) return ctx.invalidUsage();
         const fetchedUser = await ctx.client.users.fetch(userId).catch(() => null);
         const ok = await ctx.guild.members.unban(userId).then(() => true).catch(() => false);
-        if (!ok) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Unban impossible',
-          titleEn: 'Unban failed',
-          summary: 'I could not unban that user. Check the ID and my permissions.',
-          tone: 'error',
-          target: fetchedUser || { id: userId, tag: fetchedUser?.tag || `User ${userId}`, displayAvatarURL: () => null },
-          stateLines: buildModerationStateLines(ctx.guildConfig, { moderator: ctx.user, extra: [metricLine(uiText(ctx.guildConfig, 'User ID', 'User ID'), `\`${userId}\``)] }),
-          footerText: 'DvL • unban failed'
-        })] });
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🕊️ Unban', 'I could not unban that user. Check the ID and my permissions.')] });
         const dmSent = fetchedUser && !fetchedUser.bot
           ? await fetchedUser.send({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🕊️ Unbanned', `You can join **${ctx.guild.name}** again.`, fetchedUser, [
               { name: 'Moderator', value: `${ctx.user}`, inline: true }
@@ -10382,20 +9791,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'DM', value: fetchedUser ? getDmStatusLabel(dmSent) : 'not available', inline: true }
         ];
         await sendDetailedModerationLog(ctx, '🕊️ User unbanned', `User ID \`${userId}\` was unbanned.`, userLike, commonFields);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Utilisateur débanni',
-          titleEn: 'User unbanned',
-          summary: `User ID \`${userId}\` was unbanned.`,
-          tone: 'success',
-          target: userLike,
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            moderator: ctx.user,
-            dmSent: fetchedUser ? dmSent : null,
-            extra: [metricLine(uiText(ctx.guildConfig, 'User ID', 'User ID'), `\`${userId}\``)]
-          }),
-          nextLines: [`• \`${ctx.prefix}ban @member raison\``, `• \`${ctx.prefix}moderation\``],
-          footerText: 'DvL • user unbanned'
-        })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🕊️ User unbanned', `User ID \`${userId}\` was unbanned.`, userLike, commonFields, { footerText: 'DvL • user unbanned' })] });
       }
     }),
     makeSimpleCommand({
@@ -10411,26 +9807,10 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const target = await ctx.getMember('target', 0);
         const nickname = ctx.interaction ? ctx.interaction.options.getString('nickname') : ctx.args.slice(1).join(' ');
         if (!target || !nickname) return ctx.invalidUsage();
-        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Pseudo refusé',
-          titleEn: 'Nickname blocked',
-          summary: 'You cannot moderate that member.',
-          tone: 'warning',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, after: nickname }),
-          footerText: 'DvL • nickname blocked'
-        })] });
+        if (!ctx.canActOn(target)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📝 Nickname', 'You cannot moderate that member.')] });
         const before = target.nickname || target.user.username;
         const ok = await target.setNickname(nickname).then(() => true).catch(() => false);
-        if (!ok) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Pseudo impossible',
-          titleEn: 'Nickname failed',
-          summary: 'I could not change that nickname. Check my permissions and role position.',
-          tone: 'error',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, before, after: nickname }),
-          footerText: 'DvL • nickname failed'
-        })] });
+        if (!ok) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📝 Nickname', 'I could not change that nickname. Check my permissions and role position.')] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '📝 Nickname changed',
@@ -10449,24 +9829,10 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'After', value: clipText(nickname, 120), inline: true }
         ];
         await sendDetailedModerationLog(ctx, '📝 Nickname changed', `${target} had their nickname updated.`, target, commonFields);
-        await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
-          titleFr: 'Pseudo mis à jour',
-          titleEn: 'Nickname updated',
-          summary: `${target} now uses **${nickname}**.`,
-          tone: 'success',
-          target,
-          stateLines: buildModerationStateLines(ctx.guildConfig, {
-            target,
-            moderator: ctx.user,
-            dmSent,
-            before,
-            after: nickname
-          }),
-          nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}nick @member NewName\``],
-          footerText: 'DvL • nickname updated'
-        })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '📝 Nickname updated', `${target} now uses **${nickname}**.`, target, commonFields, { footerText: 'DvL • nickname updated' })] });
       }
     }),
+
     makeSimpleCommand({
       name: 'trophy',
       aliases: ['progress', 'serverprogress', 'milestones', 'trophies'],

@@ -23,7 +23,7 @@ const {
 } = require('discord.js');
 
 const { Store } = require('./core/store');
-const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, createConfessionPanelEmbed, createConfessionPanelComponents, buildCustomizationPayload, getHelpTargetInfo, buildSafeConfigPanelPayload, normalizeConfigPanelPage } = require('./core/commands');
+const { createCommands, createHelpEmbed, createHelpComponents, createLogsPanelEmbed, createLogsPanelComponents, createVoicePanelEmbed, createVoicePanelComponents, createServerProgressEmbed, createServerProgressComponents, createDashboardEmbed, createDashboardComponents, createConfigPanelEmbed, createConfigPanelComponents, createSupportPanelEmbed, createSupportPanelComponents, createSupportPromptPayload, createConfessionPanelEmbed, createConfessionPanelComponents, buildCustomizationPayload, getHelpTargetInfo, buildSafeConfigPanelPayload, normalizeConfigPanelPage, quickExamplesForCommand } = require('./core/commands');
 const {
   ACTIVITY_TYPES,
   baseEmbed,
@@ -62,6 +62,381 @@ const SMART_TEXT_PRESETS = {
 };
 
 const TRANSIENT_SYSTEM_DELETE_MS = 10_000;
+
+const PREFIX_SHORTCUT_MAP = {
+  glist: 'giveaway list',
+  glatest: 'giveaway latest',
+  gstatus: 'giveaway status',
+  gview: 'giveaway view',
+  giveawaylist: 'giveaway list',
+  giveawaylatest: 'giveaway latest',
+  giveawaystatus: 'giveaway status',
+  giveawayview: 'giveaway view',
+  wconfig: 'welcomeconfig',
+  welcomecfg: 'welcomeconfig',
+  panelwelcome: 'configpanel welcome',
+  panelwelcomedm: 'configpanel welcome-dm',
+  panelleave: 'configpanel leave',
+  panelleavedm: 'configpanel leave-dm',
+  panelboost: 'configpanel boost',
+  paneltexts: 'configpanel texts',
+  panellogs: 'configpanel logs',
+  panelsupport: 'configpanel support',
+  panelsecurity: 'configpanel security',
+  panelautomation: 'configpanel automation',
+  panelstyle: 'configpanel style',
+  welcomepanel: 'configpanel welcome',
+  welcomedmpanel: 'configpanel welcome-dm',
+  leavepanel: 'configpanel leave',
+  leavedmpanel: 'configpanel leave-dm',
+  boostpanel: 'configpanel boost',
+  textspanel: 'configpanel texts',
+  supportpanel: 'support panel',
+  supportstatus: 'support status',
+  supportview: 'support view',
+  supportsetup: 'support setup',
+  supportrelay: 'support relay',
+  supportentry: 'support entry',
+  supportrole: 'support role',
+  supportpreview: 'support preview',
+  supportsend: 'support send',
+  supporttest: 'support test',
+  supportcheck: 'support check',
+  logspanel: 'logs panel',
+  logsstatus: 'logs status',
+  logsview: 'logs view',
+  logsguide: 'logs guide',
+  logssetup: 'logs setup',
+  logsquicksetup: 'logs quicksetup',
+  logstypes: 'logs types',
+  logstest: 'logs test',
+  logsdefault: 'logs default',
+  logsglobal: 'logs global',
+  logson: 'logs on',
+  logsoff: 'logs off',
+  rolesview: 'roles view',
+  rolesuser: 'roles user',
+  rolesadd: 'roles add',
+  rolesremove: 'roles remove',
+  rolesmass: 'roles mass',
+  rolesall: 'roles all',
+  rolespanels: 'roles panels',
+  rolesstatus: 'roles statusrole',
+  rolesstatusrole: 'roles statusrole',
+  rolesautorole: 'roles autorole',
+  roleuser: 'roles user',
+  roleadd: 'roles add',
+  roleremove: 'roles remove',
+  rolemass: 'roles mass',
+  rolepanels: 'roles panels',
+  rolestatus: 'roles statusrole',
+  autoroleview: 'autorole view',
+  setupcheck: 'setup check',
+  setupready: 'setup ready',
+  setuptexts: 'setup texts',
+  setuplogs: 'setup logs',
+  setupsupport: 'setup support',
+  setuproles: 'setup roles',
+  setupvoice: 'setup voice',
+  setupsecurity: 'setup security',
+  setupautomation: 'setup automation',
+  dashboardlogs: 'dashboard logs',
+  dashboardsetup: 'dashboard setup',
+  dashboardtools: 'dashboard tools',
+  dashboardvoice: 'dashboard voice',
+  dashboardsecurity: 'dashboard security',
+  trackingstats: 'tracking stats',
+  trackinginvites: 'tracking invites',
+  trackingleaderboard: 'tracking leaderboard',
+  trackinglb: 'tracking leaderboard',
+  trackingrefresh: 'tracking refresh',
+  voiceview: 'voice view',
+  voicepanel: 'voice panel',
+  voicecreate: 'voice create',
+  voicehubcreate: 'voice create',
+  voicemuterole: 'voice muterole',
+  voicebanrole: 'voice banrole',
+  voiceperms: 'voice perms',
+  securityview: 'security view',
+  securitypreset: 'security preset',
+  securityghostping: 'security ghostping',
+  securitycheck: 'security check',
+  customtexts: 'custom texts',
+  customsupport: 'custom support',
+  customconfessions: 'custom confessions',
+  customstyle: 'custom style',
+  customstatus: 'custom status',
+  custombot: 'custom bot',
+  customembed: 'custom embed',
+  backupcreate: 'backup create',
+  backuplist: 'backup list',
+  backuplatest: 'backup latest',
+  backupinfo: 'backup info',
+  backupload: 'backup load',
+  backupexport: 'backup export',
+  backupdelete: 'backup delete',
+  backupimport: 'backup import',
+  tiktoklist: 'tiktok list',
+  tiktokadd: 'tiktok add',
+  tiktokremove: 'tiktok remove',
+  tiktokrole: 'tiktok role',
+  tiktokchannel: 'tiktok channel',
+  tiktoklive: 'tiktok live',
+  tiktokvideo: 'tiktok video',
+  tiktoktest: 'tiktok test',
+  tiktokcheck: 'tiktok check',
+  systemdashboard: 'system dashboard',
+  systempanel: 'system panel',
+  systemmodules: 'system modules',
+  systembackup: 'system backup',
+  systemcheck: 'system check',
+  textsvars: 'texts vars',
+  textsexamples: 'texts examples',
+  textswelcome: 'texts welcome',
+  textsleave: 'texts leave',
+  textsboost: 'texts boost',
+  moderationwarn: 'warn',
+  moderationtimeout: 'timeout',
+  moderationban: 'ban',
+  moderationkick: 'kick',
+  moderationclear: 'clear'
+};
+
+const FAMILY_SHORTCUT_MAP = {
+  support: {
+    view: 'view', status: 'status', panel: 'panel', setup: 'setup', relay: 'relay', entry: 'entry', role: 'role', preview: 'preview', send: 'send', test: 'test', check: 'check'
+  },
+  logs: {
+    view: 'view', status: 'status', panel: 'panel', guide: 'guide', start: 'guide', setup: 'setup', quicksetup: 'quicksetup', types: 'types', test: 'test', default: 'default', global: 'global', on: 'on', off: 'off',
+    messages: 'messages', members: 'members', moderation: 'moderation', voice: 'voice', server: 'server', social: 'social', join: 'join', leave: 'leave', boost: 'boost', ghostping: 'ghostping'
+  },
+  roles: {
+    view: 'view', list: 'view', user: 'user', member: 'user', add: 'add', remove: 'remove', mass: 'mass', all: 'all', panel: 'panels', panels: 'panels', status: 'statusrole', statusrole: 'statusrole', autorole: 'autorole'
+  },
+  giveaway: {
+    view: 'view', status: 'status', list: 'list', latest: 'latest'
+  },
+  setup: {
+    check: 'check', ready: 'ready', texts: 'texts', logs: 'logs', support: 'support', roles: 'roles', voice: 'voice', security: 'security', automation: 'automation'
+  },
+  dashboard: {
+    home: 'home', setup: 'setup', logs: 'logs', voice: 'voice', security: 'security', automation: 'automation', progress: 'progress', tools: 'tools'
+  },
+  configpanel: {
+    texts: 'texts', welcome: 'welcome', welcomedm: 'welcome-dm', leave: 'leave', leavedm: 'leave-dm', boost: 'boost', logs: 'logs', support: 'support', security: 'security', automation: 'automation', style: 'style'
+  },
+  tracking: {
+    view: 'view', stats: 'stats', invites: 'invites', leaderboard: 'leaderboard', lb: 'leaderboard', refresh: 'refresh'
+  },
+  voice: {
+    view: 'view', panel: 'panel', create: 'create', muterole: 'muterole', banrole: 'banrole', perms: 'perms'
+  },
+  security: {
+    view: 'view', preset: 'preset', ghostping: 'ghostping', check: 'check'
+  },
+  custom: {
+    view: 'home', texts: 'texts', support: 'support', confessions: 'confessions', style: 'style', status: 'status', bot: 'bot', embed: 'embed'
+  },
+  backup: {
+    create: 'create', list: 'list', latest: 'latest', info: 'info', load: 'load', restore: 'load', export: 'export', delete: 'delete', import: 'import'
+  },
+  texts: {
+    view: 'view', welcome: 'welcome', welcomedm: 'welcome', leave: 'leave', leavedm: 'leave', boost: 'boost', vars: 'vars', examples: 'examples'
+  },
+  system: {
+    view: 'view', dashboard: 'dashboard', panel: 'panel', modules: 'modules', backup: 'backup', check: 'check'
+  },
+  tiktok: {
+    view: 'view', list: 'list', add: 'add', remove: 'remove', role: 'role', channel: 'channel', live: 'live', video: 'video', test: 'test', check: 'check'
+  }
+};
+
+function normalizeCommandKey(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function createNormalizedValueMap(input = {}) {
+  const map = new Map();
+  for (const [rawKey, rawValue] of Object.entries(input || {})) {
+    const key = normalizeCommandKey(rawKey);
+    if (key && !map.has(key)) map.set(key, rawValue);
+  }
+  return map;
+}
+
+const NORMALIZED_PREFIX_SHORTCUT_MAP = createNormalizedValueMap(PREFIX_SHORTCUT_MAP);
+
+function resolvePrefixShortcut(rawName) {
+  const direct = PREFIX_SHORTCUT_MAP[rawName] || null;
+  if (direct) return direct;
+  const normalizedName = normalizeCommandKey(rawName);
+  if (!normalizedName) return null;
+  const normalizedDirect = NORMALIZED_PREFIX_SHORTCUT_MAP.get(normalizedName) || null;
+  if (normalizedDirect) return normalizedDirect;
+  for (const [root, definitions] of Object.entries(FAMILY_SHORTCUT_MAP)) {
+    const rootKey = normalizeCommandKey(root);
+    if (!normalizedName.startsWith(rootKey) || normalizedName === rootKey) continue;
+    const remainder = normalizedName.slice(rootKey.length);
+    const target = definitions[remainder] || null;
+    if (target) return `${root} ${target}`;
+  }
+  return null;
+}
+
+function buildVirtualShortcutEntries(prefix) {
+  const entries = [];
+  const seen = new Set();
+  const pushEntry = (shortcut, target) => {
+    const key = `${shortcut}=>${target}`;
+    if (!shortcut || !target || seen.has(key)) return;
+    seen.add(key);
+    entries.push({
+      shortcut,
+      usage: target,
+      example: `${prefix}${shortcut}`
+    });
+  };
+  for (const [shortcut, target] of Object.entries(PREFIX_SHORTCUT_MAP)) pushEntry(shortcut, target);
+  for (const [root, definitions] of Object.entries(FAMILY_SHORTCUT_MAP)) {
+    for (const [shortcut, target] of Object.entries(definitions || {})) pushEntry(`${root}${shortcut}`, `${root} ${target}`);
+  }
+  return entries;
+}
+
+function createPrefixedMessageProxy(message, nextContent) {
+  const proxy = Object.create(message);
+  proxy.content = nextContent;
+  return proxy;
+}
+
+function levenshteinDistance(a = '', b = '') {
+  const left = String(a || '');
+  const right = String(b || '');
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
+  const prev = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let i = 0; i < left.length; i += 1) {
+    let diagonal = prev[0];
+    prev[0] = i + 1;
+    for (let j = 0; j < right.length; j += 1) {
+      const saved = prev[j + 1];
+      const cost = left[i] === right[j] ? 0 : 1;
+      prev[j + 1] = Math.min(prev[j + 1] + 1, prev[j] + 1, diagonal + cost);
+      diagonal = saved;
+    }
+  }
+  return prev[right.length];
+}
+
+function scoreCommandGuess(input, candidate) {
+  const query = String(input || '').toLowerCase();
+  const raw = String(candidate || '').toLowerCase();
+  if (!query || !raw) return Number.POSITIVE_INFINITY;
+  if (query === raw) return 0;
+  if (raw.startsWith(query) || query.startsWith(raw)) return Math.abs(raw.length - query.length) + 0.25;
+  if (raw.includes(query) || query.includes(raw)) return Math.abs(raw.length - query.length) + 0.5;
+  return levenshteinDistance(query, raw);
+}
+
+function resolveRegisteredPrefixCommand(rawName) {
+  const input = String(rawName || '').trim().toLowerCase();
+  if (!input) return null;
+  return client.commandNameMap.get(input)
+    || client.commandAliasMap.get(input)
+    || client.commandNormalizedMap.get(normalizeCommandKey(input))
+    || null;
+}
+
+function resolvePrefixCommand(rawName) {
+  const direct = resolveRegisteredPrefixCommand(rawName);
+  if (direct) return { command: direct, rewrite: null };
+  const shortcut = resolvePrefixShortcut(rawName);
+  if (!shortcut) return { command: null, rewrite: null };
+  const nextName = String(shortcut).trim().split(/\s+/)[0]?.toLowerCase() || '';
+  const command = resolveRegisteredPrefixCommand(nextName);
+  return command ? { command, rewrite: shortcut } : { command: null, rewrite: null };
+}
+
+function getPrefixCommandSuggestions(rawName, prefix, limit = 4) {
+  const query = String(rawName || '').trim().toLowerCase();
+  if (!query) return [];
+  const normalizedQuery = normalizeCommandKey(query);
+  const scored = [];
+  const seen = new Set();
+  const thresholdFor = (value) => Math.max(2, Math.ceil(Math.min(query.length, String(value || '').length) / 3));
+
+  for (const command of client.commandRegistry) {
+    const entries = [command.name, ...(command.aliases || [])].filter(Boolean);
+    let best = Number.POSITIVE_INFINITY;
+    for (const entry of entries) {
+      best = Math.min(best, scoreCommandGuess(query, entry), scoreCommandGuess(normalizedQuery, normalizeCommandKey(entry)));
+    }
+    if (best <= thresholdFor(command.name) && !seen.has(command.name)) {
+      seen.add(command.name);
+      scored.push({
+        key: command.name,
+        score: best,
+        usage: command.usage || command.name,
+        example: quickExamplesForCommand(command, prefix).slice(0, 1)[0] || `${prefix}${command.name}`
+      });
+    }
+  }
+
+  for (const entry of buildVirtualShortcutEntries(prefix)) {
+    const best = Math.min(
+      scoreCommandGuess(query, entry.shortcut),
+      scoreCommandGuess(normalizedQuery, normalizeCommandKey(entry.shortcut)),
+      scoreCommandGuess(query, entry.usage.replace(/\s+/g, '')),
+      scoreCommandGuess(normalizedQuery, normalizeCommandKey(entry.usage))
+    );
+    if (best <= thresholdFor(entry.shortcut)) {
+      const key = `virtual:${entry.shortcut}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        scored.push({ key, score: best, usage: entry.usage, example: entry.example });
+      }
+    }
+  }
+
+  return scored
+    .sort((a, b) => a.score - b.score || a.usage.localeCompare(b.usage))
+    .slice(0, limit)
+    .map(({ usage, example }) => ({
+      name: usage.split(/\s+/)[0],
+      usage,
+      example
+    }));
+}
+
+async function replyUnknownPrefixCommand(message, prefix, rawName) {
+  if (!message?.channel?.isTextBased?.()) return false;
+  const guildConfig = message.guild ? getGuildConfig(message.guild.id) : { prefix };
+  const suggestions = getPrefixCommandSuggestions(rawName, prefix, 4);
+  const lines = suggestions.length
+    ? suggestions.map((entry) => `• \`${prefix}${entry.usage}\`${entry.example ? ` — ex: \`${entry.example}\`` : ''}`).join('\n')
+    : [
+        `• \`${prefix}help\``,
+        `• \`${prefix}find ${rawName}\``,
+        `• \`${prefix}dashboard\``
+      ].join('\n');
+  const embed = baseEmbed(
+    guildConfig,
+    uiLangText(guildConfig, '🤔 Commande introuvable', '🤔 Command not found'),
+    uiLangText(
+      guildConfig,
+      `Je ne trouve pas \`${prefix}${rawName}\`. Essaie plutôt :\n\n${lines}`,
+      `I could not find \`${prefix}${rawName}\`. Try one of these instead:\n\n${lines}`
+    )
+  );
+  const sent = await message.channel.send({ embeds: [embed] }).catch(() => null);
+  if (sent) scheduleMessageDelete(sent, TRANSIENT_SYSTEM_DELETE_MS);
+  return Boolean(sent);
+}
 
 function scheduleMessageDelete(message, delay = TRANSIENT_SYSTEM_DELETE_MS) {
   if (!message || typeof message.delete !== 'function' || !Number.isFinite(delay) || delay <= 0) return;
@@ -102,11 +477,27 @@ client.meta = {
 client.store = new Store();
 client.store.init();
 client.commandRegistry = createCommands();
+client.commandNameMap = new Map();
+client.commandAliasMap = new Map();
+client.commandNormalizedMap = new Map();
 client.commandMap = new Map();
 client.commandRegistry.forEach((command) => {
-  client.commandMap.set(command.name, command);
-  for (const alias of command.aliases || []) client.commandMap.set(alias, command);
+  const commandName = String(command.name || '').toLowerCase();
+  if (!commandName) return;
+  client.commandNameMap.set(commandName, command);
+  client.commandMap.set(commandName, command);
+  const normalizedName = normalizeCommandKey(commandName);
+  if (normalizedName && !client.commandNormalizedMap.has(normalizedName)) client.commandNormalizedMap.set(normalizedName, command);
+  for (const alias of command.aliases || []) {
+    const aliasName = String(alias || '').toLowerCase();
+    if (!aliasName) continue;
+    if (!client.commandAliasMap.has(aliasName) && !client.commandNameMap.has(aliasName)) client.commandAliasMap.set(aliasName, command);
+    if (!client.commandMap.has(aliasName)) client.commandMap.set(aliasName, command);
+    const normalizedAlias = normalizeCommandKey(aliasName);
+    if (normalizedAlias && !client.commandNormalizedMap.has(normalizedAlias)) client.commandNormalizedMap.set(normalizedAlias, command);
+  }
 });
+client.virtualPrefixEntries = buildVirtualShortcutEntries(DEFAULT_PREFIX);
 client.embedDrafts = new Map();
 client.snipeCache = new Map();
 client.tempBans = new Map();
@@ -134,6 +525,129 @@ function uiLangText(guildConfig, fr, en) {
 
 function interactionUi(interaction, fr, en) {
   return uiLangText(interaction?.guild ? getGuildConfig(interaction.guild.id) : null, fr, en);
+}
+
+function isClearKeyword(raw = '') {
+  const value = String(raw || '').trim().toLowerCase();
+  return ['clear', 'none', 'null', 'reset', 'remove', 'delete', 'off', 'vide', 'aucun', 'aucune', 'supprimer', 'retirer', '-'].includes(value);
+}
+
+function isValidHttpUrl(raw = '') {
+  return /^https?:\/\/\S+$/i.test(String(raw || '').trim());
+}
+
+function normalizeOptionalModalValue(raw, options = {}) {
+  const guildConfig = options.guildConfig || null;
+  const field = String(options.field || 'text').toLowerCase();
+  const value = String(raw ?? '').trim();
+  if (!value || isClearKeyword(value)) return { ok: true, value: null, cleared: true };
+  if (field === 'color') {
+    const normalized = String(value).startsWith('#') ? String(value) : `#${value}`;
+    if (!/^#[0-9a-f]{6}$/i.test(normalized)) {
+      return { ok: false, error: uiLangText(guildConfig, 'Couleur invalide. Utilise un format `#RRGGBB` ou laisse vide pour retirer.', 'Invalid color. Use `#RRGGBB` or leave it blank to clear it.') };
+    }
+    return { ok: true, value: normalized, cleared: false };
+  }
+  if (field === 'image' || field === 'thumbnail') {
+    if (!isValidHttpUrl(value)) {
+      return { ok: false, error: uiLangText(guildConfig, 'URL invalide. Utilise un lien `https://...` ou laisse vide pour retirer.', 'Invalid URL. Use a `https://...` link or leave it blank to clear it.') };
+    }
+    return { ok: true, value, cleared: false };
+  }
+  return { ok: true, value, cleared: false };
+}
+
+function formatFieldPreview(value, field, guildConfig = null) {
+  if (!value) return uiLangText(guildConfig, 'retiré', 'cleared');
+  if (field === 'color') return `\`${value}\``;
+  const compact = String(value).replace(/\s+/g, ' ').trim();
+  return compact.length > 110 ? `${compact.slice(0, 107)}...` : compact;
+}
+
+function createSingleFieldModal(guildConfig, customId, options = {}) {
+  const title = String(options.title || uiLangText(guildConfig, 'Modifier le champ', 'Edit field')).slice(0, 45);
+  const label = String(options.label || uiLangText(guildConfig, 'Valeur', 'Value')).slice(0, 45);
+  const value = String(options.value || '').slice(0, options.maxLength || 4000);
+  const input = new TextInputBuilder()
+    .setCustomId('value')
+    .setLabel(label)
+    .setStyle(options.style || TextInputStyle.Short)
+    .setRequired(Boolean(options.required))
+    .setMaxLength(options.maxLength || 400)
+    .setValue(value);
+  if (options.placeholder) input.setPlaceholder(String(options.placeholder).slice(0, 100));
+  const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
+  modal.addComponents(new ActionRowBuilder().addComponents(input));
+  return modal;
+}
+
+function createFieldSavedEmbed(guildConfig, title, options = {}) {
+  const lines = [];
+  if (options.scope) lines.push(`**${uiLangText(guildConfig, 'Module', 'Module')}:** ${options.scope}`);
+  if (options.label) lines.push(`**${uiLangText(guildConfig, 'Champ', 'Field')}:** ${options.label}`);
+  lines.push(`**${uiLangText(guildConfig, options.cleared ? 'Action' : 'Valeur', options.cleared ? 'Action' : 'Value')}:** ${options.cleared ? uiLangText(guildConfig, 'retiré', 'cleared') : formatFieldPreview(options.value, options.field, guildConfig)}`);
+  if (options.note) lines.push(`**${uiLangText(guildConfig, 'Note', 'Note')}:** ${options.note}`);
+  if (Array.isArray(options.next) && options.next.length) {
+    lines.push('');
+    lines.push(`**${uiLangText(guildConfig, 'Suite', 'Next')}:** ${options.next.join(' • ')}`);
+  }
+  return baseEmbed(guildConfig, title, lines.join('\n'));
+}
+
+function parseFieldUi(moduleLabel, field, guildConfig = null) {
+  const safeField = ['title', 'message', 'footer', 'color', 'image', 'thumbnail', 'description', 'author', 'copy'].includes(field) ? field : 'message';
+  const labels = {
+    title: uiLangText(guildConfig, `${moduleLabel} • titre`, `${moduleLabel} • title`),
+    message: uiLangText(guildConfig, `${moduleLabel} • message`, `${moduleLabel} • message`),
+    description: uiLangText(guildConfig, `${moduleLabel} • texte`, `${moduleLabel} • text`),
+    footer: uiLangText(guildConfig, `${moduleLabel} • footer`, `${moduleLabel} • footer`),
+    color: uiLangText(guildConfig, `${moduleLabel} • couleur`, `${moduleLabel} • color`),
+    image: uiLangText(guildConfig, `${moduleLabel} • image`, `${moduleLabel} • image`),
+    thumbnail: uiLangText(guildConfig, `${moduleLabel} • miniature`, `${moduleLabel} • thumbnail`),
+    author: uiLangText(guildConfig, `${moduleLabel} • auteur`, `${moduleLabel} • author`),
+    copy: uiLangText(guildConfig, 'Copier un embed', 'Copy an embed')
+  };
+  const placeholders = {
+    title: uiLangText(guildConfig, 'Ex: 👋 Bienvenue sur {server}', 'Example: 👋 Welcome to {server}'),
+    message: uiLangText(guildConfig, 'Tu peux utiliser {user}, {server}, {memberCount}...', 'You can use {user}, {server}, {memberCount}...'),
+    description: uiLangText(guildConfig, 'Texte principal de l’embed', 'Main embed text'),
+    footer: uiLangText(guildConfig, 'DvL • tape clear pour retirer', 'DvL • type clear to remove'),
+    color: uiLangText(guildConfig, '#5865F2 • tape clear pour retirer', '#5865F2 • type clear to remove'),
+    image: uiLangText(guildConfig, 'https://... • tape clear pour retirer', 'https://... • type clear to remove'),
+    thumbnail: uiLangText(guildConfig, 'https://... • tape clear pour retirer', 'https://... • type clear to remove'),
+    author: uiLangText(guildConfig, 'Nom affiché en haut de l’embed', 'Name shown at the top of the embed'),
+    copy: uiLangText(guildConfig, 'ID du message ou lien Discord complet', 'Message ID or full Discord link')
+  };
+  return {
+    field: safeField,
+    label: labels[safeField] || moduleLabel,
+    placeholder: placeholders[safeField] || uiLangText(guildConfig, 'Valeur', 'Value'),
+    style: ['message', 'description'].includes(safeField) ? TextInputStyle.Paragraph : TextInputStyle.Short,
+    maxLength: ['message', 'description'].includes(safeField) ? 2000 : 400
+  };
+}
+
+function parseEmbedFieldUi(field, guildConfig = null) {
+  const ui = parseFieldUi(uiLangText(guildConfig, 'Embed', 'Embed'), field, guildConfig);
+  if (field === 'copy') {
+    ui.style = TextInputStyle.Short;
+    ui.maxLength = 200;
+  }
+  return ui;
+}
+
+function parseTextModuleUi(moduleKey, guildConfig = null) {
+  const meta = getPanelTextMeta(moduleKey);
+  return { meta, scope: uiLangText(guildConfig, meta.label, meta.label) };
+}
+
+function parseSupportPreset(config, presetKey) {
+  const preset = SMART_TEXT_PRESETS[presetKey] || SMART_TEXT_PRESETS.clean;
+  return {
+    key: presetKey,
+    preset,
+    label: presetKey === 'premium' ? 'Premium' : presetKey === 'minimal' ? 'Minimal' : 'Clean'
+  };
 }
 
 function parseEmbedSourceInput(raw, fallbackChannelId = null) {
@@ -718,31 +1232,50 @@ async function handleSupportPanelInteraction(interaction) {
     return refreshPanel();
   }
 
+  if (action === 'vars') {
+    return interaction.reply({
+      embeds: [baseEmbed(config, uiLangText(config, '🧩 Variables support', '🧩 Support variables'), [
+        '`{server}` → server name',
+        '`{prefix}` → current bot prefix',
+        '`{supportChannel}` → configured member support channel'
+      ].join('\n'))],
+      ephemeral: true
+    }).catch(() => null);
+  }
+
+  if (action === 'preset') {
+    const { preset, label } = parseSupportPreset(config, ['clean', 'premium', 'minimal'].includes(field) ? field : 'clean');
+    client.store.updateGuild(interaction.guild.id, (guild) => updateSupportPrompt(guild, (support) => {
+      support.promptMode = preset.mode;
+      const fallbackTitle = DEFAULT_GUILD.support?.promptTitle || support.promptTitle || null;
+      support.promptTitle = preset.title !== undefined
+        ? preset.title
+        : (preset.titlePrefix
+            ? `${preset.titlePrefix}${String(support.promptTitle || fallbackTitle || '').replace(/^✦\s*/, '')}`.trim()
+            : (support.promptTitle || fallbackTitle || null));
+      support.promptFooter = preset.footer;
+      support.promptColor = preset.color;
+      support.promptImageUrl = preset.image;
+    }));
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '✨ Prompt support', '✨ Support prompt'), uiLangText(getGuildConfig(interaction.guild.id), `Preset **${label}** appliqué au prompt support.`, `Preset **${label}** applied to the support prompt.`));
+    return refreshPanel();
+  }
+
   if (action === 'edit') {
     const safeField = ['title', 'message', 'footer', 'color', 'image'].includes(field) ? field : 'message';
     const source = config.support || {};
     const keyMap = { title: 'promptTitle', message: 'promptMessage', footer: 'promptFooter', color: 'promptColor', image: 'promptImageUrl' };
-    const labelMap = {
-      title: uiLangText(config, 'Titre du prompt support', 'Support prompt title'),
-      message: uiLangText(config, 'Message du prompt support', 'Support prompt message'),
-      footer: uiLangText(config, 'Footer du prompt support', 'Support prompt footer'),
-      color: uiLangText(config, 'Couleur du prompt support (#RRGGBB)', 'Support prompt color (#RRGGBB)'),
-      image: uiLangText(config, 'Image du prompt support (URL)', 'Support prompt image URL')
-    };
-    const value = String(source?.[keyMap[safeField]] || '').slice(0, 4000);
-    const modal = new ModalBuilder().setCustomId(`supportpanelmodal:${safeField}`).setTitle(uiLangText(config, `Modifier ${labelMap[safeField]}`, `Edit ${labelMap[safeField]}`).slice(0, 45));
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('value')
-          .setLabel(labelMap[safeField])
-          .setStyle(safeField === 'message' ? TextInputStyle.Paragraph : TextInputStyle.Short)
-          .setRequired(false)
-          .setMaxLength(safeField === 'message' ? 2000 : 400)
-          .setValue(value)
-      )
-    );
-    return interaction.showModal(modal);
+    const ui = parseFieldUi(uiLangText(config, 'Prompt support', 'Support prompt'), safeField, config);
+    const value = String(source?.[keyMap[safeField]] || '').slice(0, ui.maxLength || 4000);
+    return interaction.showModal(createSingleFieldModal(config, `supportpanelmodal:${safeField}`, {
+      title: uiLangText(config, `Modifier ${ui.label}`, `Edit ${ui.label}`),
+      label: ui.label,
+      value,
+      placeholder: ui.placeholder,
+      style: ui.style,
+      maxLength: ui.maxLength,
+      required: false
+    }));
   }
 
   return interaction.reply({ content: 'Invalid support panel action.', ephemeral: true }).catch(() => null);
@@ -851,27 +1384,17 @@ async function handleConfigPanelInteraction(interaction) {
         image: meta.imageKey
       };
       const targetKey = keyMap[field] || meta.messageKey;
-      const value = String(source?.[targetKey] || '').slice(0, 4000);
-      const labelMap = {
-        title: `${meta.label} title`,
-        message: `${meta.label} message`,
-        footer: `${meta.label} footer`,
-        color: `${meta.label} color (#RRGGBB)`,
-        image: `${meta.label} image URL`
-      };
-      const modal = new ModalBuilder().setCustomId(`cfgpanelmodal:${moduleKey}:${field}`).setTitle(`Edit ${labelMap[field] || field}`.slice(0, 45));
-      modal.addComponents(
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('value')
-            .setLabel(labelMap[field] || field)
-            .setStyle(field === 'message' ? TextInputStyle.Paragraph : TextInputStyle.Short)
-            .setRequired(false)
-            .setMaxLength(field === 'message' ? 2000 : 400)
-            .setValue(value)
-        )
-      );
-      return interaction.showModal(modal);
+      const ui = parseFieldUi(meta.label, field, config);
+      const value = String(source?.[targetKey] || '').slice(0, ui.maxLength || 4000);
+      return interaction.showModal(createSingleFieldModal(config, `cfgpanelmodal:${moduleKey}:${field}`, {
+        title: uiLangText(config, `Modifier ${ui.label}`, `Edit ${ui.label}`),
+        label: ui.label,
+        value,
+        placeholder: ui.placeholder,
+        style: ui.style,
+        maxLength: ui.maxLength,
+        required: false
+      }));
     }
 
     if (action === 'textreset') {
@@ -1189,19 +1712,15 @@ async function handleConfigPanelInteraction(interaction) {
     const targetChannel = targetChannelId ? (interaction.guild.channels.cache.get(targetChannelId) || await interaction.guild.channels.fetch(targetChannelId).catch(() => null)) : null;
     if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(config, uiLangText(config, '📌 Sticky', '📌 Sticky'), uiLangText(config, 'Ouvre ce panel dans un salon texte d’abord.', 'Open this panel inside a text channel first.'))], ephemeral: true }).catch(() => null);
     const currentSticky = getGuildConfig(interaction.guild.id).sticky?.[targetChannel.id]?.message || '';
-    const modal = new ModalBuilder().setCustomId(`cfgpanelsticky:${targetChannel.id}`).setTitle('Set sticky message');
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('value')
-          .setLabel(`Sticky for #${targetChannel.name}`.slice(0, 45))
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false)
-          .setMaxLength(2000)
-          .setValue(String(currentSticky).slice(0, 2000))
-      )
-    );
-    return interaction.showModal(modal);
+    return interaction.showModal(createSingleFieldModal(config, `cfgpanelsticky:${targetChannel.id}`, {
+      title: uiLangText(config, 'Modifier sticky', 'Edit sticky'),
+      label: uiLangText(config, `Sticky pour #${targetChannel.name}`, `Sticky for #${targetChannel.name}`),
+      value: String(currentSticky).slice(0, 2000),
+      placeholder: uiLangText(config, 'Message renvoyé automatiquement dans ce salon', 'Message reposted automatically in this channel'),
+      style: TextInputStyle.Paragraph,
+      maxLength: 2000,
+      required: false
+    }));
   }
 
   if (action === 'stickyoff') {
@@ -1329,24 +1848,17 @@ async function handleConfessionPanelInteraction(interaction) {
   if (action === 'edit') {
     const safeField = ['title', 'color'].includes(field) ? field : 'title';
     const source = config.confessions || {};
-    const labelMap = {
-      title: uiLangText(config, 'Titre des confessions', 'Confession title'),
-      color: uiLangText(config, 'Couleur des confessions (#RRGGBB)', 'Confession color (#RRGGBB)')
-    };
-    const value = String(source?.[safeField] || '').slice(0, 4000);
-    const modal = new ModalBuilder().setCustomId(`confessionpanelmodal:${safeField}`).setTitle(uiLangText(config, `Modifier ${labelMap[safeField]}`, `Edit ${labelMap[safeField]}`).slice(0, 45));
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('value')
-          .setLabel(labelMap[safeField])
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false)
-          .setMaxLength(200)
-          .setValue(value)
-      )
-    );
-    return interaction.showModal(modal);
+    const ui = parseFieldUi(uiLangText(config, 'Confessions', 'Confessions'), safeField, config);
+    const value = String(source?.[safeField] || '').slice(0, ui.maxLength || 4000);
+    return interaction.showModal(createSingleFieldModal(config, `confessionpanelmodal:${safeField}`, {
+      title: uiLangText(config, `Modifier ${ui.label}`, `Edit ${ui.label}`),
+      label: ui.label,
+      value,
+      placeholder: safeField === 'color' ? uiLangText(config, '#EC4899 • tape clear pour retirer', '#EC4899 • type clear to clear it') : uiLangText(config, 'Ex: 🤫 Confession anonyme', 'Example: 🤫 Anonymous confession'),
+      style: TextInputStyle.Short,
+      maxLength: safeField === 'title' ? 200 : 100,
+      required: false
+    }));
   }
 
   return interaction.reply({ content: 'Unknown action.', ephemeral: true }).catch(() => null);
@@ -2070,7 +2582,7 @@ function getLogTypeColor(type, fallback = '#5865F2') {
     moderation: '#EF4444',
     security: '#DC2626',
     giveaway: '#FACC15',
-    support: '#6366F1',
+    support: fallback,
     tiktok: '#111827',
     voiceJoin: '#22C55E',
     voiceLeave: '#F97316',
@@ -2599,9 +3111,11 @@ function buildCtx(source, command) {
       return targetMember.roles.highest.position < member.roles.highest.position && targetMember.roles.highest.position < me.roles.highest.position;
     },
     async invalidUsage(extra = '') {
+      const quickExamples = quickExamplesForCommand(command, prefix).slice(0, 3);
       const usage = [
         `Usage: \`${prefix}${command.usage || command.name}\``,
         command.description ? `What it does: ${command.description}` : null,
+        quickExamples.length ? `Examples:\n${quickExamples.map((entry) => `• \`${entry}\``).join('\n')}` : null,
         extra || null,
         command.aliases?.length ? `Aliases: ${command.aliases.map((alias) => `\`${prefix}${alias}\``).join(', ')}` : null
       ].filter(Boolean).join('\n');
@@ -2960,12 +3474,26 @@ async function handlePrefixCommand(message) {
   if (message.author.bot) return false;
   const prefix = message.guild ? (getGuildConfig(message.guild.id).prefix || DEFAULT_PREFIX) : DEFAULT_PREFIX;
   if (!message.content.startsWith(prefix)) return false;
-  const parts = message.content.slice(prefix.length).trim().split(/\s+/);
+  const trimmed = message.content.slice(prefix.length).trim();
+  const parts = trimmed.split(/\s+/);
   const name = (parts.shift() || '').toLowerCase();
   if (!name) return false;
-  const command = client.commandMap.get(name);
-  if (!command) return false;
-  await runCommand(message, command);
+
+  const resolution = resolvePrefixCommand(name);
+  let command = resolution.command;
+  let sourceMessage = message;
+
+  if (command && resolution.rewrite) {
+    const rewritten = `${prefix}${resolution.rewrite}${parts.length ? ` ${parts.join(' ')}` : ''}`.trim();
+    sourceMessage = createPrefixedMessageProxy(message, rewritten);
+  }
+
+  if (!command) {
+    await replyUnknownPrefixCommand(message, prefix, name);
+    return true;
+  }
+
+  await runCommand(sourceMessage, command);
   return true;
 }
 
@@ -3047,7 +3575,14 @@ async function relaySupportDM(message) {
   client.supportMessageLinks.set(sent.id, { userId: message.author.id, guildId: guild.id });
   saveSupportLinks();
   await message.channel.send({ embeds: [baseEmbed(config, '📨 Support', `Your message was sent to **${guild.name}** staff.`)] }).catch(() => null);
-  await sendLog(guild, 'support', 'Support DM', `${message.author.tag} sent a DM to the support relay.`);
+  await sendLog(guild, 'support', 'Support DM', `${message.author.tag} sent a DM to the support relay.`, {
+    userId: message.author.id,
+    fields: [
+      { name: 'User', value: `${message.author} • ${message.author.tag}`, inline: false },
+      { name: 'User ID', value: message.author.id, inline: true },
+      { name: 'Target channel', value: `<#${config.support.channelId}>`, inline: true }
+    ]
+  });
   return true;
 }
 
@@ -3076,7 +3611,14 @@ async function handleSupportStaffReply(message) {
 
   await user.send({ embeds: [embed], files: relayFiles }).catch(() => null);
   await message.react('✅').catch(() => null);
-  await sendLog(message.guild, 'support', 'Support reply', `${message.author.tag} replied to ${user.tag}.`);
+  await sendLog(message.guild, 'support', 'Support reply', `${message.author.tag} replied to ${user.tag}.`, {
+    userId: message.author.id,
+    fields: [
+      { name: 'Staff', value: `${message.author} • ${message.author.tag}`, inline: false },
+      { name: 'Sent to', value: `${user.tag} (${user.id})`, inline: false },
+      message.reference?.messageId ? { name: 'Reply target', value: message.reference.messageId, inline: true } : null
+    ].filter(Boolean)
+  });
   return true;
 }
 
@@ -4125,41 +4667,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         if (field === 'copy') {
-          const modal = new ModalBuilder().setCustomId(`embedmodal:copy:${draftId}`).setTitle(uiLangText(guildConfig, 'Copier un embed', 'Copy an embed'));
-          modal.addComponents(
-            new ActionRowBuilder().addComponents(
-              new TextInputBuilder()
-                .setCustomId('value')
-                .setLabel(uiLangText(guildConfig, 'ID du message ou lien Discord', 'Message ID or Discord link'))
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setPlaceholder(uiLangText(guildConfig, 'Même salon : 123...  |  ou colle un lien complet', 'Same channel: 123...  |  or paste a full link'))
-            )
-          );
-          return interaction.showModal(modal);
+          const ui = parseEmbedFieldUi('copy', guildConfig);
+          return interaction.showModal(createSingleFieldModal(guildConfig, `embedmodal:copy:${draftId}`, {
+            title: uiLangText(guildConfig, 'Copier un embed', 'Copy an embed'),
+            label: ui.label,
+            value: '',
+            placeholder: uiLangText(guildConfig, 'Même salon : 123... ou colle un lien complet', 'Same channel: 123... or paste a full link'),
+            style: TextInputStyle.Short,
+            maxLength: 200,
+            required: true
+          }));
         }
 
-        const labels = {
-          title: uiLangText(guildConfig, 'Titre', 'Title'),
-          description: uiLangText(guildConfig, 'Texte', 'Text'),
-          author: uiLangText(guildConfig, 'Auteur', 'Author'),
-          footer: 'Footer',
-          color: uiLangText(guildConfig, 'Couleur hex', 'Hex color'),
-          image: uiLangText(guildConfig, 'URL de l’image', 'Image URL'),
-          thumbnail: uiLangText(guildConfig, 'URL de la miniature', 'Thumbnail URL')
-        };
-        const modal = new ModalBuilder().setCustomId(`embedmodal:${field}:${draftId}`).setTitle(uiLangText(guildConfig, `Modifier ${labels[field] || field}`, `Edit ${labels[field] || field}`));
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('value')
-              .setLabel(labels[field] || field)
-              .setStyle(field === 'description' ? TextInputStyle.Paragraph : TextInputStyle.Short)
-              .setRequired(false)
-              .setValue(String(draft.embed[field] || '').slice(0, 4000))
-          )
-        );
-        return interaction.showModal(modal);
+        const ui = parseEmbedFieldUi(field, guildConfig);
+        return interaction.showModal(createSingleFieldModal(guildConfig, `embedmodal:${field}:${draftId}`, {
+          title: uiLangText(guildConfig, `Modifier ${ui.label}`, `Edit ${ui.label}`),
+          label: ui.label,
+          value: String(draft.embed[field] || '').slice(0, ui.maxLength || 4000),
+          placeholder: ui.placeholder,
+          style: ui.style,
+          maxLength: ui.maxLength,
+          required: false
+        }));
       }
     }
 
@@ -4238,18 +4767,29 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const field = interaction.customId.split(':')[1] || 'title';
         if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true }).catch(() => null);
         if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: interactionUi(interaction, 'Gérer le serveur est requis.', 'Manage Server is required.'), ephemeral: true }).catch(() => null);
-        let value = interaction.fields.getTextInputValue('value').trim();
+        const parsed = normalizeOptionalModalValue(interaction.fields.getTextInputValue('value'), { guildConfig: getGuildConfig(interaction.guild.id), field });
+        if (!parsed.ok) return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '🤫 Confessions', '🤫 Confessions'), parsed.error)], ephemeral: true }).catch(() => null);
         client.store.updateGuild(interaction.guild.id, (guild) => {
           guild.confessions = guild.confessions || JSON.parse(JSON.stringify(DEFAULT_GUILD.confessions || {}));
-          if (field === 'color') guild.confessions.color = value ? ensureHexColor(value, DEFAULT_GUILD.confessions?.color || '#EC4899') : DEFAULT_GUILD.confessions?.color || '#EC4899';
-          else guild.confessions.title = value || DEFAULT_GUILD.confessions?.title || '🤫 Confession anonyme';
+          if (field === 'color') guild.confessions.color = parsed.value || DEFAULT_GUILD.confessions?.color || '#EC4899';
+          else guild.confessions.title = parsed.value || DEFAULT_GUILD.confessions?.title || '🤫 Confession anonyme';
           return guild;
         });
         const fresh = getGuildConfig(interaction.guild.id);
         if (interaction.message?.editable) {
           await interaction.message.edit({ embeds: [createConfessionPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', interaction.channel)], components: createConfessionPanelComponents(fresh) }).catch(() => null);
         }
-        return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '🤫 Confessions', '🤫 Confessions'), field === 'color' ? uiLangText(fresh, 'La couleur a été mise à jour.', 'The color was updated.') : uiLangText(fresh, 'Le titre a été mis à jour.', 'The title was updated.'))], ephemeral: true }).catch(() => null);
+        return interaction.reply({
+          embeds: [createFieldSavedEmbed(fresh, uiLangText(fresh, '🤫 Confessions', '🤫 Confessions'), {
+            scope: uiLangText(fresh, 'Confessions', 'Confessions'),
+            label: field === 'color' ? uiLangText(fresh, 'Couleur', 'Color') : uiLangText(fresh, 'Titre', 'Title'),
+            field,
+            value: field === 'color' ? (parsed.value || DEFAULT_GUILD.confessions?.color || '#EC4899') : (parsed.value || DEFAULT_GUILD.confessions?.title || '🤫 Confession anonyme'),
+            cleared: false,
+            next: ['`confessions panel`', '`confessions test`']
+          })],
+          ephemeral: true
+        }).catch(() => null);
       }
 
       if (interaction.customId.startsWith('cfgpanelsticky:')) {
@@ -4258,17 +4798,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: interactionUi(interaction, 'Gérer le serveur est requis.', 'Manage Server is required.'), ephemeral: true }).catch(() => null);
         const targetChannel = channelId ? (interaction.guild.channels.cache.get(channelId) || await interaction.guild.channels.fetch(channelId).catch(() => null)) : null;
         if (!targetChannel?.isTextBased?.()) return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '📌 Sticky', '📌 Sticky'), uiLangText(getGuildConfig(interaction.guild.id), 'Ce salon est invalide ou n’existe plus.', 'That channel is invalid or no longer exists.'))], ephemeral: true }).catch(() => null);
-        const value = interaction.fields.getTextInputValue('value').trim();
+        const parsed = normalizeOptionalModalValue(interaction.fields.getTextInputValue('value'), { guildConfig: getGuildConfig(interaction.guild.id), field: 'message' });
         client.store.updateGuild(interaction.guild.id, (guild) => {
           guild.sticky = guild.sticky || {};
-          if (!value) {
+          if (!parsed.value) {
             delete guild.sticky[channelId];
             return guild;
           }
           const current = guild.sticky[channelId] || {};
           guild.sticky[channelId] = {
             ...current,
-            message: value,
+            message: parsed.value,
             updatedAt: Date.now()
           };
           return guild;
@@ -4277,14 +4817,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.message?.editable) {
           await interaction.message.edit(buildSafeConfigPanelPayload(fresh, interaction.guild, 'automation', interaction.channel)).catch(() => null);
         }
-        return interaction.reply({ embeds: [baseEmbed(fresh, '📌 Sticky', value ? `Sticky message saved for ${targetChannel}.` : `Sticky message removed from ${targetChannel}.`)], ephemeral: true }).catch(() => null);
+        return interaction.reply({
+          embeds: [createFieldSavedEmbed(fresh, '📌 Sticky', {
+            scope: `${targetChannel}`,
+            label: uiLangText(fresh, 'Message sticky', 'Sticky message'),
+            field: 'message',
+            value: parsed.value,
+            cleared: parsed.cleared,
+            next: ['`sticky off`', '`panel automation`']
+          })],
+          ephemeral: true
+        }).catch(() => null);
       }
 
       if (interaction.customId.startsWith('cfgpanelmodal:')) {
         const [, moduleKeyRaw, field] = interaction.customId.split(':');
         if (!interaction.guild) return interaction.reply({ content: interactionUi(interaction, 'Serveur uniquement.', 'Guild only.'), ephemeral: true });
         if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return interaction.reply({ content: interactionUi(interaction, 'Gérer le serveur est requis.', 'Manage Server is required.'), ephemeral: true });
-        const moduleKey = ['welcome', 'leave', 'leave-dm', 'boost'].includes(moduleKeyRaw) ? moduleKeyRaw : 'welcome';
+        const moduleKey = ['welcome', 'welcome-dm', 'leave', 'leave-dm', 'boost'].includes(moduleKeyRaw) ? moduleKeyRaw : 'welcome';
         const metaMap = {
           welcome: { root: 'welcome', titleKey: 'title', messageKey: 'message', footerKey: 'footer', colorKey: 'color', imageKey: 'imageUrl' },
           'welcome-dm': { root: 'welcome', titleKey: 'dmTitle', messageKey: 'dmMessage', footerKey: 'dmFooter', colorKey: 'dmColor', imageKey: 'dmImageUrl' },
@@ -4295,11 +4845,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const meta = metaMap[moduleKey] || metaMap.welcome;
         const keyMap = { title: meta.titleKey, message: meta.messageKey, footer: meta.footerKey, color: meta.colorKey, image: meta.imageKey };
         const targetKey = keyMap[field] || meta.messageKey;
-        let value = interaction.fields.getTextInputValue('value').trim();
-        if (field === 'color') value = value ? ensureHexColor(value) : null;
+        const parsed = normalizeOptionalModalValue(interaction.fields.getTextInputValue('value'), { guildConfig: getGuildConfig(interaction.guild.id), field });
+        if (!parsed.ok) return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '📝 Smart panel', '📝 Smart panel'), parsed.error)], ephemeral: true }).catch(() => null);
         client.store.updateGuild(interaction.guild.id, (guild) => {
           guild[meta.root] = guild[meta.root] || JSON.parse(JSON.stringify(DEFAULT_GUILD[meta.root] || {}));
-          guild[meta.root][targetKey] = value || null;
+          guild[meta.root][targetKey] = parsed.value || null;
           return guild;
         });
         const fresh = getGuildConfig(interaction.guild.id);
@@ -4307,7 +4857,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (interaction.message?.editable) {
           await interaction.message.edit(buildSafeConfigPanelPayload(fresh, interaction.guild, moduleKey, currentChannel)).catch(() => null);
         }
-        return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '📝 Smart panel', '📝 Smart panel'), uiLangText(fresh, `${field} mis à jour pour ${moduleKey}.`, `${field} updated for ${moduleKey}.`))], ephemeral: true });
+        const { meta: uiMeta, scope } = parseTextModuleUi(moduleKey, fresh);
+        return interaction.reply({
+          embeds: [createFieldSavedEmbed(fresh, uiLangText(fresh, '📝 Smart panel', '📝 Smart panel'), {
+            scope,
+            label: parseFieldUi(uiMeta.label, field, fresh).label,
+            field,
+            value: parsed.value,
+            cleared: parsed.cleared,
+            next: ['`panel texts`', '`text test`']
+          })],
+          ephemeral: true
+        });
       }
 
       if (interaction.customId.startsWith('supportpanelmodal:')) {
@@ -4317,17 +4878,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         const keyMap = { title: 'promptTitle', message: 'promptMessage', footer: 'promptFooter', color: 'promptColor', image: 'promptImageUrl' };
         const targetKey = keyMap[field] || 'promptMessage';
-        let value = interaction.fields.getTextInputValue('value').trim();
-        if (field === 'color') value = value ? ensureHexColor(value) : null;
+        const parsed = normalizeOptionalModalValue(interaction.fields.getTextInputValue('value'), { guildConfig: getGuildConfig(interaction.guild.id), field });
+        if (!parsed.ok) return interaction.reply({ embeds: [baseEmbed(getGuildConfig(interaction.guild.id), uiLangText(getGuildConfig(interaction.guild.id), '📨 Prompt support', '📨 Support prompt'), parsed.error)], ephemeral: true }).catch(() => null);
         client.store.updateGuild(interaction.guild.id, (guild) => updateSupportPrompt(guild, (support) => {
-          support[targetKey] = value || null;
+          support[targetKey] = parsed.value || null;
         }));
         const fresh = getGuildConfig(interaction.guild.id);
         const currentChannel = interaction.channel;
         if (interaction.message?.editable) {
           await interaction.message.edit({ embeds: [createSupportPanelEmbed(fresh, interaction.guild, client.meta.defaultPrefix || '+', currentChannel)], components: createSupportPanelComponents(fresh) }).catch(() => null);
         }
-        return interaction.reply({ embeds: [baseEmbed(fresh, uiLangText(fresh, '📨 Prompt support', '📨 Support prompt'), uiLangText(fresh, `${field} mis à jour.`, `${field} updated.`))], ephemeral: true });
+        return interaction.reply({
+          embeds: [createFieldSavedEmbed(fresh, uiLangText(fresh, '📨 Prompt support', '📨 Support prompt'), {
+            scope: uiLangText(fresh, 'Prompt support', 'Support prompt'),
+            label: parseFieldUi(uiLangText(fresh, 'Prompt support', 'Support prompt'), field, fresh).label,
+            field,
+            value: parsed.value,
+            cleared: parsed.cleared,
+            next: ['`support panel`', '`support preview`']
+          })],
+          ephemeral: true
+        });
       }
       if (interaction.customId.startsWith('embedmodal:')) {
         const [, field, draftId] = interaction.customId.split(':');
@@ -4346,18 +4917,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const channel = await client.channels.fetch(draft.channelId).catch(() => null);
           const message = channel?.isTextBased?.() && draft.messageId ? await channel.messages.fetch(draft.messageId).catch(() => null) : null;
           if (message) await message.edit({ embeds: [buildEmbedDraftPreview(guildConfig, draft)], components: buildEmbedDraftComponents(draftId, guildConfig) }).catch(() => null);
-          return interaction.reply({ content: uiLangText(guildConfig, `Embed copié depuis le message \`${found.message.id}\`. Clique sur **Envoyer** pour le republier.`, `Embed copied from message \`${found.message.id}\`. Click **Send** to post it again.`), ephemeral: true });
+          return interaction.reply({
+            embeds: [createFieldSavedEmbed(guildConfig, uiLangText(guildConfig, '📥 Studio embed', '📥 Embed studio'), {
+              scope: uiLangText(guildConfig, 'Brouillon', 'Draft'),
+              label: uiLangText(guildConfig, 'Source copiée', 'Copied source'),
+              field: 'copy',
+              value: `#${found.message.id}`,
+              cleared: false,
+              next: ['`send`', '`copy`']
+            })],
+            ephemeral: true
+          });
         }
 
-        let value = interaction.fields.getTextInputValue('value').trim();
-        if (field === 'color') value = ensureHexColor(value || draft.embed.color || '#5865F2');
-        draft.embed[field] = value || null;
+        const parsed = normalizeOptionalModalValue(interaction.fields.getTextInputValue('value'), { guildConfig, field });
+        if (!parsed.ok) return interaction.reply({ embeds: [baseEmbed(guildConfig, uiLangText(guildConfig, '✦ Studio embed', '✦ Embed studio'), parsed.error)], ephemeral: true }).catch(() => null);
+        draft.embed[field] = parsed.value || null;
 
         const channel = await client.channels.fetch(draft.channelId).catch(() => null);
         const message = channel?.isTextBased?.() && draft.messageId ? await channel.messages.fetch(draft.messageId).catch(() => null) : null;
 
         if (message) await message.edit({ embeds: [buildEmbedDraftPreview(guildConfig, draft)], components: buildEmbedDraftComponents(draftId, guildConfig) }).catch(() => null);
-        return interaction.reply({ content: uiLangText(guildConfig, `${field} mis à jour.`, `${field} updated.`), ephemeral: true });
+        return interaction.reply({
+          embeds: [createFieldSavedEmbed(guildConfig, uiLangText(guildConfig, '✦ Studio embed', '✦ Embed studio'), {
+            scope: uiLangText(guildConfig, 'Brouillon', 'Draft'),
+            label: parseEmbedFieldUi(field, guildConfig).label,
+            field,
+            value: parsed.value,
+            cleared: parsed.cleared,
+            next: ['`send`', '`copy`']
+          })],
+          ephemeral: true
+        });
       }
     }
   } catch (error) {

@@ -83,7 +83,7 @@ function auditCommands() {
   checkRows('help categories', createHelpComponents('Categories', 1, 2));
   checkRows('help logs', createHelpComponents('Logs', 1, 2));
 
-  const panelPages = ['home', 'texts', 'welcome', 'leave', 'leave-dm', 'boost', 'logs', 'support', 'security', 'automation', 'channels', 'style', 'repair', 'deploy'];
+  const panelPages = ['home', 'texts', 'welcome', 'welcome-dm', 'leave', 'leave-dm', 'boost', 'logs', 'support', 'security', 'automation', 'channels', 'style', 'repair', 'deploy'];
   panelPages.forEach((page) => checkRows(`config panel ${page}`, createConfigPanelComponents(page, '123456789012345678')));
 
   checkRows('support panel', createSupportPanelComponents());
