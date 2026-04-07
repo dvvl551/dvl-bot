@@ -38,7 +38,10 @@ const {
   translateText,
   localizePayload,
   normalizeSystemNoticePayload,
-  applyGuildPayloadBranding
+  applyGuildPayloadBranding,
+  sanitizeActionRows,
+  sanitizeModalBuilder,
+  sanitizeDiscordPayload
 } = require('./core/utils');
 const { checkTikTokWatchers } = require('./core/tiktok');
 const { DEFAULT_GUILD } = require('./core/defaults');
@@ -578,7 +581,7 @@ function createSingleFieldModal(guildConfig, customId, options = {}) {
   if (options.placeholder) input.setPlaceholder(String(options.placeholder).slice(0, 100));
   const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
   modal.addComponents(new ActionRowBuilder().addComponents(input));
-  return modal;
+  return sanitizeModalBuilder(modal);
 }
 
 function createFieldSavedEmbed(guildConfig, title, options = {}) {
@@ -702,7 +705,7 @@ function buildEmbedDraftComponents(draftId, guildConfig = null) {
     new ButtonBuilder().setCustomId(`embed:send:${draftId}`).setLabel(uiLangText(guildConfig, 'Envoyer', 'Send')).setEmoji('📤').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`embed:cancel:${draftId}`).setLabel(uiLangText(guildConfig, 'Fermer', 'Close')).setEmoji('✖️').setStyle(ButtonStyle.Danger)
   );
-  return [row1, row2];
+  return sanitizeActionRows([row1, row2]);
 }
 
 function importEmbedIntoDraft(draft, sourceEmbed) {
@@ -3016,6 +3019,10 @@ function buildCtx(source, command) {
   const args = splitAfterPrefix.slice(1);
   const argsText = args.join(' ');
 
+
+  installPayloadGuardsOnTarget(channel, { methods: ['send'] });
+  installPayloadGuardsOnTarget(message, { methods: ['edit', 'reply'] });
+
   const ctx = {
     source,
     interaction,
@@ -3038,12 +3045,13 @@ function buildCtx(source, command) {
       const localized = localizePayload(guildConfig, rest);
       const branded = applyGuildPayloadBranding(localized, guild, guildConfig);
       const normalized = normalizeSystemNoticePayload(branded, guildConfig, { defaultDeleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
+      const guarded = sanitizeDiscordPayload(normalized.payload);
       if (interaction) {
-        const base = { ...normalized.payload };
+        const base = { ...guarded };
         if (!interaction.replied && !interaction.deferred) sent = await interaction.reply({ ...base, fetchReply: true });
         else sent = await interaction.followUp(base);
       } else {
-        sent = await channel.send(normalized.payload);
+        sent = await channel.send(guarded);
         const shouldDelete = Number.isFinite(deleteAfter) ? deleteAfter : null;
         if (sent && shouldDelete) scheduleMessageDelete(sent, shouldDelete);
       }
@@ -3136,9 +3144,48 @@ function resolveSlashCommand(interaction) {
   return client.commandRegistry.find((command) => command.slash?.root === root && command.slash?.sub === sub) || null;
 }
 
+
+function installPayloadGuardsOnTarget(target, options = {}) {
+  if (!target || typeof target !== 'object') return target;
+  const methods = Array.isArray(options.methods) ? options.methods : [];
+  const modalMethods = Array.isArray(options.modalMethods) ? options.modalMethods : [];
+  if (!target.__dvlGuardedMethods) {
+    Object.defineProperty(target, '__dvlGuardedMethods', { value: new Set(), configurable: true });
+  }
+  const guarded = target.__dvlGuardedMethods;
+
+  for (const method of methods) {
+    if (!method || guarded.has(method) || typeof target[method] !== 'function') continue;
+    const original = target[method].bind(target);
+    target[method] = (payload = {}) => original(sanitizeDiscordPayload(payload));
+    guarded.add(method);
+  }
+
+  for (const method of modalMethods) {
+    if (!method || guarded.has(method) || typeof target[method] !== 'function') continue;
+    const original = target[method].bind(target);
+    target[method] = (modal) => original(sanitizeModalBuilder(modal));
+    guarded.add(method);
+  }
+
+  return target;
+}
+
+function installInteractionPayloadGuards(interaction) {
+  if (!interaction || interaction.__dvlPayloadGuardsInstalled) return interaction;
+  installPayloadGuardsOnTarget(interaction, {
+    methods: ['reply', 'update', 'followUp', 'editReply'],
+    modalMethods: ['showModal']
+  });
+  installPayloadGuardsOnTarget(interaction.message, { methods: ['edit', 'reply'] });
+  installPayloadGuardsOnTarget(interaction.channel, { methods: ['send'] });
+  interaction.__dvlPayloadGuardsInstalled = true;
+  return interaction;
+}
+
 function patchInteractionLocalization(interaction, guildConfig) {
   if (!interaction || interaction.__dvlLocalized) return interaction;
-  for (const method of ['reply', 'update', 'followUp']) {
+  for (const method of ['reply', 'update', 'followUp', 'editReply']) {
     if (typeof interaction[method] !== 'function') continue;
     const original = interaction[method].bind(interaction);
     interaction[method] = (payload = {}) => {
@@ -4371,6 +4418,7 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
+  installInteractionPayloadGuards(interaction);
   try {
     if (interaction.guild) patchInteractionLocalization(interaction, getGuildConfig(interaction.guild.id));
     if (interaction.isChatInputCommand()) {

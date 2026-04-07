@@ -26,7 +26,9 @@ const {
   parseDuration,
   parseEmojiArg,
   pickVisualColor,
-  randomOf
+  randomOf,
+  sanitizeActionRows,
+  sanitizeDiscordPayload
 } = require('./utils');
 const { fetchTikTokStatus } = require('./tiktok');
 const { DEFAULT_GUILD, syncGuildLocalizedDefaults } = require('./defaults');
@@ -4351,7 +4353,7 @@ function buildCustomizationPayload(section = 'home', guildConfig = {}, prefix = 
   let embed;
   if (safe === 'texts') embed = buildTextsHubEmbed(guildConfig, prefix, 'home');
   else if (safe === 'support') embed = buildSupportModuleEmbed(guildConfig, prefix);
-  else if (safe === 'confessions') embed = buildConfessionsHubEmbed(guildConfig, prefix);
+  else if (safe === 'confessions') embed = buildConfessionModuleEmbed(guildConfig, prefix);
   else if (safe === 'style') embed = buildCustomizationStyleEmbed(guildConfig, prefix);
   else if (safe === 'status') embed = buildCustomizationStatusEmbed(guildConfig, prefix);
   else if (safe === 'bot') embed = buildOwnerBotStyleEmbed(guildConfig, globalConfig, prefix, clientUser, guild).setDescription(uiText(guildConfig, 'Partie owner du bot : nom, avatar, bannière et activité.', 'Owner side of the bot: name, avatar, banner and activity.'));
@@ -15841,14 +15843,17 @@ function createConfigPanelComponents(current = 'home', channelId = null, guildCo
       new ButtonBuilder().setCustomId('cfgpanel:page:logs').setLabel(uiText(guildConfig, 'Logs', 'Logs')).setEmoji('🧾').setStyle(safePage === 'logs' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:page:support').setLabel(uiText(guildConfig, 'Support', 'Support')).setEmoji('📨').setStyle(safePage === 'support' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:page:security').setLabel(uiText(guildConfig, 'Sécurité', 'Security')).setEmoji('🚨').setStyle(safePage === 'security' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-    ),
-    new ActionRowBuilder().addComponents(
+    )
+  ];
+
+  if (safePage !== 'texts') {
+    rows.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('cfgpanel:page:automation').setLabel(uiText(guildConfig, 'Automation', 'Automation')).setEmoji('⚡').setStyle(safePage === 'automation' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:page:channels').setLabel(uiText(guildConfig, 'Salons', 'Channels')).setEmoji('🧩').setStyle(safePage === 'channels' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:page:style').setLabel(uiText(guildConfig, 'Style', 'Style')).setEmoji('🎨').setStyle(safePage === 'style' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`cfgpanel:navrefresh:${safePage}`).setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
-    )
-  ];
+    ));
+  }
 
   if (safePage === 'home') {
     rows.push(new ActionRowBuilder().addComponents(
@@ -15903,7 +15908,8 @@ function createConfigPanelComponents(current = 'home', channelId = null, guildCo
       new ButtonBuilder().setCustomId('cfgpanel:textvars').setLabel(uiText(guildConfig, 'Variables', 'Variables')).setEmoji('🧩').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:clean`).setLabel('Clean').setEmoji('🫧').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:premium`).setLabel('Premium').setEmoji('✨').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:minimal`).setLabel('Minimal').setEmoji('➖').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId(`cfgpanel:textpreset:${focus}:minimal`).setLabel('Minimal').setEmoji('➖').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId(`cfgpanel:navrefresh:${safePage}`).setLabel(uiText(guildConfig, 'Actualiser', 'Refresh')).setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     ));
   } else if (safePage === 'logs') {
     rows.push(new ActionRowBuilder().addComponents(
@@ -16695,29 +16701,42 @@ function createDashboardComponents(current = 'home', guildConfig = null) {
   ];
 }
 
+
+const safeCreateHelpComponents = (...args) => sanitizeActionRows(createHelpComponents(...args));
+const safeCreateLogsPanelComponents = (...args) => sanitizeActionRows(createLogsPanelComponents(...args));
+const safeCreateVoicePanelComponents = (...args) => sanitizeActionRows(createVoicePanelComponents(...args));
+const safeCreateServerProgressComponents = (...args) => sanitizeActionRows(createServerProgressComponents(...args));
+const safeCreateDashboardComponents = (...args) => sanitizeActionRows(createDashboardComponents(...args));
+const safeCreateConfigPanelComponents = (...args) => sanitizeActionRows(createConfigPanelComponents(...args));
+const safeCreateSupportPanelComponents = (...args) => sanitizeActionRows(createSupportPanelComponents(...args));
+const safeCreateConfessionPanelComponents = (...args) => sanitizeActionRows(createConfessionPanelComponents(...args));
+const safeBuildSafeConfigPanelPayload = (...args) => sanitizeDiscordPayload(buildSafeConfigPanelPayload(...args));
+const safeCreateSupportPromptPayload = (...args) => sanitizeDiscordPayload(createSupportPromptPayload(...args));
+const safeBuildCustomizationPayload = (...args) => sanitizeDiscordPayload(buildCustomizationPayload(...args));
+
 module.exports = {
   createCommands,
   buildSlashCommands,
   createHelpEmbed,
-  createHelpComponents,
+  createHelpComponents: safeCreateHelpComponents,
   createLogsPanelEmbed,
-  createLogsPanelComponents,
+  createLogsPanelComponents: safeCreateLogsPanelComponents,
   createVoicePanelEmbed,
-  createVoicePanelComponents,
+  createVoicePanelComponents: safeCreateVoicePanelComponents,
   createServerProgressEmbed,
-  createServerProgressComponents,
+  createServerProgressComponents: safeCreateServerProgressComponents,
   createDashboardEmbed,
-  createDashboardComponents,
+  createDashboardComponents: safeCreateDashboardComponents,
   createConfigPanelEmbed,
-  createConfigPanelComponents,
-  buildSafeConfigPanelPayload,
+  createConfigPanelComponents: safeCreateConfigPanelComponents,
+  buildSafeConfigPanelPayload: safeBuildSafeConfigPanelPayload,
   normalizeConfigPanelPage,
   createSupportPanelEmbed,
-  createSupportPanelComponents,
-  createSupportPromptPayload,
+  createSupportPanelComponents: safeCreateSupportPanelComponents,
+  createSupportPromptPayload: safeCreateSupportPromptPayload,
   createConfessionPanelEmbed,
-  createConfessionPanelComponents,
-  buildCustomizationPayload,
+  createConfessionPanelComponents: safeCreateConfessionPanelComponents,
+  buildCustomizationPayload: safeBuildCustomizationPayload,
   getHelpTargetInfo,
   quickExamplesForCommand
 };

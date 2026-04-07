@@ -1,6 +1,6 @@
 
 const ms = require('ms');
-const { ActivityType, EmbedBuilder, PermissionsBitField, ChannelType } = require('discord.js');
+const { ActivityType, EmbedBuilder, PermissionsBitField, ChannelType, ActionRowBuilder } = require('discord.js');
 
 const ACTIVITY_TYPES = {
   playing: ActivityType.Playing,
@@ -719,6 +719,82 @@ function makeInviteUrl(clientId, permissions = PermissionsBitField.Flags.Adminis
   return `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands&permissions=${permissions.toString()}`;
 }
 
+
+function safeUiText(value, max = 80) {
+  return String(value ?? '').slice(0, Math.max(1, max));
+}
+
+function sanitizeComponentBuilder(component, options = {}) {
+  if (!component || typeof component !== 'object') return component;
+  const isModal = Boolean(options.isModal);
+  const data = component.data || component;
+
+  const customId = data.custom_id ?? data.customId;
+  if (customId && typeof component.setCustomId === 'function') component.setCustomId(safeUiText(customId, 100));
+
+  const labelLimit = isModal ? 45 : 80;
+  const label = data.label;
+  if (label && typeof component.setLabel === 'function') component.setLabel(safeUiText(label, labelLimit));
+
+  const placeholder = data.placeholder;
+  if (placeholder && typeof component.setPlaceholder === 'function') component.setPlaceholder(safeUiText(placeholder, isModal ? 100 : 150));
+
+  const title = data.title;
+  if (title && typeof component.setTitle === 'function') component.setTitle(safeUiText(title, 45));
+
+  const value = data.value;
+  if (typeof value === 'string' && typeof component.setValue === 'function') component.setValue(safeUiText(value, isModal ? 4000 : 100));
+
+  const optionsList = Array.isArray(data.options) ? data.options.slice(0, 25).map((option) => ({
+    ...option,
+    label: safeUiText(option.label, 100),
+    value: safeUiText(option.value, 100),
+    description: option.description ? safeUiText(option.description, 100) : option.description
+  })) : null;
+  if (optionsList) {
+    if (typeof component.setOptions === 'function') component.setOptions(optionsList);
+    else component.data.options = optionsList;
+  }
+
+  return component;
+}
+
+function sanitizeActionRows(rows = [], options = {}) {
+  const maxRows = Math.max(1, options.maxRows || 5);
+  const maxComponentsPerRow = Math.max(1, options.maxComponentsPerRow || (options.isModal ? 1 : 5));
+  const out = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!row) continue;
+    const sourceComponents = Array.isArray(row.components) ? row.components : Array.isArray(row?.data?.components) ? row.data.components : [];
+    const sanitizedComponents = sourceComponents.map((component) => sanitizeComponentBuilder(component, options)).filter(Boolean);
+    for (let index = 0; index < sanitizedComponents.length; index += maxComponentsPerRow) {
+      if (out.length >= maxRows) break;
+      const chunked = sanitizedComponents.slice(index, index + maxComponentsPerRow);
+      if (!chunked.length) continue;
+      out.push(new ActionRowBuilder().addComponents(...chunked));
+    }
+    if (out.length >= maxRows) break;
+  }
+  return out.slice(0, maxRows);
+}
+
+function sanitizeModalBuilder(modal) {
+  if (!modal || typeof modal !== 'object') return modal;
+  const data = modal.data || modal;
+  if (data.custom_id && typeof modal.setCustomId === 'function') modal.setCustomId(safeUiText(data.custom_id, 100));
+  if (data.title && typeof modal.setTitle === 'function') modal.setTitle(safeUiText(data.title, 45));
+  const rows = Array.isArray(modal.components) ? modal.components : Array.isArray(data.components) ? data.components : [];
+  modal.components = sanitizeActionRows(rows, { isModal: true, maxRows: 5, maxComponentsPerRow: 1 });
+  return modal;
+}
+
+function sanitizeDiscordPayload(payload = {}) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const next = { ...payload };
+  if (Array.isArray(next.components)) next.components = sanitizeActionRows(next.components, { maxRows: 5, maxComponentsPerRow: 5 });
+  return next;
+}
+
 module.exports = {
   ACTIVITY_TYPES,
   ACTIVITY_TYPE_LABELS,
@@ -747,5 +823,8 @@ module.exports = {
   code,
   chunk,
   channelTypeName,
-  makeInviteUrl
+  makeInviteUrl,
+  sanitizeActionRows,
+  sanitizeModalBuilder,
+  sanitizeDiscordPayload
 };

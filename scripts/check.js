@@ -43,7 +43,9 @@ function auditCommands() {
     createConfigPanelComponents,
     createSupportPanelComponents,
     createVoicePanelComponents,
-    createDashboardComponents
+    createDashboardComponents,
+    createSupportPromptPayload,
+    buildCustomizationPayload
   } = require('../src/core/commands');
 
   const commands = createCommands();
@@ -73,9 +75,14 @@ function auditCommands() {
   }
 
   const checkRows = (label, rows) => {
+    if ((rows?.length || 0) > 5) throw new Error(`${label} has ${rows.length} rows (Discord max is 5)`);
     rows.forEach((row, index) => {
       const count = row?.components?.length || 0;
       if (count > 5) throw new Error(`${label} row ${index + 1} has ${count} components (Discord max is 5)`);
+      row?.components?.forEach((component, componentIndex) => {
+        const customId = component?.data?.custom_id ?? component?.customId;
+        if (customId && String(customId).length > 100) throw new Error(`${label} row ${index + 1} component ${componentIndex + 1} has a custom id longer than 100 characters`);
+      });
     });
   };
 
@@ -90,6 +97,14 @@ function auditCommands() {
   checkRows('voice panel', createVoicePanelComponents());
   ['home', 'setup', 'logs', 'security', 'voice', 'automation', 'progress', 'tools'].forEach((page) => {
     checkRows(`dashboard ${page}`, createDashboardComponents(page));
+  });
+
+  const supportPromptPayload = createSupportPromptPayload({ support: { promptMode: 'embed' }, embedColor: '#5865F2' }, { name: 'Guild', memberCount: 1 }, '+', null);
+  checkRows('support prompt payload', supportPromptPayload.components || []);
+
+  ['home', 'texts', 'support', 'confessions', 'style', 'status', 'bot'].forEach((section) => {
+    const payload = buildCustomizationPayload(section, { embedColor: '#5865F2' }, '+', {}, {});
+    checkRows(`custom hub ${section}`, payload.components || []);
   });
 
   console.log(`Metadata audit passed. Commands: ${commands.length}. Visible: ${commands.filter((command) => !command.hidden).length}.`);
