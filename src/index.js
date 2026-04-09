@@ -59,8 +59,8 @@ const SMART_PANEL_THEME_PRESETS = {
 };
 
 const SMART_TEXT_PRESETS = {
-  clean: { mode: 'embed', footer: 'DvL', color: null, image: null, title: null },
-  premium: { mode: 'embed', footer: 'DvL • premium', color: '#8B5CF6', image: null, titlePrefix: '✦ ' },
+  clean: { mode: 'embed', footer: 'Neyora', color: null, image: null, title: null },
+  premium: { mode: 'embed', footer: 'Neyora • premium', color: '#8B5CF6', image: null, titlePrefix: '✦ ' },
   minimal: { mode: 'plain', footer: null, color: null, image: null, title: null }
 };
 
@@ -637,7 +637,7 @@ function parseFieldUi(moduleLabel, field, guildConfig = null) {
     title: uiLangText(guildConfig, 'Ex: 👋 Bienvenue sur {server}', 'Example: 👋 Welcome to {server}'),
     message: uiLangText(guildConfig, 'Tu peux utiliser {user}, {server}, {memberCount}...', 'You can use {user}, {server}, {memberCount}...'),
     description: uiLangText(guildConfig, 'Texte principal de l’embed', 'Main embed text'),
-    footer: uiLangText(guildConfig, 'DvL • tape clear pour retirer', 'DvL • type clear to remove'),
+    footer: uiLangText(guildConfig, 'Neyora • tape clear pour retirer', 'Neyora • type clear to remove'),
     color: uiLangText(guildConfig, '#5865F2 • tape clear pour retirer', '#5865F2 • type clear to remove'),
     image: uiLangText(guildConfig, 'https://... • tape clear pour retirer', 'https://... • type clear to remove'),
     thumbnail: uiLangText(guildConfig, 'https://... • tape clear pour retirer', 'https://... • type clear to remove'),
@@ -899,7 +899,7 @@ function createAnnouncementPayload(guildConfig, source, variables, options = {})
   const message = translateText(fillTemplate(source?.[messageKey] || '', variables).trim(), guildConfig);
   const title = translateText(fillTemplate(source?.[titleKey] || fallbackTitle, variables).trim(), guildConfig);
   const footerRaw = source?.[footerKey];
-  const footer = footerRaw === null ? '' : translateText(fillTemplate(footerRaw ?? 'DvL', variables).trim(), guildConfig);
+  const footer = footerRaw === null ? '' : translateText(fillTemplate(footerRaw ?? 'Neyora', variables).trim(), guildConfig);
   const imageUrl = fillTemplate(source?.[imageKey] || '', variables).trim();
   const mode = normalizeAnnouncementMode(source?.[modeKey]);
   if (mode === 'plain') {
@@ -1847,6 +1847,18 @@ async function handleConfessionPanelInteraction(interaction) {
     return refreshPanel();
   }
 
+  if (action === 'badges') {
+    let enabled = true;
+    client.store.updateGuild(interaction.guild.id, (guild) => {
+      guild.confessions = guild.confessions || JSON.parse(JSON.stringify(DEFAULT_GUILD.confessions || {}));
+      guild.confessions.showBadges = guild.confessions.showBadges === false;
+      enabled = guild.confessions.showBadges !== false;
+      return guild;
+    });
+    await sendEphemeral(uiLangText(getGuildConfig(interaction.guild.id), '🏷️ Confessions', '🏷️ Confessions'), enabled ? uiLangText(getGuildConfig(interaction.guild.id), 'Les badges visuels sont maintenant activés.', 'Visual badges are now enabled.') : uiLangText(getGuildConfig(interaction.guild.id), 'Les badges visuels sont maintenant désactivés.', 'Visual badges are now disabled.'));
+    return refreshPanel();
+  }
+
   if (action === 'clear') {
     if (!field || !['channel', 'logs'].includes(field)) return interaction.reply({ content: 'Invalid confession panel action.', ephemeral: true }).catch(() => null);
     client.store.updateGuild(interaction.guild.id, (guild) => {
@@ -1898,7 +1910,7 @@ async function getManagedTempVoiceState(interaction, options = {}) {
   if (!channel) return { error: 'Your voice channel could not be found.' };
   const config = getGuildConfig(guild.id);
   const entry = config.voice?.temp?.channels?.[channel.id];
-  if (!entry) return { error: 'That channel is not one of DvL\'s temp voice channels.' };
+  if (!entry) return { error: 'That channel is not one of Neyora\'s temp voice channels.' };
   const ownerId = entry.ownerId;
   const ownerMember = ownerId ? await guild.members.fetch(ownerId).catch(() => null) : null;
   const ownerStillInside = ownerMember?.voice?.channelId === channel.id;
@@ -2183,7 +2195,7 @@ async function ensureGuildStatsChannels(guild, options = {}) {
           allow: [PermissionFlagsBits.ViewChannel],
           deny: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
         }],
-        reason: 'DvL stats auto-repair'
+        reason: 'Neyora stats auto-repair'
       }).catch(() => null);
       if (channel) {
         channelId = channel.id;
@@ -2543,7 +2555,7 @@ async function handleMemberMilestoneReward(member) {
   const me = member.guild.members.me || await member.guild.members.fetchMe().catch(() => null);
   if (!me?.permissions.has(PermissionFlagsBits.ManageRoles) || role.position >= me.roles.highest.position) return false;
 
-  const added = await member.roles.add(role, `DvL member milestone reward #${currentCount}`).then(() => true).catch(() => false);
+  const added = await member.roles.add(role, `Neyora member milestone reward #${currentCount}`).then(() => true).catch(() => false);
   if (!added) return false;
 
   client.store.updateGuild(member.guild.id, (guild) => {
@@ -2579,7 +2591,7 @@ async function enforceVoiceRestrictions(member, attemptedChannelId = null) {
   const channelId = attemptedChannelId || member.voice?.channelId;
   if (!moderation.banRoleId || !channelId) return false;
   if (!member.roles.cache.has(moderation.banRoleId)) return false;
-  await member.voice.disconnect('DvL voice ban enforcement').catch(() => null);
+  await member.voice.disconnect('Neyora voice ban enforcement').catch(() => null);
   return true;
 }
 
@@ -2590,7 +2602,7 @@ async function syncVoiceMuteForMember(member) {
   if (!moderation.muteRoleId) return false;
   if (!member.roles.cache.has(moderation.muteRoleId)) return false;
   if (member.voice.serverMute) return true;
-  await member.voice.setMute(true, 'DvL voice mute role enforcement').catch(() => null);
+  await member.voice.setMute(true, 'Neyora voice mute role enforcement').catch(() => null);
   return true;
 }
 
@@ -2651,7 +2663,7 @@ function getAuditReason(entry) {
 }
 
 async function buildLogEmbed(guild, config, type, title, description, options = {}) {
-  const footerParts = [options.footerText || `DvL • logs • ${type}`];
+  const footerParts = [options.footerText || `Neyora • logs • ${type}`];
   if (options.channelId) footerParts.push(`channel ${options.channelId}`);
   if (options.messageId) footerParts.push(`message ${options.messageId}`);
   const embed = new EmbedBuilder()
@@ -2711,7 +2723,7 @@ function buildModerationNoticeEmbed(guildConfig, action, target, moderator, deta
     guildConfig?.support?.entryChannelId ? { name: 'Support', value: `<#${guildConfig.support.entryChannelId}>`, inline: true } : null
   ].filter(Boolean);
   if (fields.length) embed.addFields(fields.slice(0, 10));
-  embed.setFooter({ text: details.footerText || `${guildConfig?.name || 'DvL'} • moderation` });
+  embed.setFooter({ text: details.footerText || `${guildConfig?.name || 'Neyora'} • moderation` });
   return embed;
 }
 
@@ -4295,7 +4307,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   if (oldChannelId && tempChannels[oldChannelId]) {
     const oldChannel = oldState.channel || await guild.channels.fetch(oldChannelId).catch(() => null);
     if (oldChannel && oldChannel.members?.size === 0) {
-      await oldChannel.delete('DvL temp voice cleanup').catch(() => null);
+      await oldChannel.delete('Neyora temp voice cleanup').catch(() => null);
       client.store.updateGuild(guild.id, (g) => {
         if (g.voice?.temp?.channels) delete g.voice.temp.channels[oldChannelId];
         return g;
@@ -4779,7 +4791,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (field === 'send') {
           const channel = await client.channels.fetch(draft.channelId).catch(() => null);
           if (!channel?.isTextBased?.()) return interaction.reply({ content: uiLangText(guildConfig, 'Salon introuvable.', 'Channel not found.'), ephemeral: true });
-          const embed = buildEmbedDraftPreview(guildConfig, draft).setFooter({ text: draft.embed.footer || 'DvL' });
+          const embed = buildEmbedDraftPreview(guildConfig, draft).setFooter({ text: draft.embed.footer || 'Neyora' });
           await channel.send({ embeds: [embed] }).catch(() => null);
           client.embedDrafts.delete(draftId);
           return interaction.update({ embeds: [baseEmbed(guildConfig, uiLangText(guildConfig, 'Embed envoyé', 'Embed sent'), uiLangText(guildConfig, 'Ton embed a bien été envoyé.', 'Your embed was sent successfully.'))], components: [] });

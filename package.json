@@ -1,7 +1,7 @@
 {
-  "name": "dvl-bot-v74-2-finish-pass",
-  "version": "7.4.2",
-  "description": "DvL Discord bot with cleaned hubs, safer updates, support flow fixes, and extra info/utility commands.",
+  "name": "neyora-bot-v75-global-safe-polish",
+  "version": "7.5.0",
+  "description": "Neyora Discord bot with a global polish pass, safer updates, better staff flow and improved TikTok views.",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {

@@ -1,14 +1,15 @@
-# DvL Bot v71 — Global cleanup
+# Neyora Bot v75.0 — Global safe polish pass
 
-This build focuses on a cleaner package, a more practical tools flow, and fewer useless leftovers.
+This build is the full safe-update polish pass.
 
-## Main changes
+## What changed
 
-- Removed dead `gifs` code that was not used by the live command registry
-- Added a direct `+tools` / `+outils` shortcut to open the tools dashboard
-- Improved finder examples so they show real keyword use cases instead of category duplicates
-- Kept the bot bilingual FR / EN
-- Prepared the package as a lighter source zip
+- Help is cleaner, better ordered and more useful for both members and staff
+- Staff-side flow is clearer for recruitment, onboarding and daily moderation
+- Smart panel and dashboard are more coherent for setup, checks and team usage
+- Support, confessions and public text hubs are cleaner and easier to manage
+- TikTok alerts and watcher views are clearer and more useful
+- Update safety is kept: the zip is meant to avoid wiping your saved guild config
 
 ## Quick install
 
@@ -21,18 +22,36 @@ npm run dev
 ## Useful commands
 
 ```txt
-+tools
-+dashboard tools
-+find welcome
-+find status
-+find role
-+help logs
-+preset clean
-+backup list
++help
++help members
++help staff
++dashboard
++panel
++logs panel
++support panel
++confessions panel
++tiktok list
++ready
 ```
+
+## Staff setup tips
+
+```txt
++help staff
++permrole 1 @Helper
++permcmd 1 add support
++permcmd 1 add warnings
++guide moderation
+```
+
+## Update safety
+
+- Keep your own `data/` folder when updating
+- Do not overwrite your saved guild config if your server is already configured
+- If welcome / leave / boost stop working after an update, check the saved config first
 
 ## Notes
 
-- `+help <category>` is best to open a full section
-- `+find <keyword>` is best when you only know one word and not the right menu
-- This zip no longer includes `node_modules`, so run `npm install` once after extracting
+- This zip is source-first, so run `npm install` after extracting
+- `+help +commande` opens a command card directly
+- `+find <mot-clé>` stays the fastest way to locate a feature

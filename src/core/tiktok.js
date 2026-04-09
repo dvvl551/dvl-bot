@@ -231,53 +231,58 @@ function tiktokEmbed(guildConfig, username, status, kind = 'video', mentionRoleI
   const profileUrl = kind === 'live'
     ? `https://www.tiktok.com/@${username}/live`
     : (status.latestVideoUrl || `https://www.tiktok.com/@${username}`);
+  const accountUrl = `https://www.tiktok.com/@${username}`;
   const displayName = status.displayName || username;
-  const verifiedLabel = status.verified === true ? ' • verified' : '';
+  const isFrench = String(guildConfig?.language || '').toLowerCase() === 'fr';
+  const statsBits = [];
+  if (status.followerCount != null) statsBits.push(`${isFrench ? 'Abonnés' : 'Followers'} **${formatCompactNumber(status.followerCount)}**`);
+  if (status.heartCount != null) statsBits.push(`${isFrench ? 'Likes' : 'Likes'} **${formatCompactNumber(status.heartCount)}**`);
+  if (status.videoCount != null) statsBits.push(`${isFrench ? 'Vidéos' : 'Videos'} **${formatCompactNumber(status.videoCount)}**`);
 
   const embed = new EmbedBuilder()
-    .setColor(ensureHexColor(guildConfig?.embedColor))
+    .setColor(ensureHexColor(kind === 'live' ? '#EF4444' : (guildConfig?.embedColor || '#5865F2')))
     .setAuthor({
-      name: `TikTok • ${displayName} (@${username})${verifiedLabel}`,
+      name: `TikTok • ${displayName} (@${username})${status.verified === true ? ' ✓' : ''}`,
       iconURL: status.avatarUrl || undefined,
-      url: `https://www.tiktok.com/@${username}`
+      url: accountUrl
     })
     .setURL(profileUrl)
     .setThumbnail(status.avatarUrl || null)
-    .setFooter({ text: kind === 'live' ? 'TikTok Live Alert' : 'TikTok Post Alert' })
+    .setFooter({ text: kind === 'live' ? (isFrench ? 'Neyora • live TikTok détecté' : 'Neyora • TikTok live detected') : (isFrench ? 'Neyora • nouvelle vidéo TikTok' : 'Neyora • new TikTok video') })
     .setTimestamp();
 
   if (kind === 'live') {
     embed
-      .setTitle('🔴 TikTok Live Started')
+      .setTitle(isFrench ? '🔴 TikTok • live détecté' : '🔴 TikTok • live detected')
       .setDescription([
-        `**${displayName}** is now live on TikTok.`,
+        isFrench ? `**${displayName}** est actuellement en live.` : `**${displayName}** is live right now.`,
         status.bio ? `> ${String(status.bio).slice(0, 180)}` : null
       ].filter(Boolean).join('\n'))
       .addFields(
-        { name: 'Account', value: `[@${username}](https://www.tiktok.com/@${username})`, inline: true },
-        { name: 'Room ID', value: status.liveRoomId || 'n/a', inline: true },
-        { name: 'Source', value: status.source || 'n/a', inline: true }
+        { name: isFrench ? 'Compte' : 'Account', value: `[@${username}](${accountUrl})`, inline: true },
+        { name: isFrench ? 'État' : 'State', value: isFrench ? '🔴 En live' : '🔴 Live now', inline: true },
+        { name: 'Source', value: status.source || 'n/a', inline: true },
+        { name: isFrench ? 'Ouvrir' : 'Open', value: `[${isFrench ? 'Voir le live' : 'Watch the live'}](${profileUrl})`, inline: false }
       );
   } else {
     embed
-      .setTitle('🎬 New TikTok Video')
+      .setTitle(isFrench ? '🎬 TikTok • nouvelle vidéo' : '🎬 TikTok • new video')
       .setDescription([
-        `A new TikTok video was detected for **${displayName}**.`,
+        isFrench ? `Une nouvelle vidéo a été détectée pour **${displayName}**.` : `A new video was detected for **${displayName}**.`,
         status.latestTitle ? `> ${String(status.latestTitle).slice(0, 180)}` : null
       ].filter(Boolean).join('\n'))
       .addFields(
-        { name: 'Account', value: `[@${username}](https://www.tiktok.com/@${username})`, inline: true },
-        { name: 'Video ID', value: status.latestVideoId || 'n/a', inline: true },
-        { name: 'Source', value: status.source || 'n/a', inline: true }
+        { name: isFrench ? 'Compte' : 'Account', value: `[@${username}](${accountUrl})`, inline: true },
+        { name: isFrench ? 'Vidéo' : 'Video', value: status.latestVideoId ? `\`${status.latestVideoId}\`` : 'n/a', inline: true },
+        { name: 'Source', value: status.source || 'n/a', inline: true },
+        { name: isFrench ? 'Ouvrir' : 'Open', value: `[${isFrench ? 'Voir la vidéo' : 'Watch the video'}](${profileUrl})`, inline: false }
       );
     if (status.coverUrl) embed.setImage(status.coverUrl);
   }
 
-  const stats = [];
-  if (status.followerCount != null) stats.push(`Followers: **${formatCompactNumber(status.followerCount)}**`);
-  if (status.heartCount != null) stats.push(`Likes: **${formatCompactNumber(status.heartCount)}**`);
-  if (status.videoCount != null) stats.push(`Videos: **${formatCompactNumber(status.videoCount)}**`);
-  if (stats.length) embed.addFields({ name: 'Profile stats', value: stats.join(' • '), inline: false });
+  if (statsBits.length) embed.addFields({ name: isFrench ? 'Stats profil' : 'Profile stats', value: statsBits.join(' • '), inline: false });
+  if (mentionRoleId) embed.addFields({ name: isFrench ? 'Ping' : 'Ping', value: `<@&${mentionRoleId}>`, inline: true });
+  if (status.liveRoomId && kind === 'live') embed.addFields({ name: isFrench ? 'Salon live' : 'Live room', value: `\`${status.liveRoomId}\``, inline: true });
 
   const content = mentionRoleId ? `<@&${mentionRoleId}>` : null;
   return { content, embeds: [embed] };
@@ -310,6 +315,9 @@ async function checkTikTokWatchers(client) {
         watcher.lastLiveRoomId = status.liveRoomId || watcher.lastLiveRoomId || null;
         watcher.lastCheckAt = Date.now();
         watcher.lastSource = status.source || null;
+        watcher.lastDisplayName = status.displayName || watcher.lastDisplayName || watcher.username;
+        watcher.lastProfileUrl = status.finalUrl || `https://www.tiktok.com/@${watcher.username}`;
+        watcher.lastVideoUrl = status.latestVideoUrl || watcher.lastVideoUrl || null;
         watcher.lastError = null;
       } catch (error) {
         watcher.lastError = String(error.message || error);

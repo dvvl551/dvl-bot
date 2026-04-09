@@ -61,7 +61,7 @@ const CATEGORY_META = {
   Owner: { emoji: '👑', style: ButtonStyle.Danger }
 };
 
-const CATEGORY_ORDER = ['General', 'System', 'Config', 'Welcome', 'Logs', 'Tracking', 'Support', 'Confessions', 'Roles', 'Permissions', 'Voice', 'Security', 'Moderation', 'Automation', 'Progress', 'Giveaway', 'TikTok', 'Utility', 'Info', 'Owner'];
+const CATEGORY_ORDER = ['General', 'Info', 'Utility', 'Support', 'Confessions', 'Moderation', 'Security', 'Logs', 'Roles', 'Permissions', 'Voice', 'Tracking', 'Progress', 'Automation', 'Welcome', 'Config', 'System', 'Giveaway', 'TikTok', 'Owner'];
 
 
 const CATEGORY_BLURBS = {
@@ -175,7 +175,7 @@ function setupGroupLabelFor(guildConfig, label) {
 }
 
 const UI_FR_TO_EN_REPLACEMENTS = [
-  [/Centre d’aide DvL/g, 'DvL help center'],
+  [/Centre d’aide Neyora/g, 'Neyora help center'],
   [/Accueil/g, 'Home'], [/Catégories/g, 'Categories'], [/Tout/g, 'All'], [/Début/g, 'Start'], [/Membres/g, 'Members'], [/Santé/g, 'Health'], [/Sécurité/g, 'Security'], [/Vocal/g, 'Voice'], [/Progression/g, 'Progress'], [/Textes/g, 'Texts'], [/Salons/g, 'Channels'], [/Titre/g, 'Title'], [/Couleur/g, 'Color'], [/Variables/g, 'Variables'], [/État actuel/g, 'Current state'], [/Commandes rapides/g, 'Quick commands'], [/Flow conseillé/g, 'Recommended flow'], [/Prompt public/g, 'Public prompt'], [/Routage/g, 'Routing'], [/Actions rapides/g, 'Quick actions'], [/Vue rapide/g, 'Quick view'], [/Suite logique/g, 'Next steps'], [/Modules configurés/g, 'Configured modules'], [/Base/g, 'Basics'], [/par défaut/g, 'default'], [/non défini/g, 'not set'], [/aucune/g, 'none'], [/aucun/g, 'none'], [/actif/g, 'enabled'], [/inactif/g, 'disabled'], [/Les hubs principaux sont ici : aide, panel, dashboard, support et setup\./g, 'Main hubs are here: help, panel, dashboard, support and setup.'], [/Parcours propre par famille de commandes\./g, 'Clean browse by command family.'], [/Commandes visibles/g, 'Visible commands'], [/Panneau support/g, 'Support panel'], [/panneau support/g, 'support panel'], [/Le hub principal du serveur\. Passe d’une page à l’autre avec les boutons dessous\./g, 'The main server hub. Use the buttons below to switch pages.'], [/Un endroit propre pour configurer le support sans empiler 15 commandes presque pareilles\./g, 'A clean place to configure support without stacking 15 near-identical commands.'], [/Hub staff pour/g, 'Staff hub for'], [/Un seul panel propre au lieu de courir après des commandes doublonnées\./g, 'One clean panel instead of chasing duplicated setup commands.'], [/Panel staff fixe/g, 'Persistent staff panel'], [/Points à vérifier/g, 'Things to check'], [/Pages à ouvrir d’abord/g, 'Best pages to open first'], [/Modifie et teste/g, 'Edit and test'], [/Actions de cette page/g, 'This page actions'], [/Presets rapides/g, 'Quick presets'], [/La plupart des erreurs de setup sont corrigées automatiquement\./g, 'Most setup mistakes are auto-corrected now.'], [/Vue claire du serveur : état, modules, setup et raccourcis utiles\./g, 'Clear server overview: status, modules, setup and useful shortcuts.'], [/Progression du setup global et prochains réglages conseillés\./g, 'Overall setup progress and the next recommended steps.'], [/Routage principal des logs et vue rapide des salons utilisés\./g, 'Main log routing and a quick view of the channels in use.'], [/État des protections AutoMod, ghost ping et filtres principaux\./g, 'Status of AutoMod protections, ghost ping and the main filters.'], [/Temp voice, panel voc et modération voc en un seul endroit\./g, 'Temp voice, voice panel and voice moderation in one place.'], [/Auto-react, sticky, rôles auto et petits systèmes utiles\./g, 'Auto-react, sticky posts, auto roles and useful automations.'], [/Trophées, milestones et avancement du serveur\./g, 'Trophies, milestones and overall server progress.'], [/Hub staff/g, 'Staff hub'], [/ce salon/g, 'this channel']
 ];
 
@@ -198,7 +198,7 @@ function translateEmbedForUi(guildConfig, embed) {
 }
 
 
-function polishGuildPanelEmbed(embed, guild, sectionLabel = 'DvL') {
+function polishGuildPanelEmbed(embed, guild, sectionLabel = 'Neyora') {
   if (!embed?.setAuthor) return embed;
   const iconURL = guild?.iconURL?.({ size: 256 }) || guild?.iconURL?.() || null;
   if (guild?.name) embed.setAuthor({ name: `${guild.name} • ${sectionLabel}`.slice(0, 256), iconURL: iconURL || undefined });
@@ -287,14 +287,30 @@ function createModuleActionEmbed(guildConfig, {
   const meta = MODULE_RESPONSE_META[moduleKey] || { emoji: '🧩', fr: 'Module', en: 'Module' };
   const toneEmoji = tone === 'success' ? '✅' : tone === 'warning' ? '⚠️' : tone === 'error' ? '⛔' : meta.emoji;
   const title = uiText(guildConfig, `${toneEmoji} ${titleFr || meta.fr}`, `${toneEmoji} ${titleEn || meta.en}`);
-  const embed = baseEmbed(
+  const embed = applyEmbedVisualStyle(baseEmbed(
     guildConfig,
     title,
     Array.isArray(summary) ? cleanLines(summary, '—').slice(0, 4096) : String(summary || '—').slice(0, 4096)
-  );
-  if (Array.isArray(stateLines) && stateLines.length) embed.addFields(sectionField(uiText(guildConfig, '📍 État actuel', '📍 Current state'), stateLines, true));
-  if (Array.isArray(nextLines) && nextLines.length) embed.addFields(sectionField(uiText(guildConfig, '⚡ Suite logique', '⚡ Next steps'), nextLines, true));
-  if (Array.isArray(extraFields) && extraFields.length) embed.addFields(...extraFields);
+  ), guildConfig);
+
+  const toneKind = tone === 'success' ? 'success' : tone === 'warning' ? 'warning' : tone === 'error' ? 'error' : 'info';
+  embed.setColor(pickVisualColor(guildConfig, toneKind));
+
+  const normalizedState = Array.isArray(stateLines) ? stateLines.filter(Boolean) : [];
+  const normalizedNext = Array.isArray(nextLines) ? nextLines.filter(Boolean) : [];
+  const normalizedExtra = Array.isArray(extraFields) ? extraFields.filter(Boolean) : [];
+
+  if (normalizedState.length) embed.addFields(sectionField(uiText(guildConfig, '📍 Snapshot', '📍 Snapshot'), normalizedState, true));
+  if (normalizedNext.length) embed.addFields(sectionField(uiText(guildConfig, '🧭 Suite logique', '🧭 Next moves'), normalizedNext, true));
+  if (normalizedExtra.length) embed.addFields(...normalizedExtra);
+
+  const footerMap = {
+    success: uiText(guildConfig, 'Neyora • action appliquée', 'Neyora • action applied'),
+    warning: uiText(guildConfig, 'Neyora • vérification utile', 'Neyora • useful warning'),
+    error: uiText(guildConfig, 'Neyora • action bloquée', 'Neyora • action blocked'),
+    info: uiText(guildConfig, 'Neyora • action rapide', 'Neyora • quick action')
+  };
+  embed.setFooter({ text: footerMap[tone] || footerMap.info });
   return translateEmbedForUi(guildConfig, embed);
 }
 
@@ -362,7 +378,7 @@ function buildMpallStateLines(guildConfig, mpall = {}) {
     metricLine(uiText(guildConfig, 'Mode', 'Mode'), mode === 'plain' ? uiText(guildConfig, 'simple', 'simple') : 'embed'),
     metricLine(uiText(guildConfig, 'Titre', 'Title'), formatTemplatePreview(mpall.title, '📨 Message from {server}')),
     metricLine(uiText(guildConfig, 'Message', 'Message'), formatTemplatePreview(mpall.message, uiText(guildConfig, 'non défini', 'not set'))),
-    metricLine(uiText(guildConfig, 'Footer', 'Footer'), mode === 'embed' ? formatTemplatePreview(mpall.footer, 'DvL') : uiText(guildConfig, 'inutile en mode simple', 'unused in simple mode'))
+    metricLine(uiText(guildConfig, 'Footer', 'Footer'), mode === 'embed' ? formatTemplatePreview(mpall.footer, 'Neyora') : uiText(guildConfig, 'inutile en mode simple', 'unused in simple mode'))
   ];
 }
 
@@ -380,20 +396,58 @@ function buildBackupStateLines(guildConfig, entry = {}) {
 function buildTikTokWatcherStateLines(guildConfig, watcher = {}) {
   const notSet = uiText(guildConfig, 'non défini', 'not set');
   const none = uiText(guildConfig, 'aucun', 'none');
+  const lastCheck = watcher.lastCheckAt
+    ? `<t:${Math.floor(Number(watcher.lastCheckAt) / 1000)}:R>`
+    : uiText(guildConfig, 'jamais', 'never');
+  const source = watcher.lastSource || none;
+  const route = watcher.channelId ? `<#${watcher.channelId}>` : notSet;
+  const ping = watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : none;
+  const statusLine = watcher.lastError
+    ? `⚠️ ${clipText(String(watcher.lastError), 70)}`
+    : (watcher.wasLive ? uiText(guildConfig, '🟢 live détecté au dernier check', '🟢 live detected on the last check') : uiText(guildConfig, '✅ propre', '✅ healthy'));
+  const latestVideo = watcher.lastVideoId ? `\`${String(watcher.lastVideoId).slice(0, 18)}\`` : none;
+  const latestLink = watcher.lastVideoUrl ? `[${uiText(guildConfig, 'ouvrir', 'open')}](${watcher.lastVideoUrl})` : none;
   return [
-    metricLine(uiText(guildConfig, 'Watcher', 'Watcher'), `**@${watcher.username || 'unknown'}**`),
-    metricLine(uiText(guildConfig, 'Salon', 'Channel'), watcher.channelId ? `<#${watcher.channelId}>` : notSet),
-    metricLine(uiText(guildConfig, 'Ping', 'Ping'), watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : none),
-    metricLine(uiText(guildConfig, 'Live', 'Live'), uiState(Boolean(watcher.announceLive), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))),
-    metricLine(uiText(guildConfig, 'Vidéos', 'Videos'), uiState(Boolean(watcher.announceVideos), uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled')))
+    metricLine(uiText(guildConfig, 'Compte', 'Account'), `**@${watcher.username || 'unknown'}**`),
+    metricLine(uiText(guildConfig, 'Routage', 'Routing'), `${route} • ${ping}`),
+    metricLine(uiText(guildConfig, 'Alertes', 'Alerts'), `${watcher.announceLive === false ? '⚫' : '🔴'} live • ${watcher.announceVideos === false ? '⚫' : '🎬'} video`),
+    metricLine(uiText(guildConfig, 'Dernière vidéo', 'Latest video'), `${latestVideo} • ${latestLink}`),
+    metricLine(uiText(guildConfig, 'Dernier check', 'Last check'), lastCheck),
+    metricLine(uiText(guildConfig, 'Source', 'Source'), source),
+    metricLine(uiText(guildConfig, 'État', 'Health'), statusLine)
   ];
+}
+
+function buildTikTokWatcherCompactBlock(guildConfig, watcher = {}) {
+  const notSet = uiText(guildConfig, 'non défini', 'not set');
+  const none = uiText(guildConfig, 'aucun', 'none');
+  const lastCheck = watcher.lastCheckAt ? `<t:${Math.floor(Number(watcher.lastCheckAt) / 1000)}:R>` : uiText(guildConfig, 'jamais', 'never');
+  const routeLine = [watcher.channelId ? `<#${watcher.channelId}>` : notSet, watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : none].join(' • ');
+  const stateBits = [
+    watcher.announceLive === false ? '⚫ live off' : '🔴 live on',
+    watcher.announceVideos === false ? '⚫ video off' : '🎬 video on',
+    watcher.wasLive ? uiText(guildConfig, '🟢 live vu', '🟢 live seen') : uiText(guildConfig, '⚪ hors live', '⚪ offline')
+  ];
+  const infoBits = [];
+  if (watcher.lastVideoId) infoBits.push(`${uiText(guildConfig, 'vidéo', 'video')} ${code(String(watcher.lastVideoId).slice(0, 18))}`);
+  if (watcher.lastSource) infoBits.push(`${uiText(guildConfig, 'source', 'source')} ${watcher.lastSource}`);
+  infoBits.push(uiText(guildConfig, `check ${lastCheck}`, `checked ${lastCheck}`));
+  const lines = [
+    `**@${watcher.username || 'unknown'}**`,
+    `↳ ${stateBits.join(' • ')}`,
+    `↳ ${routeLine}`,
+    `↳ ${infoBits.join(' • ')}`
+  ];
+  if (watcher.lastError) lines.push(`↳ ⚠️ ${clipText(String(watcher.lastError), 96)}`);
+  else if (watcher.lastVideoUrl) lines.push(`↳ ${uiText(guildConfig, 'lien', 'link')} • ${watcher.lastVideoUrl}`);
+  return lines.join('\n');
 }
 
 function quickExamplesForCommand(command, prefix = '+') {
   const name = String(command?.name || '').toLowerCase();
   const usage = String(command?.usage || command?.name || '').trim();
   const map = {
-    help: [`${prefix}help start`, `${prefix}help logs`, `${prefix}help support`],
+    help: [`${prefix}help members`, `${prefix}help confessions`, `${prefix}help +support`],
     configpanel: [`${prefix}panel`, `${prefix}panel texts`, `${prefix}panel support`],
     setup: [`${prefix}setup`, `${prefix}setup logs`, `${prefix}setup support`],
     logs: [`${prefix}logs here`, `${prefix}logs boost here`, `${prefix}logs panel`],
@@ -862,7 +916,7 @@ async function ensureStatsVoiceChannel(guild, name, parentId) {
         deny: [PermissionFlagsBits.Connect, PermissionFlagsBits.Speak]
       }
     ],
-    reason: 'DvL server stats setup'
+    reason: 'Neyora server stats setup'
   }).catch(() => null);
 }
 
@@ -1233,27 +1287,38 @@ function buildGiveawayListEmbeds(ctx, entries) {
 
 function buildTikTokWatcherEmbeds(ctx) {
   const watchers = ctx.guildConfig.tiktok?.watchers || [];
-  const lines = watchers.map((watcher, index) => [
-    `**${index + 1}.** **@${watcher.username}** → ${watcher.channelId ? `<#${watcher.channelId}>` : 'missing channel'}`,
-    `↳ ping: ${watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : 'none'} • live: ${boolEmoji(watcher.announceLive)} • video: ${boolEmoji(watcher.announceVideos)}`,
-    `↳ source: ${watcher.lastSource || 'n/a'}${watcher.lastError ? ` • error: ${watcher.lastError}` : ''}`
-  ].join('\n'));
+  const liveNow = watchers.filter((watcher) => watcher.wasLive).length;
+  const errorCount = watchers.filter((watcher) => watcher.lastError).length;
+  const withRole = watchers.filter((watcher) => watcher.mentionRoleId).length;
+  const routed = watchers.filter((watcher) => watcher.channelId).length;
+  const lines = watchers.map((watcher, index) => {
+    const checked = watcher.lastCheckAt ? `<t:${Math.floor(Number(watcher.lastCheckAt) / 1000)}:R>` : uiText(ctx.guildConfig, 'jamais', 'never');
+    return [
+      `**${index + 1}. @${watcher.username}** • ${watcher.wasLive ? '🟢' : '⚪'} ${watcher.wasLive ? uiText(ctx.guildConfig, 'live', 'live') : uiText(ctx.guildConfig, 'offline', 'offline')}`,
+      `↳ ${uiText(ctx.guildConfig, 'salon', 'channel')} : ${watcher.channelId ? `<#${watcher.channelId}>` : uiText(ctx.guildConfig, 'non défini', 'not set')} • ${uiText(ctx.guildConfig, 'ping', 'ping')} : ${watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : uiText(ctx.guildConfig, 'aucun', 'none')}`,
+      `↳ live: ${boolEmoji(watcher.announceLive)} • video: ${boolEmoji(watcher.announceVideos)} • ${uiText(ctx.guildConfig, 'source', 'source')} : ${watcher.lastSource || 'n/a'} • ${uiText(ctx.guildConfig, 'check', 'check')} : ${checked}` + (watcher.lastError ? ` • ${uiText(ctx.guildConfig, 'erreur', 'error')} : ${clipText(String(watcher.lastError), 60)}` : ''),
+      watcher.lastVideoUrl ? `↳ ${uiText(ctx.guildConfig, 'lien', 'link')} : ${watcher.lastVideoUrl}` : null
+    ].filter(Boolean).join('\n');
+  });
   return buildSectionedListEmbeds(
     ctx.guildConfig,
-    '🎵 TikTok watchers',
+    uiText(ctx.guildConfig, '🎵 TikTok • watchers', '🎵 TikTok • watchers'),
     [
-      `**Watchers:** ${watchers.length}`,
+      `**${uiText(ctx.guildConfig, 'Watchers', 'Watchers')} :** ${watchers.length}`,
+      `**${uiText(ctx.guildConfig, 'Routés', 'Routed')} :** ${routed}/${Math.max(1, watchers.length || 1)}`,
+      `**${uiText(ctx.guildConfig, 'Live vus', 'Lives seen')} :** ${liveNow}`,
+      `**${uiText(ctx.guildConfig, 'Rôles ping', 'Ping roles')} :** ${withRole}`,
+      `**${uiText(ctx.guildConfig, 'Erreurs', 'Errors')} :** ${errorCount}`,
       '',
-      `Quick use: \`${ctx.prefix}tiktok add username here\` • \`${ctx.prefix}tiktok check\``
+      `${uiText(ctx.guildConfig, 'Raccourcis', 'Quick flow')} : \`${ctx.prefix}tiktok add username here\` • \`${ctx.prefix}tiktok test username\` • \`${ctx.prefix}tiktok check\``
     ],
-    [['Watchers', lines]],
+    [[uiText(ctx.guildConfig, 'Watchers', 'Watchers'), lines]],
     {
       chunkSize: 4,
-      emptyText: 'No TikTok watchers.'
+      emptyText: uiText(ctx.guildConfig, 'Aucun watcher TikTok configuré.', 'No TikTok watcher configured.')
     }
   );
 }
-
 
 function getTargetUserLike(target) {
   return target?.user || target || null;
@@ -1471,7 +1536,7 @@ function createUserProfileEmbed(guildConfig, guild, member, extra = {}) {
       },
       { name: 'Commandes utiles', value: '`+profile @user` • `+user` • `+whois`', inline: false }
     )
-    .setFooter({ text: extra.footer || 'DvL • user profile' });
+    .setFooter({ text: extra.footer || 'Neyora • user profile' });
 
   if (extra.note) embed.addFields({ name: 'Update', value: extra.note, inline: false });
   return embed;
@@ -1591,160 +1656,99 @@ function createServerProgressComponents() {
 
 function createDashboardEmbed(guildConfig, guild, page = 'home') {
   const g = guildConfig || {};
-  const pages = ['home', 'setup', 'logs', 'security', 'voice', 'progress'];
-  const safePage = pages.includes(page) ? page : 'home';
+  const safePage = ['home', 'security', 'voice', 'progress'].includes(page) ? page : 'home';
   const memberCount = guild?.memberCount || guild?.members?.cache?.size || 0;
   const boostCount = guild?.premiumSubscriptionCount || 0;
   const onlineCount = guild?.presences?.cache ? guild.presences.cache.filter((presence) => presence?.status && presence.status !== 'offline').size : 0;
   const voiceCount = guild?.voiceStates?.cache ? guild.voiceStates.cache.filter((state) => state?.channelId && !state?.member?.user?.bot).size : 0;
+  const health = getSetupHealthDetails(g, guild);
   const snapshot = computeServerProgressSnapshot(guild, g);
-  const logsRoutes = Object.values(g.logs?.channels || {}).filter(Boolean).length;
-  const stickyCount = Object.keys(g.sticky || {}).length;
-  const missingCore = [];
-  if (!(g.logs?.enabled && (g.logs?.channelId || g.logs?.channels?.default || logsRoutes))) missingCore.push('Logs');
-  if (!(g.welcome?.enabled && g.welcome?.channelId)) missingCore.push('Welcome');
-  if (!(g.support?.enabled && g.support?.channelId)) missingCore.push('Support');
-  if (!(g.stats?.enabled && Object.values(g.stats?.channels || {}).some(Boolean))) missingCore.push('Stats');
-  if (!(g.progress?.enabled && g.progress?.channelId)) missingCore.push('Trophy board');
-  const embed = polishGuildPanelEmbed(baseEmbed(g, '🧩 DvL Dashboard', 'Vue d’ensemble panel for the server setup and live modules.'), guild, 'Dashboard');
+  const embed = applyHubFrame(
+    baseEmbed(
+      g,
+      uiText(g, '🧩 Dashboard Neyora', '🧩 Neyora dashboard'),
+      uiText(g, 'Vue claire du serveur : état live, modules, sécurité, vocal et progression depuis un seul hub.', 'Clear server view: live state, modules, security, voice and progress from one hub.')
+    ),
+    g,
+    guild,
+    'Dashboard',
+    'Dashboard',
+    [
+      hubBadge(g, '👥', 'Membres', 'Members', `**${formatStatNumber(memberCount)}**`),
+      hubBadge(g, '🌐', 'En ligne', 'Online', `**${formatStatNumber(onlineCount)}**`),
+      hubBadge(g, '🔊', 'En vocal', 'In voice', `**${formatStatNumber(voiceCount)}**`),
+      hubBadge(g, '📈', 'Santé setup', 'Setup health', `**${health.moduleScore}%**`)
+    ]
+  );
 
   if (safePage === 'home') {
     embed
-      .setDescription('Tout l’essentiel au même endroit. Utilise les boutons dessous pour changer de page.')
+      .setTitle(uiText(g, '🏠 Dashboard • accueil', '🏠 Dashboard • home'))
       .addFields(
-        {
-          name: 'Server pulse',
-          value: [
-            `**Members:** ${formatStatNumber(memberCount)}`,
-            `**Online:** ${formatStatNumber(onlineCount)}`,
-            `**In voice:** ${formatStatNumber(voiceCount)}`,
-            `**Boosts:** ${formatStatNumber(boostCount)}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: 'Setup score',
-          value: [
-            `**Tier:** ${snapshot.setupTier}`,
-            `**Completion:** ${snapshot.completionPercent}%`,
-            `**Modules:** ${snapshot.completedModules}/${snapshot.modules.length}`,
-            `**Security:** ${snapshot.securityEnabled} active`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: 'Fast start',
-          value: [
-            '`+dashboard setup`',
-            '`+logs`',
-            '`+stats setup`',
-            '`+trophychannel here`',
-            '`+setupcheck`'
-          ].join(' • '),
-          inline: false
-        },
-        {
-          name: 'Missing core pieces',
-          value: missingCore.length ? missingCore.map((item) => `• ${item}`).join('\n') : 'Core setup is in good shape ✅',
-          inline: false
-        }
-      );
-  }
-
-  if (safePage === 'setup') {
-    embed
-      .setTitle('🧩 DvL Dashboard • Setup')
-      .setDescription('Vue pratique pour savoir quoi configurer ensuite sans se perdre dans toutes les commandes.')
-      .addFields(
-        {
-          name: 'Core',
-          value: [
-            `**Prefix:** \`${g.prefix || '+'}\``,
-            `**Embed color:** \`${g.embedColor || '#5865F2'}\``,
-            `**Language:** \`${g.language || 'en'}\``,
-            `**Backups:** ${Array.isArray(g.backups) ? g.backups.length : 0}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: 'Main modules',
-          value: [
-            `**Welcome:** ${g.welcome?.enabled ? 'on' : 'off'}`,
-            `**Leave:** ${g.leave?.enabled ? 'on' : 'off'}`,
-            `**Support:** ${g.support?.enabled ? 'on' : 'off'}`,
-            `**Sticky messages:** ${stickyCount}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: 'Recommended next actions',
-          value: [
-            '`+setwelcomechannel #channel`',
-            '`+setlogchannel #logs`',
-            '`+supportchannel #support-logs`',
-            '`+stickyset <message>`',
-            '`+backup create`'
-          ].join('\n'),
-          inline: false
-        }
-      );
-  }
-
-  if (safePage === 'logs') {
-    embed
-      .setTitle('🧾 DvL Dashboard • Logs')
-      .setDescription('Résumé des routes de logs et du routing actuel.')
-      .addFields(
-        {
-          name: 'Master',
-          value: [
-            `**Logs enabled:** ${g.logs?.enabled ? 'on' : 'off'}`,
-            `**Default:** ${g.logs?.channels?.default ? `<#${g.logs.channels.default}>` : (g.logs?.channelId ? `<#${g.logs.channelId}>` : 'not set')}`,
-            `**Routed families:** ${logsRoutes}`,
-            `**Boost channel:** ${g.boost?.channelId ? `<#${g.boost.channelId}>` : 'not set'}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: 'Families',
-          value: [
-            `**Messages:** ${g.logs?.channels?.messages ? `<#${g.logs.channels.messages}>` : 'default'}`,
-            `**Members:** ${g.logs?.channels?.members ? `<#${g.logs.channels.members}>` : 'default'}`,
-            `**Moderation:** ${g.logs?.channels?.moderation ? `<#${g.logs.channels.moderation}>` : 'default'}`,
-            `**Voice:** ${g.logs?.channels?.voice ? `<#${g.logs.channels.voice}>` : 'default'}`,
-            `**Server:** ${g.logs?.channels?.server ? `<#${g.logs.channels.server}>` : 'default'}`,
-            `**Social:** ${g.logs?.channels?.social ? `<#${g.logs.channels.social}>` : 'default'}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: 'Commandes utiles',
-          value: '`+logs` • `+setlogchannel messages #channel` • `+setlogchannel moderation #channel` • `+boostconfig`',
-          inline: false
-        }
+        sectionField(uiText(g, '📍 Snapshot serveur', '📍 Server snapshot'), [
+          metricLine(uiText(g, 'Membres', 'Members'), `**${formatStatNumber(memberCount)}**`),
+          metricLine(uiText(g, 'En ligne', 'Online'), `**${formatStatNumber(onlineCount)}**`),
+          metricLine(uiText(g, 'En vocal', 'In voice'), `**${formatStatNumber(voiceCount)}**`),
+          metricLine(uiText(g, 'Boosts', 'Boosts'), `**${formatStatNumber(boostCount)}**`)
+        ], true),
+        sectionField(uiText(g, '🧩 Modules principaux', '🧩 Core modules'), [
+          metricLine('Logs', uiState(Boolean(g.logs?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Welcome', uiState(Boolean(g.welcome?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Support', uiState(Boolean(g.support?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Confessions', uiState(Boolean(g.confessions?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Stats', uiState(Boolean(g.stats?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine(uiText(g, 'Trophy board', 'Trophy board'), uiState(Boolean(g.progress?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off')))
+        ], true),
+        sectionField(uiText(g, '🩺 Santé globale', '🩺 Overall health'), [
+          metricLine(uiText(g, 'Score setup', 'Setup score'), `**${health.moduleScore}%**`),
+          metricLine(uiText(g, 'Modules prêts', 'Healthy modules'), `**${health.healthyModules}/${health.modules.length}**`),
+          metricLine(uiText(g, 'Tier', 'Tier'), `**${snapshot.setupTier}**`),
+          metricLine(uiText(g, 'À corriger', 'Needs attention'), `**${health.issueCount}**`)
+        ], true),
+        sectionField(uiText(g, '⚡ Ouverture rapide', '⚡ Quick jump'), [
+          commandPill(g.prefix || '+', 'panel'),
+          commandPill(g.prefix || '+', 'logs panel'),
+          commandPill(g.prefix || '+', 'support panel'),
+          commandPill(g.prefix || '+', 'texts'),
+          commandPill(g.prefix || '+', 'help staff'),
+          commandPill(g.prefix || '+', 'setup check')
+        ], false),
+        sectionField(uiText(g, '👥 Staff & onboarding', '👥 Staff & onboarding'), [
+          commandPill(g.prefix || '+', 'permrole 1 @Helper'),
+          commandPill(g.prefix || '+', 'permcmd 1 add support'),
+          commandPill(g.prefix || '+', 'guide moderation'),
+          commandPill(g.prefix || '+', 'reply @user merci')
+        ], false)
       );
   }
 
   if (safePage === 'security') {
     const mod = g.automod || {};
+    const filtersOn = ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => mod?.[key]?.enabled).length;
     embed
-      .setTitle('🚨 DvL Dashboard • Security')
-      .setDescription('Security / AutoMod view with the current thresholds and actions.')
+      .setTitle(uiText(g, '🚨 Dashboard • sécurité', '🚨 Dashboard • security'))
+      .setDescription(uiText(g, 'Vue sécurité : filtres actifs, ghost ping, raid mode et points faibles évidents.', 'Security view: active filters, ghost ping, raid mode and obvious weak spots.'))
       .addFields(
-        { name: 'Filters', value: [
-          `**Anti-spam:** ${automodRuleLabel(mod.antiSpam)}`,
-          `**Anti-link:** ${automodRuleLabel(mod.antiLink)}`,
-          `**Anti-invite:** ${automodRuleLabel(mod.antiInvite)}`,
-          `**Ghost ping:** **${mod.ghostPing?.enabled ? 'on' : 'off'}**${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`
-        ].join('\n'), inline: false },
-        { name: 'Abuse protection', value: [
-          `**Mention spam:** ${automodRuleLabel(mod.antiMention)}`,
-          `**Caps:** ${automodRuleLabel(mod.antiCaps)}`,
-          `**Emoji spam:** ${automodRuleLabel(mod.antiEmojiSpam)}`,
-          `**Raid mode:** ${automodRuleLabel(mod.raidMode, 'delete')}`,
-          `**Blocked words:** **${mod.badWordsEnabled ? 'on' : 'off'}** • ${mod.badWords?.length || 0} word(s)`
-        ].join('\n'), inline: false },
-        { name: 'Commandes utiles', value: '`+securitypreset balanced` • `+setantispam 6 6 timeout` • `+setantimention 5 delete` • `+ghostping test` • `+automodignore #channel`', inline: false }
+        sectionField(uiText(g, '🛡️ Filtres actifs', '🛡️ Active filters'), [
+          metricLine(uiText(g, 'Anti-spam', 'Anti-spam'), automodRuleLabel(mod.antiSpam)),
+          metricLine(uiText(g, 'Anti-link', 'Anti-link'), automodRuleLabel(mod.antiLink)),
+          metricLine(uiText(g, 'Anti-invite', 'Anti-invite'), automodRuleLabel(mod.antiInvite)),
+          metricLine(uiText(g, 'Ghost ping', 'Ghost ping'), `${uiState(Boolean(mod.ghostPing?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))}${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`)
+        ], true),
+        sectionField(uiText(g, '🚧 Abus & raid', '🚧 Abuse & raid'), [
+          metricLine(uiText(g, 'Mentions', 'Mentions'), automodRuleLabel(mod.antiMention)),
+          metricLine('Caps', automodRuleLabel(mod.antiCaps)),
+          metricLine(uiText(g, 'Emoji spam', 'Emoji spam'), automodRuleLabel(mod.antiEmojiSpam)),
+          metricLine(uiText(g, 'Raid mode', 'Raid mode'), automodRuleLabel(mod.raidMode, 'delete')),
+          metricLine(uiText(g, 'Bad words', 'Bad words'), `${uiState(Boolean(mod.badWordsEnabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))} • ${(mod.badWords || []).length}`)
+        ], true),
+        sectionField(uiText(g, '🧪 Suite logique', '🧪 Next moves'), [
+          metricLine(uiText(g, 'Filtres actifs', 'Enabled filters'), `**${filtersOn}/7**`),
+          `• ${commandPill(g.prefix || '+', 'security preset balanced')}`,
+          `• ${commandPill(g.prefix || '+', 'ghostping on')}`,
+          `• ${commandPill(g.prefix || '+', 'automodconfig')}`,
+          `• ${commandPill(g.prefix || '+', 'automodignore #channel')}`
+        ], false)
       );
   }
 
@@ -1752,50 +1756,60 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
     const temp = g.voice?.temp || {};
     const moderation = g.voice?.moderation || {};
     embed
-      .setTitle('🔊 DvL Dashboard • Voice')
-      .setDescription('Voice system, temp voice and voice moderation overview.')
+      .setTitle(uiText(g, '🔊 Dashboard • vocal', '🔊 Dashboard • voice'))
+      .setDescription(uiText(g, 'Hub vocal : temp voice, modération voc et compteurs live dans une seule vue.', 'Voice hub: temp voice, voice moderation and live counters in one view.'))
       .addFields(
-        { name: 'Temp voice', value: [
-          `**Hub:** ${temp.hubChannelId ? `<#${temp.hubChannelId}>` : 'not set'}`,
-          `**Panel:** ${temp.panelChannelId ? `<#${temp.panelChannelId}>` : 'not set'}`,
-          `**Category:** ${temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : 'not set'}`,
-          `**Default limit:** ${temp.defaultLimit || 0}`
-        ].join('\n'), inline: true },
-        { name: 'Voice moderation', value: [
-          `**Mute role:** ${moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : 'not set'}`,
-          `**Ban role:** ${moderation.banRoleId ? `<@&${moderation.banRoleId}>` : 'not set'}`,
-          `**Stats panel:** ${g.stats?.enabled ? 'on' : 'off'}`,
-          `**Current voice users:** ${formatStatNumber(voiceCount)}`
-        ].join('\n'), inline: true },
-        { name: 'Commandes utiles', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+stats setup`', inline: false }
+        sectionField(uiText(g, '🎛️ Temp voice', '🎛️ Temp voice'), [
+          metricLine('Hub', temp.hubChannelId ? `<#${temp.hubChannelId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine('Panel', temp.panelChannelId ? `<#${temp.panelChannelId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Catégorie', 'Category'), temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : uiText(g, 'non définie', 'not set')),
+          metricLine(uiText(g, 'Limite par défaut', 'Default limit'), `**${temp.defaultLimit || 0}**`)
+        ], true),
+        sectionField(uiText(g, '🛡️ Modération voc', '🛡️ Voice moderation'), [
+          metricLine(uiText(g, 'Rôle mute', 'Mute role'), moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Rôle ban', 'Ban role'), moderation.banRoleId ? `<@&${moderation.banRoleId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Stats live', 'Live stats'), uiState(Boolean(g.stats?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine(uiText(g, 'Utilisateurs voc', 'Current voice users'), `**${formatStatNumber(voiceCount)}**`)
+        ], true),
+        sectionField(uiText(g, '⚡ Commandes utiles', '⚡ Useful commands'), [
+          commandPill(g.prefix || '+', 'voicepanel'),
+          commandPill(g.prefix || '+', 'createvoc'),
+          commandPill(g.prefix || '+', 'setvoicemuterole @role'),
+          commandPill(g.prefix || '+', 'setvoicebanrole @role'),
+          commandPill(g.prefix || '+', 'stats setup')
+        ], false)
       );
   }
 
   if (safePage === 'progress') {
     embed
-      .setTitle('🏆 DvL Dashboard • Progress')
-      .setDescription('Progression, trophies, objectifs personnalisés et module completion.')
+      .setTitle(uiText(g, '🏆 Dashboard • progression', '🏆 Dashboard • progress'))
+      .setDescription(uiText(g, 'Progression setup, trophées et prochain palier utile à viser.', 'Setup progress, trophies and the next useful milestone to target.'))
       .addFields(
-        { name: 'Progress', value: [
-          `**Setup completion:** ${snapshot.completionPercent}%`,
-          `**Completed modules:** ${snapshot.completedModules}/${snapshot.modules.length}`,
-          `**Member trophies:** ${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}`,
-          `**Boost trophies:** ${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}`,
-          `**Voice trophies:** ${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}`
-        ].join('\n'), inline: true },
-        { name: 'Board', value: [
-          `**Trophy board:** ${g.progress?.enabled ? 'on' : 'off'}`,
-          `**Channel:** ${g.progress?.channelId ? `<#${g.progress.channelId}>` : 'not set'}`,
-          `**Custom goals:** ${snapshot.customGoalCount}`,
-          `**Next members trophy:** ${snapshot.nextGrowth || 'done'}`,
-          `**Next boost trophy:** ${snapshot.nextBoost || 'done'}`,
-          `**Next voice trophy:** ${snapshot.nextVoice || 'done'}`
-        ].join('\n'), inline: true },
-        { name: 'Goal shortcuts', value: '`+trophygoal members 500` • `+trophygoal boosts 14` • `+trophygoal voice 50` • `+trophyconfig`', inline: false }
+        sectionField(uiText(g, '📈 Avancement', '📈 Completion'), [
+          metricLine(uiText(g, 'Setup complété', 'Setup completion'), `**${snapshot.completionPercent}%**`),
+          metricLine(uiText(g, 'Modules prêts', 'Completed modules'), `**${snapshot.completedModules}/${snapshot.modules.length}**`),
+          metricLine(uiText(g, 'Trophées membres', 'Member trophies'), `**${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}**`),
+          metricLine(uiText(g, 'Trophées boosts', 'Boost trophies'), `**${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}**`),
+          metricLine(uiText(g, 'Trophées vocal', 'Voice trophies'), `**${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}**`)
+        ], true),
+        sectionField(uiText(g, '🎯 Prochaines cibles', '🎯 Next targets'), [
+          metricLine(uiText(g, 'Membres', 'Members'), snapshot.nextGrowth || uiText(g, 'fait', 'done')),
+          metricLine('Boost', snapshot.nextBoost || uiText(g, 'fait', 'done')),
+          metricLine(uiText(g, 'Vocal', 'Voice'), snapshot.nextVoice || uiText(g, 'fait', 'done')),
+          metricLine(uiText(g, 'Récompense', 'Reward'), snapshot.memberMilestoneReward?.enabled && snapshot.memberMilestoneReward?.roleId ? `${formatStatNumber(snapshot.nextMemberRewardAt)} → <@&${snapshot.memberMilestoneReward.roleId}>` : uiText(g, 'off', 'off'))
+        ], true),
+        sectionField(uiText(g, '🧭 Commandes utiles', '🧭 Useful commands'), [
+          commandPill(g.prefix || '+', 'trophy'),
+          commandPill(g.prefix || '+', 'trophychannel here'),
+          commandPill(g.prefix || '+', 'trophyimage <url>'),
+          commandPill(g.prefix || '+', 'milestonerole @role'),
+          commandPill(g.prefix || '+', 'milestoneinterval 100')
+        ], false)
       );
   }
 
-  embed.setFooter({ text: `DvL • dashboard • page: ${safePage}` });
+  embed.setFooter({ text: `Neyora • dashboard • ${safePage}` });
   return translateEmbedForUi(guildConfig, embed);
 }
 
@@ -1945,68 +1959,94 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
   const boostCount = guild?.premiumSubscriptionCount || 0;
   const onlineCount = guild?.presences?.cache ? guild.presences.cache.filter((presence) => presence?.status && presence.status !== 'offline').size : 0;
   const voiceCount = guild?.voiceStates?.cache ? guild.voiceStates.cache.filter((state) => state?.channelId && !state?.member?.user?.bot).size : 0;
-  const embed = polishGuildPanelEmbed(baseEmbed(g, '🧩 DvL Dashboard', 'Vue d’ensemble panel for the server setup and live modules.'), guild, 'Dashboard');
+  const health = getSetupHealthDetails(g, guild);
+  const snapshot = computeServerProgressSnapshot(guild, g);
+  const embed = applyHubFrame(
+    baseEmbed(
+      g,
+      uiText(g, '🧩 Dashboard Neyora', '🧩 Neyora dashboard'),
+      uiText(g, 'Vue claire du serveur : état live, modules, sécurité, vocal et progression depuis un seul hub.', 'Clear server view: live state, modules, security, voice and progress from one hub.')
+    ),
+    g,
+    guild,
+    'Dashboard',
+    'Dashboard',
+    [
+      hubBadge(g, '👥', 'Membres', 'Members', `**${formatStatNumber(memberCount)}**`),
+      hubBadge(g, '🌐', 'En ligne', 'Online', `**${formatStatNumber(onlineCount)}**`),
+      hubBadge(g, '🔊', 'En vocal', 'In voice', `**${formatStatNumber(voiceCount)}**`),
+      hubBadge(g, '📈', 'Santé setup', 'Setup health', `**${health.moduleScore}%**`)
+    ]
+  );
 
   if (safePage === 'home') {
     embed
-      .setDescription('Everything important in one clean panel. Use the buttons below to switch sections.')
+      .setTitle(uiText(g, '🏠 Dashboard • accueil', '🏠 Dashboard • home'))
       .addFields(
-        {
-          name: 'Server',
-          value: [
-            `**Members:** ${formatStatNumber(memberCount)}`,
-            `**Online:** ${formatStatNumber(onlineCount)}`,
-            `**In voice:** ${formatStatNumber(voiceCount)}`,
-            `**Boosts:** ${formatStatNumber(boostCount)}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: 'Core modules',
-          value: [
-            `**Logs:** ${g.logs?.enabled ? 'on' : 'off'}`,
-            `**Welcome:** ${g.welcome?.enabled ? 'on' : 'off'}`,
-            `**Support:** ${g.support?.enabled ? 'on' : 'off'}`,
-            `**Stats:** ${g.stats?.enabled ? 'on' : 'off'}`,
-            `**Trophy board:** ${g.progress?.enabled ? 'on' : 'off'}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: 'Quick setup',
-          value: [
-            '`+logs`',
-            '`+stats setup`',
-            '`+trophychannel here`',
-            '`+automodconfig`',
-            '`+voicepanel`',
-            '`+stickyset <message>`'
-          ].join(' • '),
-          inline: false
-        }
+        sectionField(uiText(g, '📍 Snapshot serveur', '📍 Server snapshot'), [
+          metricLine(uiText(g, 'Membres', 'Members'), `**${formatStatNumber(memberCount)}**`),
+          metricLine(uiText(g, 'En ligne', 'Online'), `**${formatStatNumber(onlineCount)}**`),
+          metricLine(uiText(g, 'En vocal', 'In voice'), `**${formatStatNumber(voiceCount)}**`),
+          metricLine(uiText(g, 'Boosts', 'Boosts'), `**${formatStatNumber(boostCount)}**`)
+        ], true),
+        sectionField(uiText(g, '🧩 Modules principaux', '🧩 Core modules'), [
+          metricLine('Logs', uiState(Boolean(g.logs?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Welcome', uiState(Boolean(g.welcome?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Support', uiState(Boolean(g.support?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Confessions', uiState(Boolean(g.confessions?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Stats', uiState(Boolean(g.stats?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine(uiText(g, 'Trophy board', 'Trophy board'), uiState(Boolean(g.progress?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off')))
+        ], true),
+        sectionField(uiText(g, '🩺 Santé globale', '🩺 Overall health'), [
+          metricLine(uiText(g, 'Score setup', 'Setup score'), `**${health.moduleScore}%**`),
+          metricLine(uiText(g, 'Modules prêts', 'Healthy modules'), `**${health.healthyModules}/${health.modules.length}**`),
+          metricLine(uiText(g, 'Tier', 'Tier'), `**${snapshot.setupTier}**`),
+          metricLine(uiText(g, 'À corriger', 'Needs attention'), `**${health.issueCount}**`)
+        ], true),
+        sectionField(uiText(g, '⚡ Ouverture rapide', '⚡ Quick jump'), [
+          commandPill(g.prefix || '+', 'panel'),
+          commandPill(g.prefix || '+', 'logs panel'),
+          commandPill(g.prefix || '+', 'support panel'),
+          commandPill(g.prefix || '+', 'texts'),
+          commandPill(g.prefix || '+', 'help staff'),
+          commandPill(g.prefix || '+', 'setup check')
+        ], false),
+        sectionField(uiText(g, '👥 Staff & onboarding', '👥 Staff & onboarding'), [
+          commandPill(g.prefix || '+', 'permrole 1 @Helper'),
+          commandPill(g.prefix || '+', 'permcmd 1 add support'),
+          commandPill(g.prefix || '+', 'guide moderation'),
+          commandPill(g.prefix || '+', 'reply @user merci')
+        ], false)
       );
   }
 
   if (safePage === 'security') {
     const mod = g.automod || {};
+    const filtersOn = ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => mod?.[key]?.enabled).length;
     embed
-      .setTitle('🚨 DvL Dashboard • Security')
-      .setDescription('Security / AutoMod view with the current thresholds and actions.')
+      .setTitle(uiText(g, '🚨 Dashboard • sécurité', '🚨 Dashboard • security'))
+      .setDescription(uiText(g, 'Vue sécurité : filtres actifs, ghost ping, raid mode et points faibles évidents.', 'Security view: active filters, ghost ping, raid mode and obvious weak spots.'))
       .addFields(
-        { name: 'Filters', value: [
-          `**Anti-spam:** ${automodRuleLabel(mod.antiSpam)}`,
-          `**Anti-link:** ${automodRuleLabel(mod.antiLink)}`,
-          `**Anti-invite:** ${automodRuleLabel(mod.antiInvite)}`,
-          `**Ghost ping:** **${mod.ghostPing?.enabled ? 'on' : 'off'}**${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`
-        ].join('\n'), inline: false },
-        { name: 'Abuse protection', value: [
-          `**Mention spam:** ${automodRuleLabel(mod.antiMention)}`,
-          `**Caps:** ${automodRuleLabel(mod.antiCaps)}`,
-          `**Emoji spam:** ${automodRuleLabel(mod.antiEmojiSpam)}`,
-          `**Raid mode:** ${automodRuleLabel(mod.raidMode, 'delete')}`,
-          `**Blocked words:** **${mod.badWordsEnabled ? 'on' : 'off'}** • ${mod.badWords?.length || 0} word(s)`
-        ].join('\n'), inline: false },
-        { name: 'Commandes utiles', value: '`+securitypreset balanced` • `+setantispam 6 6 timeout` • `+setantimention 5 delete` • `+automodignore #channel`', inline: false }
+        sectionField(uiText(g, '🛡️ Filtres actifs', '🛡️ Active filters'), [
+          metricLine(uiText(g, 'Anti-spam', 'Anti-spam'), automodRuleLabel(mod.antiSpam)),
+          metricLine(uiText(g, 'Anti-link', 'Anti-link'), automodRuleLabel(mod.antiLink)),
+          metricLine(uiText(g, 'Anti-invite', 'Anti-invite'), automodRuleLabel(mod.antiInvite)),
+          metricLine(uiText(g, 'Ghost ping', 'Ghost ping'), `${uiState(Boolean(mod.ghostPing?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))}${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`)
+        ], true),
+        sectionField(uiText(g, '🚧 Abus & raid', '🚧 Abuse & raid'), [
+          metricLine(uiText(g, 'Mentions', 'Mentions'), automodRuleLabel(mod.antiMention)),
+          metricLine('Caps', automodRuleLabel(mod.antiCaps)),
+          metricLine(uiText(g, 'Emoji spam', 'Emoji spam'), automodRuleLabel(mod.antiEmojiSpam)),
+          metricLine(uiText(g, 'Raid mode', 'Raid mode'), automodRuleLabel(mod.raidMode, 'delete')),
+          metricLine(uiText(g, 'Bad words', 'Bad words'), `${uiState(Boolean(mod.badWordsEnabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))} • ${(mod.badWords || []).length}`)
+        ], true),
+        sectionField(uiText(g, '🧪 Suite logique', '🧪 Next moves'), [
+          metricLine(uiText(g, 'Filtres actifs', 'Enabled filters'), `**${filtersOn}/7**`),
+          `• ${commandPill(g.prefix || '+', 'security preset balanced')}`,
+          `• ${commandPill(g.prefix || '+', 'ghostping on')}`,
+          `• ${commandPill(g.prefix || '+', 'automodconfig')}`,
+          `• ${commandPill(g.prefix || '+', 'automodignore #channel')}`
+        ], false)
       );
   }
 
@@ -2014,51 +2054,60 @@ function createDashboardEmbed(guildConfig, guild, page = 'home') {
     const temp = g.voice?.temp || {};
     const moderation = g.voice?.moderation || {};
     embed
-      .setTitle('🔊 DvL Dashboard • Voice')
-      .setDescription('Voice system, temp voice and voice moderation overview.')
+      .setTitle(uiText(g, '🔊 Dashboard • vocal', '🔊 Dashboard • voice'))
+      .setDescription(uiText(g, 'Hub vocal : temp voice, modération voc et compteurs live dans une seule vue.', 'Voice hub: temp voice, voice moderation and live counters in one view.'))
       .addFields(
-        { name: 'Temp voice', value: [
-          `**Hub:** ${temp.hubChannelId ? `<#${temp.hubChannelId}>` : 'not set'}`,
-          `**Panel:** ${temp.panelChannelId ? `<#${temp.panelChannelId}>` : 'not set'}`,
-          `**Category:** ${temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : 'not set'}`,
-          `**Default limit:** ${temp.defaultLimit || 0}`
-        ].join('\n'), inline: true },
-        { name: 'Voice moderation', value: [
-          `**Mute role:** ${moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : 'not set'}`,
-          `**Ban role:** ${moderation.banRoleId ? `<@&${moderation.banRoleId}>` : 'not set'}`,
-          `**Stats panel:** ${g.stats?.enabled ? 'on' : 'off'}`,
-          `**Current voice users:** ${formatStatNumber(voiceCount)}`
-        ].join('\n'), inline: true },
-        { name: 'Commandes utiles', value: '`+voicepanel` • `+createvoc` • `+setvoicemuterole @role` • `+setvoicebanrole @role` • `+stats setup`', inline: false }
+        sectionField(uiText(g, '🎛️ Temp voice', '🎛️ Temp voice'), [
+          metricLine('Hub', temp.hubChannelId ? `<#${temp.hubChannelId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine('Panel', temp.panelChannelId ? `<#${temp.panelChannelId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Catégorie', 'Category'), temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : uiText(g, 'non définie', 'not set')),
+          metricLine(uiText(g, 'Limite par défaut', 'Default limit'), `**${temp.defaultLimit || 0}**`)
+        ], true),
+        sectionField(uiText(g, '🛡️ Modération voc', '🛡️ Voice moderation'), [
+          metricLine(uiText(g, 'Rôle mute', 'Mute role'), moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Rôle ban', 'Ban role'), moderation.banRoleId ? `<@&${moderation.banRoleId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Stats live', 'Live stats'), uiState(Boolean(g.stats?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine(uiText(g, 'Utilisateurs voc', 'Current voice users'), `**${formatStatNumber(voiceCount)}**`)
+        ], true),
+        sectionField(uiText(g, '⚡ Commandes utiles', '⚡ Useful commands'), [
+          commandPill(g.prefix || '+', 'voicepanel'),
+          commandPill(g.prefix || '+', 'createvoc'),
+          commandPill(g.prefix || '+', 'setvoicemuterole @role'),
+          commandPill(g.prefix || '+', 'setvoicebanrole @role'),
+          commandPill(g.prefix || '+', 'stats setup')
+        ], false)
       );
   }
 
   if (safePage === 'progress') {
-    const snapshot = computeServerProgressSnapshot(guild, g);
     embed
-      .setTitle('🏆 DvL Dashboard • Progress')
-      .setDescription('Progression, trophies and module completion.')
+      .setTitle(uiText(g, '🏆 Dashboard • progression', '🏆 Dashboard • progress'))
+      .setDescription(uiText(g, 'Progression setup, trophées et prochain palier utile à viser.', 'Setup progress, trophies and the next useful milestone to target.'))
       .addFields(
-        { name: 'Progress', value: [
-          `**Setup completion:** ${snapshot.completionPercent}%`,
-          `**Completed modules:** ${snapshot.completedModules}/${snapshot.modules.length}`,
-          `**Member trophies:** ${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}`,
-          `**Boost trophies:** ${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}`,
-          `**Voice trophies:** ${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}`
-        ].join('\n'), inline: true },
-        { name: 'Board', value: [
-          `**Trophy board:** ${g.progress?.enabled ? 'on' : 'off'}`,
-          `**Channel:** ${g.progress?.channelId ? `<#${g.progress.channelId}>` : 'not set'}`,
-          `**Next members trophy:** ${snapshot.nextGrowth || 'done'}`,
-          `**Next boost trophy:** ${snapshot.nextBoost || 'done'}`,
-          `**Next voice trophy:** ${snapshot.nextVoice || 'done'}`,
-          `**Reward next:** ${snapshot.memberMilestoneReward?.enabled && snapshot.memberMilestoneReward?.roleId ? `${formatStatNumber(snapshot.nextMemberRewardAt)} → <@&${snapshot.memberMilestoneReward.roleId}>` : 'off'}`
-        ].join('\n'), inline: true },
-        { name: 'Commandes utiles', value: '`+trophy` • `+trophychannel here` • `+trophyimage <url>` • `+milestonerole @role` • `+milestoneinterval 100`', inline: false }
+        sectionField(uiText(g, '📈 Avancement', '📈 Completion'), [
+          metricLine(uiText(g, 'Setup complété', 'Setup completion'), `**${snapshot.completionPercent}%**`),
+          metricLine(uiText(g, 'Modules prêts', 'Completed modules'), `**${snapshot.completedModules}/${snapshot.modules.length}**`),
+          metricLine(uiText(g, 'Trophées membres', 'Member trophies'), `**${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}**`),
+          metricLine(uiText(g, 'Trophées boosts', 'Boost trophies'), `**${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}**`),
+          metricLine(uiText(g, 'Trophées vocal', 'Voice trophies'), `**${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}**`)
+        ], true),
+        sectionField(uiText(g, '🎯 Prochaines cibles', '🎯 Next targets'), [
+          metricLine(uiText(g, 'Membres', 'Members'), snapshot.nextGrowth || uiText(g, 'fait', 'done')),
+          metricLine('Boost', snapshot.nextBoost || uiText(g, 'fait', 'done')),
+          metricLine(uiText(g, 'Vocal', 'Voice'), snapshot.nextVoice || uiText(g, 'fait', 'done')),
+          metricLine(uiText(g, 'Récompense', 'Reward'), snapshot.memberMilestoneReward?.enabled && snapshot.memberMilestoneReward?.roleId ? `${formatStatNumber(snapshot.nextMemberRewardAt)} → <@&${snapshot.memberMilestoneReward.roleId}>` : uiText(g, 'off', 'off'))
+        ], true),
+        sectionField(uiText(g, '🧭 Commandes utiles', '🧭 Useful commands'), [
+          commandPill(g.prefix || '+', 'trophy'),
+          commandPill(g.prefix || '+', 'trophychannel here'),
+          commandPill(g.prefix || '+', 'trophyimage <url>'),
+          commandPill(g.prefix || '+', 'milestonerole @role'),
+          commandPill(g.prefix || '+', 'milestoneinterval 100')
+        ], false)
       );
   }
 
-  embed.setFooter({ text: `DvL • dashboard • page: ${safePage}` });
+  embed.setFooter({ text: `Neyora • dashboard • ${safePage}` });
   return translateEmbedForUi(guildConfig, embed);
 }
 
@@ -2382,8 +2431,8 @@ async function runMassRoleAction(ctx, action, role, scope = 'all') {
   let failed = 0;
   for (const target of todo) {
     const ok = await (action === 'add'
-      ? target.roles.add(role, `DvL roleall ${action} by ${ctx.user.tag}`)
-      : target.roles.remove(role, `DvL roleall ${action} by ${ctx.user.tag}`)
+      ? target.roles.add(role, `Neyora roleall ${action} by ${ctx.user.tag}`)
+      : target.roles.remove(role, `Neyora roleall ${action} by ${ctx.user.tag}`)
     ).then(() => true).catch(() => false);
     if (ok) changed += 1;
     else failed += 1;
@@ -2476,14 +2525,14 @@ async function applyBackupStructure(guild, snapshot) {
 
   const existingSalons = [...guild.channels.cache.values()].sort((a, b) => b.position - a.position);
   for (const channel of existingSalons) {
-    if (channel.deletable) await channel.delete('DvL backup clean restore').catch(() => null);
+    if (channel.deletable) await channel.delete('Neyora backup clean restore').catch(() => null);
   }
 
   const existingRoles = [...guild.roles.cache.values()]
     .filter((role) => role.id !== guild.id && !role.managed)
     .sort((a, b) => a.position - b.position);
   for (const role of existingRoles) {
-    if (role.editable) await role.delete('DvL backup clean restore').catch(() => null);
+    if (role.editable) await role.delete('Neyora backup clean restore').catch(() => null);
   }
 
   for (const roleData of (structure.roles || []).sort((a, b) => a.position - b.position)) {
@@ -2493,14 +2542,14 @@ async function applyBackupStructure(guild, snapshot) {
       hoist: Boolean(roleData.hoist),
       mentionable: Boolean(roleData.mentionable),
       permissions: BigInt(roleData.permissions || '0'),
-      reason: 'DvL backup restore'
+      reason: 'Neyora backup restore'
     }).catch(() => null);
     if (role) createdRoles.set(roleData.name, role);
   }
 
   const categories = (structure.channels || []).filter((entry) => entry.type === ChannelType.GuildCategory).sort((a, b) => a.position - b.position);
   for (const data of categories) {
-    const channel = await guild.channels.create({ name: data.name, type: data.type, reason: 'DvL backup restore' }).catch(() => null);
+    const channel = await guild.channels.create({ name: data.name, type: data.type, reason: 'Neyora backup restore' }).catch(() => null);
     if (channel) createdSalons.set(data.name, channel);
   }
 
@@ -2512,7 +2561,7 @@ async function applyBackupStructure(guild, snapshot) {
       name: data.name,
       type: data.type,
       parent: parent?.id || null,
-      reason: 'DvL backup restore'
+      reason: 'Neyora backup restore'
     };
     if (typeof data.topic === 'string') createData.topic = data.topic;
     if (typeof data.nsfw === 'boolean') createData.nsfw = data.nsfw;
@@ -2750,7 +2799,7 @@ function buildAnnouncementStyleLines(guildConfig, source, options = {}) {
   return [
     `**Mode:** ${getAnnouncementModeLabel(mode)}`,
     `**Titre:** ${formatTemplatePreview(source?.[titleKey], mode === 'embed' ? 'none' : 'optional')}`,
-    `**Footer:** ${mode === 'embed' ? formatTemplatePreview(source?.[footerKey], 'DvL') : 'unused in plain mode'}`,
+    `**Footer:** ${mode === 'embed' ? formatTemplatePreview(source?.[footerKey], 'Neyora') : 'unused in plain mode'}`,
     `**Couleur:** ${mode === 'embed' ? code(source?.[colorKey] || guildConfig?.embedColor || '#5865F2') : 'unused in plain mode'}`,
     `**Image:** ${mode === 'embed' ? formatTemplatePreview(source?.[imageKey], 'none') : 'unused in plain mode'}`
   ];
@@ -2841,7 +2890,7 @@ function applyRichAnnouncementPreviewStyle(guildConfig, embed, render = {}) {
 function createAnnouncementPreviewPayload(guildConfig, style, description, render = {}) {
   const mode = normalizeAnnouncementMode(style?.mode);
   const title = String(style?.title || '').trim();
-  const footer = style?.footer === null ? '' : String(style?.footer ?? 'DvL').trim();
+  const footer = style?.footer === null ? '' : String(style?.footer ?? 'Neyora').trim();
   const imageUrl = String(style?.imageUrl || '').trim();
   const color = ensureHexColor(style?.color || guildConfig?.embedColor || '#5865F2');
   if (mode === 'plain') {
@@ -2918,7 +2967,7 @@ function getWelcomePresetConfig(guildConfig, presetKey = 'clean') {
       mode: 'embed',
       title: uiText(guildConfig, '👋 Bienvenue', '👋 Welcome'),
       message: uiText(guildConfig, 'Bienvenue {user} sur **{server}**.\nTu es le membre **#{memberCount}**.', 'Welcome {user} to **{server}**.\nYou are member **#{memberCount}**.'),
-      footer: 'DvL',
+      footer: 'Neyora',
       color: null,
       imageUrl: null
     },
@@ -2966,7 +3015,7 @@ function getLeavePresetConfig(guildConfig, presetKey = 'clean', options = {}) {
       mode: 'embed',
       title: uiText(guildConfig, isDm ? '👋 Tu as quitté {server}' : '👋 Départ membre', isDm ? '👋 You left {server}' : '👋 Member left'),
       message: uiText(guildConfig, isDm ? 'Tu as quitté **{server}**.\nTu peux toujours revenir plus tard.' : '{userTag} a quitté **{server}**.', isDm ? 'You left **{server}**.\nYou can always come back later.' : '{userTag} left **{server}**.'),
-      footer: 'DvL',
+      footer: 'Neyora',
       color: null,
       imageUrl: null
     },
@@ -3057,7 +3106,7 @@ function getBoostPresetConfig(guildConfig, presetKey = 'clean') {
       mode: 'embed',
       title: uiText(guildConfig, '🚀 Nouveau boost', '🚀 New boost'),
       message: uiText(guildConfig, '{user} vient de booster **{server}**. Total : **{boostCount}** • niveau : **{boostTier}**.', '{user} just boosted **{server}**. Total: **{boostCount}** • tier: **{boostTier}**.'),
-      footer: 'DvL',
+      footer: 'Neyora',
       color: null,
       imageUrl: null
     },
@@ -3117,7 +3166,7 @@ function getSupportPresetConfig(guildConfig, presetKey = 'clean') {
       promptMode: 'embed',
       promptTitle: uiText(guildConfig, '📨 Besoin d’aide ?', '📨 Need help?'),
       promptMessage: uiText(guildConfig, 'Pour contacter le staff, écris dans {supportChannel} ou envoie un MP au bot. `{prefix}support ton message` marche aussi.', 'To contact the staff, write in {supportChannel} or DM the bot. `{prefix}support your message` also works.'),
-      promptFooter: 'DvL Support',
+      promptFooter: 'Neyora Support',
       promptColor: null,
       promptImageUrl: null
     },
@@ -3125,7 +3174,7 @@ function getSupportPresetConfig(guildConfig, presetKey = 'clean') {
       promptMode: 'embed',
       promptTitle: uiText(guildConfig, '✨ Support prioritaire', '✨ Priority support'),
       promptMessage: uiText(guildConfig, 'Besoin d’aide ? Écris dans {supportChannel} ou contacte le bot en MP. `{prefix}support ton message` reste dispo si tu préfères.', 'Need help? Write in {supportChannel} or DM the bot. `{prefix}support your message` still works if you prefer.'),
-      promptFooter: uiText(guildConfig, 'DvL Premium Support', 'DvL Premium Support'),
+      promptFooter: uiText(guildConfig, 'Neyora Premium Support', 'Neyora Premium Support'),
       promptColor: '#8B5CF6',
       promptImageUrl: null
     },
@@ -3241,7 +3290,7 @@ function createModulePreviewMessage(guildConfig, source, variables, options = {}
   const fallbackTitre = options.fallbackTitre || '';
   const textValue = fillTemplate(source?.[messageKey], variables);
   const titleValue = fillTemplate(source?.[titleKey] || fallbackTitre, variables);
-  const footerValue = source?.[footerKey] === null ? null : fillTemplate(source?.[footerKey] ?? 'DvL', variables);
+  const footerValue = source?.[footerKey] === null ? null : fillTemplate(source?.[footerKey] ?? 'Neyora', variables);
   const imageUrl = fillTemplate(source?.[imageKey] || '', variables);
   const render = buildAnnouncementPreviewContext(guildConfig, variables, options);
   return createAnnouncementPreviewPayload(guildConfig, {
@@ -3266,7 +3315,7 @@ function createSupportPromptPayload(guildConfig, guild, prefix = '+', fallbackCh
   const vars = getSupportPromptVariables(guild, support, prefix, fallbackChannel);
   const title = fillTemplate(support.promptTitle || '📨 Need help?', vars).trim();
   const description = fillTemplate(support.promptMessage || 'To contact the staff, write in {supportChannel} or DM the bot. `{prefix}support your message` also works.', vars).trim();
-  const footer = fillTemplate(support.promptFooter ?? 'DvL Support', vars).trim();
+  const footer = fillTemplate(support.promptFooter ?? 'Neyora Support', vars).trim();
   const imageUrl = fillTemplate(support.promptImageUrl || '', vars).trim();
   return createAnnouncementPreviewPayload(guildConfig, {
     mode: support.promptMode || 'embed',
@@ -3296,7 +3345,7 @@ function createMpallPayload(guildConfig, guild, member) {
   const vars = getMpallVariables(guild, member);
   const message = fillTemplate(source.message || '', vars).trim();
   const title = fillTemplate(source.title || '📨 Message from {server}', vars).trim();
-  const footer = source.footer == null ? '' : fillTemplate(source.footer ?? 'DvL', vars).trim();
+  const footer = source.footer == null ? '' : fillTemplate(source.footer ?? 'Neyora', vars).trim();
   const imageUrl = fillTemplate(source.imageUrl || '', vars).trim();
   return createAnnouncementPreviewPayload(guildConfig, {
     mode: normalizeMpallMode(source.mode),
@@ -3318,7 +3367,7 @@ function buildMpallModuleEmbed(guildConfig, prefix = '+') {
           `**Mode:** ${mode === 'plain' ? 'simple' : 'embed'}`,
           `**Titre:** ${formatTemplatePreview(mpall.title, '📨 Message from {server}')}`,
           `**Message:** ${formatTemplatePreview(mpall.message, 'not set')}`,
-          `**Footer:** ${mode === 'embed' ? formatTemplatePreview(mpall.footer, 'DvL') : 'unused in simple mode'}`,
+          `**Footer:** ${mode === 'embed' ? formatTemplatePreview(mpall.footer, 'Neyora') : 'unused in simple mode'}`,
           `**Couleur:** ${mode === 'embed' ? code(mpall.color || guildConfig?.embedColor || '#5865F2') : 'unused in simple mode'}`,
           `**Image:** ${mode === 'embed' ? formatTemplatePreview(mpall.imageUrl, 'none') : 'unused in simple mode'}`
         ].join('\n').slice(0, 1024),
@@ -3467,43 +3516,51 @@ function buildConfessionModuleEmbed(guildConfig, prefix = '+') {
 function createConfessionPanelEmbed(guildConfig, guild, prefix = '+', currentChannel = null) {
   const conf = guildConfig.confessions || {};
   const noValue = uiText(guildConfig, 'non défini', 'not set');
+  const currentText = currentChannel?.isTextBased?.() ? `${currentChannel}` : noValue;
   const embed = applyHubFrame(
     baseEmbed(
       guildConfig,
       uiText(guildConfig, '🤫 Panneau confessions', '🤫 Confessions panel'),
-      [
-        uiText(guildConfig, 'Réglage rapide du module de confessions anonymes avec un rendu propre, un salon public et une trace privée pour le staff.', 'Fast setup for the anonymous confessions module with a clean look, one public channel and a private staff trace.'),
-        '',
-        hubBadge(guildConfig, '💜', 'Module', 'Module', uiState(conf.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))),
-        hubBadge(guildConfig, '🧾', 'Salon public', 'Public channel', uiChannel(conf.channelId, noValue)),
-        hubBadge(guildConfig, '🔐', 'Salon logs', 'Log channel', uiChannel(conf.logChannelId, noValue))
-      ].join('\n')
+      uiText(guildConfig, 'Réglage rapide des confessions anonymes : salon public, logs privés, rendu clean et tests staff sans bricolage.', 'Fast setup for anonymous confessions: public channel, private logs, clean rendering and easy staff tests.')
     ).setColor(ensureHexColor(conf.color || '#EC4899')),
     guildConfig,
     guild,
     'Confessions',
-    'Confessions'
+    'Confessions',
+    [
+      hubBadge(guildConfig, '💜', 'Module', 'Module', uiState(conf.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))),
+      hubBadge(guildConfig, '🧾', 'Public', 'Public', uiChannel(conf.channelId, noValue)),
+      hubBadge(guildConfig, '🔐', 'Logs', 'Logs', uiChannel(conf.logChannelId, noValue)),
+      hubBadge(guildConfig, '📎', 'Fichiers', 'Files', uiBool(conf.allowAttachments !== false, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no')))
+    ]
   );
 
   embed.addFields(
     sectionField(uiText(guildConfig, '📍 Routage', '📍 Routing'), [
-      metricLine(uiText(guildConfig, 'Module', 'Module'), uiState(conf.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'inactif', 'disabled'))),
-      metricLine(uiText(guildConfig, 'Salon confessions', 'Confession channel'), uiChannel(conf.channelId, noValue)),
+      metricLine(uiText(guildConfig, 'Module', 'Module'), uiState(conf.enabled, uiText(guildConfig, 'actif', 'enabled'), uiText(guildConfig, 'off', 'off'))),
+      metricLine(uiText(guildConfig, 'Salon public', 'Public channel'), uiChannel(conf.channelId, noValue)),
       metricLine(uiText(guildConfig, 'Salon logs', 'Log channel'), uiChannel(conf.logChannelId, noValue)),
-      metricLine(uiText(guildConfig, 'Pièces jointes', 'Attachments'), uiBool(conf.allowAttachments !== false, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no')))
-    ]),
-    sectionField(uiText(guildConfig, '🎨 Style', '🎨 Style'), [
+      metricLine(uiText(guildConfig, 'Salon actuel', 'Current channel'), currentText)
+    ], true),
+    sectionField(uiText(guildConfig, '🎨 Rendu', '🎨 Rendering'), [
       metricLine(uiText(guildConfig, 'Titre', 'Title'), formatTemplatePreview(conf.title, uiText(guildConfig, 'par défaut', 'default'))),
       metricLine(uiText(guildConfig, 'Couleur', 'Color'), conf.color || '#EC4899'),
-      metricLine(uiText(guildConfig, 'Aperçu rapide', 'Quick preview'), uiText(guildConfig, 'embed propre avec boutons visuels', 'clean embed with visual buttons'))
-    ]),
+      metricLine(uiText(guildConfig, 'Badges visuels', 'Visual badges'), uiBool(conf.showBadges !== false, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no'))),
+      metricLine(uiText(guildConfig, 'Pièces jointes', 'Attachments'), uiBool(conf.allowAttachments !== false, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no')))
+    ], true),
+    sectionField(uiText(guildConfig, '🧼 Règles de rendu', '🧼 Render rules'), [
+      uiText(guildConfig, '• bannière seulement si aucun média utilisateur', '• banner only when there is no user media'),
+      uiText(guildConfig, '• pas de double image dans le post public', '• no double image in the public post'),
+      uiText(guildConfig, '• logs privés gardés pour le staff', '• private logs kept for staff'),
+      uiText(guildConfig, '• badges facultatifs si tu veux un rendu minimal', '• badges can be disabled for a minimal look')
+    ], false),
     sectionField(uiText(guildConfig, '⚡ Actions rapides', '⚡ Quick actions'), [
-      metricLine(uiText(guildConfig, 'Définir ici', 'Bind here'), currentChannel?.isTextBased?.() ? `${currentChannel}` : noValue),
-      `• \`${prefix}confession ${uiText(guildConfig, 'ton texte', 'your text')}\``,
-      `• \`${prefix}confessions test\``,
+      `• ${commandPill(prefix, 'confession ton texte')}`,
+      `• ${commandPill(prefix, 'confessions test')}`,
+      `• ${commandPill(prefix, 'confessions panel')}`,
       '• `/confession send`'
-    ])
-  ).setFooter({ text: uiText(guildConfig, 'DvL • panneau confessions', 'DvL • confessions panel') });
+    ], false)
+  ).setFooter({ text: uiText(guildConfig, 'Neyora • panneau confessions', 'Neyora • confessions panel') });
 
   return translateEmbedForUi(guildConfig, embed);
 }
@@ -3512,6 +3569,7 @@ function createConfessionPanelComponents(guildConfig = null) {
   const conf = guildConfig?.confessions || {};
   const enabled = Boolean(conf.enabled);
   const attachmentsEnabled = conf.allowAttachments !== false;
+  const badgesEnabled = conf.showBadges !== false;
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('confessionpanel:toggle').setLabel(uiText(guildConfig, enabled ? 'Module on' : 'Module off', enabled ? 'Module on' : 'Module off')).setEmoji('💜').setStyle(enabled ? ButtonStyle.Success : ButtonStyle.Secondary),
@@ -3528,6 +3586,7 @@ function createConfessionPanelComponents(guildConfig = null) {
       new ButtonBuilder().setCustomId('confessionpanel:attachments').setLabel(uiText(guildConfig, attachmentsEnabled ? 'Fichiers on' : 'Fichiers off', attachmentsEnabled ? 'Files on' : 'Files off')).setEmoji('📎').setStyle(attachmentsEnabled ? ButtonStyle.Primary : ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('confessionpanel:badges').setLabel(uiText(guildConfig, badgesEnabled ? 'Badges on' : 'Badges off', badgesEnabled ? 'Badges on' : 'Badges off')).setEmoji('🏷️').setStyle(badgesEnabled ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('dashboard:home').setLabel(uiText(guildConfig, 'Dashboard', 'Dashboard')).setEmoji('🏠').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('cfgpanel:page:texts').setLabel(uiText(guildConfig, 'Textes', 'Texts')).setEmoji('📝').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('customhub:page:confessions').setLabel(uiText(guildConfig, 'Hub', 'Hub')).setEmoji('🤫').setStyle(ButtonStyle.Primary),
@@ -3537,36 +3596,33 @@ function createConfessionPanelComponents(guildConfig = null) {
 }
 
 function createConfessionPostComponents(guildConfig, confessionId) {
-  return [
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`confessionstatic:${confessionId}:anonymous`).setLabel(uiText(guildConfig, 'Anonyme', 'Anonymous')).setEmoji('🤫').setStyle(ButtonStyle.Secondary).setDisabled(true),
-      new ButtonBuilder().setCustomId(`confessionstatic:${confessionId}:id`).setLabel(`#${confessionId}`).setStyle(ButtonStyle.Secondary).setDisabled(true),
-      new ButtonBuilder().setCustomId(`confessionstatic:${confessionId}:dvl`).setLabel('DvL').setEmoji('💜').setStyle(ButtonStyle.Secondary).setDisabled(true)
-    )
+  const conf = guildConfig?.confessions || {};
+  if (conf.showBadges === false) return [];
+  const buttons = [
+    new ButtonBuilder().setCustomId(`confessionstatic:${confessionId}:anonymous`).setLabel(uiText(guildConfig, 'Anonyme', 'Anonymous')).setEmoji('🤫').setStyle(ButtonStyle.Secondary).setDisabled(true),
+    new ButtonBuilder().setCustomId(`confessionstatic:${confessionId}:id`).setLabel(`#${confessionId}`).setStyle(ButtonStyle.Secondary).setDisabled(true)
   ];
+  return [new ActionRowBuilder().addComponents(buttons)];
 }
 
 function buildConfessionPostEmbed(guildConfig, confessionConfig = {}, confessionId, text, options = {}) {
   const body = String(text || '').trim();
-  const quoted = body
-    ? body.split(/\r?\n/).map((line) => `> ${line}`).join('\n').slice(0, 3600)
-    : uiText(guildConfig, 'Aucun texte.', 'No text.');
+  const description = body
+    ? clipText(body, 3800)
+    : uiText(guildConfig, '*Aucune confession écrite.*', '*No written confession.*');
+  const fileNames = Array.isArray(options.fileNames) ? options.fileNames.filter(Boolean).slice(0, 8) : [];
   const embed = baseEmbed(
     guildConfig,
     confessionConfig.title || uiText(guildConfig, '🤫 Confession anonyme', '🤫 Anonymous confession'),
-    [
-      uiText(guildConfig, 'Un message anonyme vient d’être déposé.', 'An anonymous message has just been dropped.'),
-      '',
-      quoted
-    ].join('\n')
+    description
   ).setColor(ensureHexColor(confessionConfig.color || '#EC4899'));
   embed.setAuthor({ name: uiText(guildConfig, '💌 Boîte à confessions', '💌 Confession inbox') });
   embed.setFooter({ text: uiText(guildConfig, `Confession #${confessionId} • anonyme`, `Confession #${confessionId} • anonymous`) });
-  if (options.imageUrl) embed.setImage(options.imageUrl);
-  if (Array.isArray(options.attachmentNames) && options.attachmentNames.length) {
+  if (options.showEmbedImage && options.imageUrl) embed.setImage(options.imageUrl);
+  if (fileNames.length) {
     embed.addFields({
-      name: uiText(guildConfig, '📎 Pièces jointes', '📎 Attachments'),
-      value: options.attachmentNames.map((name) => `• ${name}`).join('\n').slice(0, 1024),
+      name: uiText(guildConfig, '📎 Fichiers joints', '📎 Attachments'),
+      value: fileNames.map((name) => `• ${name}`).join('\n').slice(0, 1024),
       inline: false
     });
   }
@@ -3588,26 +3644,25 @@ function createSupportPanelEmbed(guildConfig, guild, prefix = '+', currentChanne
   const healthSummary = checks >= 4 ? uiText(guildConfig, 'propre', 'healthy') : (checks >= 2 ? uiText(guildConfig, 'correct', 'usable') : uiText(guildConfig, 'incomplet', 'incomplete'));
   const issues = [];
   if (!relayReady) issues.push(uiText(guildConfig, '• ajoute un salon staff pour le relais', '• add a staff relay channel'));
-  if (!entryReady) issues.push(uiText(guildConfig, '• définis le salon membre si la restriction est active', '• set the member channel if restriction is on'));
+  if (!entryReady) issues.push(uiText(guildConfig, '• définis le salon membre si la restriction est active', '• set the member channel if restriction is enabled'));
   if (!promptReady) issues.push(uiText(guildConfig, '• écris ou charge un prompt plus clair', '• write or load a clearer prompt'));
 
   const embed = applyHubFrame(
     baseEmbed(
       guildConfig,
       uiText(guildConfig, '📨 Panneau support', '📨 Support panel'),
-      [
-        uiText(guildConfig, 'Panneau staff fixe pour tout faire vite : routage, prompt, preview, envoi et test du relais.', 'Persistent staff panel to do everything quickly: routing, prompt, preview, sending and relay tests.'),
-        '',
-        hubBadge(guildConfig, '📍', 'Santé', 'Health', `**${healthSummary}**`),
-        hubBadge(guildConfig, '🧾', 'Relais staff', 'Staff relay', uiChannel(support.channelId, noValue)),
-        hubBadge(guildConfig, '💬', 'Salon membre', 'Member channel', uiChannel(support.entryChannelId, noValue)),
-        hubBadge(guildConfig, '👥', 'Ping', 'Ping', statusRole)
-      ].join('\n')
+      uiText(guildConfig, 'Hub support staff : routage, prompt public, aperçu, envoi et test du relais sans passer par dix commandes différentes.', 'Staff support hub: routing, public prompt, preview, sending and relay checks without bouncing across ten separate commands.')
     ),
     guildConfig,
     guild,
     'Support',
-    'Support'
+    'Support',
+    [
+      hubBadge(guildConfig, '📍', 'Santé', 'Health', `**${healthSummary}**`),
+      hubBadge(guildConfig, '🧾', 'Relais', 'Relay', uiChannel(support.channelId, noValue)),
+      hubBadge(guildConfig, '💬', 'Salon membre', 'Member channel', uiChannel(support.entryChannelId, noValue)),
+      hubBadge(guildConfig, '👥', 'Ping', 'Ping', statusRole)
+    ]
   );
 
   embed.addFields(
@@ -3618,7 +3673,7 @@ function createSupportPanelEmbed(guildConfig, guild, prefix = '+', currentChanne
       metricLine(uiText(guildConfig, 'Limiter au salon membre', 'Restrict to member channel'), uiBool(support.restrictToEntry, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no'))),
       metricLine(uiText(guildConfig, 'Support-only', 'Support-only'), uiBool(support.entryCommandOnly, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no'))),
       metricLine(uiText(guildConfig, 'Rôle ping', 'Ping role'), statusRole)
-    ]),
+    ], true),
     sectionField(uiText(guildConfig, '🎨 Prompt public', '🎨 Public prompt'), [
       metricLine(uiText(guildConfig, 'Mode', 'Mode'), `\`${promptMode}\``),
       metricLine(uiText(guildConfig, 'Titre', 'Title'), formatTemplatePreview(support.promptTitle, uiText(guildConfig, 'par défaut', 'default'))),
@@ -3626,13 +3681,13 @@ function createSupportPanelEmbed(guildConfig, guild, prefix = '+', currentChanne
       metricLine('Footer', formatTemplatePreview(support.promptFooter, uiText(guildConfig, 'par défaut', 'default'))),
       metricLine(uiText(guildConfig, 'Couleur', 'Color'), support.promptColor || guildConfig.embedColor || '#5865F2'),
       metricLine(uiText(guildConfig, 'Image', 'Image'), formatTemplatePreview(support.promptImageUrl, uiText(guildConfig, 'aucune', 'none')))
-    ]),
-    sectionField(uiText(guildConfig, '🩺 Diagnostic', '🩺 Diagnosis'), [
+    ], true),
+    sectionField(uiText(guildConfig, '🩺 Vérification', '🩺 Checkup'), [
       metricLine(uiText(guildConfig, 'État', 'State'), `**${healthSummary}**`),
       metricLine(uiText(guildConfig, 'Prompt prêt', 'Prompt ready'), uiBool(promptReady, uiText(guildConfig, 'oui', 'yes'), uiText(guildConfig, 'non', 'no'))),
       metricLine(uiText(guildConfig, 'Cible aperçu', 'Preview target'), previewTarget),
       issues.length ? issues.join('\n') : uiText(guildConfig, '• rien de bloquant détecté', '• nothing blocking detected')
-    ], true),
+    ], false),
     sectionField(uiText(guildConfig, '⚡ Raccourcis utiles', '⚡ Useful shortcuts'), [
       `• ${commandPill(prefix, 'support preview')}`,
       `• ${commandPill(prefix, 'support send')}`,
@@ -3640,8 +3695,8 @@ function createSupportPanelEmbed(guildConfig, guild, prefix = '+', currentChanne
       `• ${commandPill(prefix, 'support preset clean')}`,
       `• ${commandPill(prefix, 'reply @user Bonjour')}`,
       `• ${commandPill(prefix, 'support quicksetup #support-logs')}`
-    ], true)
-  ).setFooter({ text: uiText(guildConfig, 'DvL • panneau support', 'DvL • support panel') });
+    ], false)
+  ).setFooter({ text: uiText(guildConfig, 'Neyora • panneau support', 'Neyora • support panel') });
 
   return translateEmbedForUi(guildConfig, embed);
 }
@@ -3759,7 +3814,7 @@ function buildTextsHubEmbed(guildConfig, prefix = '+', focus = 'home') {
     baseEmbed(
       guildConfig,
       uiText(guildConfig, '📝 Textes', '📝 Texts'),
-      uiText(guildConfig, 'Tout ce qui touche aux messages visibles par les membres, sans bloc énorme à lire.', 'Everything related to member-facing texts, without one giant block to read.')
+      uiText(guildConfig, 'Welcome, leave, boost et support réunis dans une vue plus simple à lire et à tester.', 'Welcome, leave, boost and support grouped in a view that is easier to read and test.')
     ),
     guildConfig,
     null,
@@ -3767,8 +3822,9 @@ function buildTextsHubEmbed(guildConfig, prefix = '+', focus = 'home') {
     'Texts',
     [
       hubBadge(guildConfig, '🟢', 'Modules actifs', 'Live modules', `**${liveCount}/6**`),
-      hubBadge(guildConfig, '💌', 'DM', 'DM', `**${[welcome.dmEnabled, leave.dmEnabled].filter(Boolean).length}**`),
-      hubBadge(guildConfig, '🎨', 'Preset global', 'Global preset', commandPill(prefix, 'textspreset clean'))
+      hubBadge(guildConfig, '💌', 'DM actifs', 'Live DMs', `**${[welcome.dmEnabled, leave.dmEnabled].filter(Boolean).length}**`),
+      hubBadge(guildConfig, '🎨', 'Preset global', 'Global preset', commandPill(prefix, 'textspreset clean')),
+      hubBadge(guildConfig, '🧪', 'Tests', 'Tests', commandPill(prefix, 'welcome test'))
     ]
   );
 
@@ -3784,7 +3840,8 @@ function buildTextsHubEmbed(guildConfig, prefix = '+', focus = 'home') {
       commandPill(prefix, 'textspreset clean'),
       commandPill(prefix, 'textspreset premium'),
       commandPill(prefix, 'welcome test'),
-      commandPill(prefix, 'leave test')
+      commandPill(prefix, 'leave test'),
+      commandPill(prefix, 'boost test')
     ], true),
     sectionField(uiText(guildConfig, '🩺 À corriger', '🩺 Needs attention'), issues.length ? issues : uiText(guildConfig, '• rien de bloquant', '• nothing blocking'))
   );
@@ -4093,15 +4150,18 @@ function buildTikTokHubEmbed(guildConfig, prefix = '+') {
   const liveOn = watchers.filter((watcher) => watcher.announceLive !== false).length;
   const videoOn = watchers.filter((watcher) => watcher.announceVideos !== false).length;
   const withRole = watchers.filter((watcher) => watcher.mentionRoleId).length;
+  const liveNow = watchers.filter((watcher) => watcher.wasLive).length;
+  const errorCount = watchers.filter((watcher) => watcher.lastError).length;
   const issues = [];
   if (watchers.length && watchers.every((watcher) => !watcher.channelId)) issues.push(uiText(guildConfig, 'watchers TikTok sans salons d’annonce', 'TikTok watchers exist without announcement channels'));
   if (watchers.length && !liveOn && !videoOn) issues.push(uiText(guildConfig, 'watchers présents mais toutes les alertes sont coupées', 'watchers exist but every alert is disabled'));
+  if (errorCount) issues.push(uiText(guildConfig, `${errorCount} watcher(s) ont une erreur récente`, `${errorCount} watcher(s) have a recent error`));
 
   const embed = applyHubFrame(
     baseEmbed(
       guildConfig,
       uiText(guildConfig, '🎵 Hub TikTok', '🎵 TikTok hub'),
-      uiText(guildConfig, 'Vue propre pour suivre les comptes TikTok, router les alertes live/vidéo et lier un rôle ping.', 'Clean view to track TikTok accounts, route live/video alerts and bind a ping role.')
+      uiText(guildConfig, 'Vue propre pour suivre les comptes TikTok, tester les comptes, router les alertes live/vidéo et lier un rôle ping.', 'Clean view to track TikTok accounts, test usernames, route live/video alerts and bind a ping role.')
     ),
     guildConfig,
     null,
@@ -4111,7 +4171,7 @@ function buildTikTokHubEmbed(guildConfig, prefix = '+') {
       hubBadge(guildConfig, '👀', 'Watchers', 'Watchers', `**${watchers.length}**`),
       hubBadge(guildConfig, '🔴', 'Lives on', 'Live on', `**${liveOn}**`),
       hubBadge(guildConfig, '🎬', 'Vidéos on', 'Video on', `**${videoOn}**`),
-      hubBadge(guildConfig, '🔔', 'Rôles ping', 'Ping roles', `**${withRole}**`)
+      hubBadge(guildConfig, '🟢', 'Lives vus', 'Lives seen', `**${liveNow}**`)
     ]
   );
 
@@ -4125,16 +4185,16 @@ function buildTikTokHubEmbed(guildConfig, prefix = '+') {
       ].join(' • ')))
       : [uiText(guildConfig, '• aucun watcher TikTok configuré', '• no TikTok watcher configured')], false),
     sectionField(uiText(guildConfig, '⚡ Flow conseillé', '⚡ Recommended flow'), [
-      `1. ${commandPill(prefix, 'tiktok list')}`,
-      `2. ${commandPill(prefix, 'tiktok add username #channel')}`,
-      `3. ${commandPill(prefix, 'tiktok channel username #channel')}`,
-      `4. ${commandPill(prefix, 'tiktok role username @Role')}`,
-      `5. ${commandPill(prefix, 'tiktok test username')}`
+      `1. ${commandPill(prefix, 'tiktok add username #channel')}`,
+      `2. ${commandPill(prefix, 'tiktok role username @Role')}`,
+      `3. ${commandPill(prefix, 'tiktok list')}`,
+      `4. ${commandPill(prefix, 'tiktok test username')}`,
+      `5. ${commandPill(prefix, 'tiktok check')}`
     ], true),
     sectionField(uiText(guildConfig, '🧪 Contrôles utiles', '🧪 Useful checks'), [
       commandPill(prefix, 'tiktok live username on'),
       commandPill(prefix, 'tiktok video username off'),
-      commandPill(prefix, 'tiktok check'),
+      commandPill(prefix, 'tiktok channel username #channel'),
       commandPill(prefix, 'tiktok remove username')
     ], true),
     sectionField(uiText(guildConfig, '🩺 Diagnostic', '🩺 Diagnosis'), issues.length ? issues.map((issue) => `• ${issue}`) : [uiText(guildConfig, 'rien de bloquant détecté côté TikTok', 'nothing blocking detected for TikTok setup')], false)
@@ -4526,7 +4586,7 @@ async function ensureNamedTextChannel(guild, name, parentId, reason) {
       type: ChannelType.GuildText,
       parent: parentId || null,
       permissionOverwrites: buildPrivateLogOverwrites(guild),
-      reason: reason || 'DvL channel setup'
+      reason: reason || 'Neyora channel setup'
     }).catch(() => null);
   }
   return channel;
@@ -4563,7 +4623,7 @@ async function setupLogsBundle(ctx, categoryName = '🧾 Logs') {
       name: String(categoryName || '🧾 Logs').slice(0, 100),
       type: ChannelType.GuildCategory,
       permissionOverwrites: buildPrivateLogOverwrites(guild),
-      reason: `DvL logs setup by ${ctx.user.tag}`
+      reason: `Neyora logs setup by ${ctx.user.tag}`
     }).catch(() => null);
   }
 
@@ -4585,7 +4645,7 @@ async function setupLogsBundle(ctx, categoryName = '🧾 Logs') {
     const existingId = key === 'default' ? (logs.channels?.default || logs.channelId || null) : (logs.channels?.[key] || null);
     let channel = existingId ? (guild.channels.cache.get(existingId) || await guild.channels.fetch(existingId).catch(() => null)) : null;
     if (!isLogsTextChannel(channel)) {
-      channel = await ensureNamedTextChannel(guild, fallbackName, category.id, `DvL logs setup by ${ctx.user.tag}`);
+      channel = await ensureNamedTextChannel(guild, fallbackName, category.id, `Neyora logs setup by ${ctx.user.tag}`);
     }
     if (channel && channel.parentId !== category.id) await channel.setParent(category.id).catch(() => null);
     if (channel) await channel.permissionOverwrites.set(buildPrivateLogOverwrites(guild)).catch(() => null);
@@ -4811,6 +4871,32 @@ function createCommandHelpEmbed(client, guildConfig, command) {
   const syntaxGroups = normalizeHelpSyntaxGroups(command, guildConfig, prefix);
   const examples = quickExamplesForCommand(command, prefix).slice(0, 4).map((line) => `• \`${line}\``);
   const descriptionIntro = command.helpIntro || command.description || uiText(guildConfig, 'Aucune description.', 'No description.');
+  const relatedByCategory = {
+    General: ['help', 'guide', 'start'],
+    Info: ['info', 'profile', 'serverinfo'],
+    Utility: ['utility', 'calc', 'choose'],
+    Support: ['support', 'reply', 'guide support'],
+    Confessions: ['confession', 'confessions', 'help members'],
+    Moderation: ['moderation', 'warnings', 'clear'],
+    Security: ['security', 'automodconfig', 'wl list'],
+    Logs: ['logs panel', 'logs view', 'logtypes'],
+    Roles: ['roles', 'autorole', 'statusroleconfig'],
+    Tracking: ['tracking', 'stats', 'inviteleaderboard'],
+    Voice: ['voice', 'voicepanel', 'createvoc'],
+    Welcome: ['welcome', 'leave', 'boost'],
+    Config: ['setup', 'custom', 'preset'],
+    System: ['dashboard', 'panel', 'ready'],
+    Progress: ['trophy', 'trophyconfig', 'milestoneconfig'],
+    Automation: ['automation', 'stickyconfig', 'autoreact'],
+    Giveaway: ['giveaway', 'glist', 'gparticipants'],
+    TikTok: ['tiktok', 'tiktoklist', 'tiktoktest'],
+    Permissions: ['permconfig', 'permrole', 'permcmd'],
+    Owner: ['backup', 'repair', 'ready']
+  };
+  const related = (relatedByCategory[command.category] || [])
+    .filter((entry) => !entry.toLowerCase().startsWith(String(command.name || '').toLowerCase()))
+    .slice(0, 3)
+    .map((entry) => `• ${commandPill(prefix, entry)}`);
 
   const embed = brandEmbed(guildConfig, uiText(guildConfig, `📘 ${prefix}${command.name}`, `📘 ${prefix}${command.name}`), [
     descriptionIntro,
@@ -4834,9 +4920,14 @@ function createCommandHelpEmbed(client, guildConfig, command) {
     embed.addFields(sectionField(uiText(guildConfig, '🧪 Exemples', '🧪 Examples'), examples, false));
   }
 
-  embed.setFooter({ text: uiText(guildConfig, 'DvL • aide commande', 'DvL • command help') });
+  if (related.length) {
+    embed.addFields(sectionField(uiText(guildConfig, '🔗 Aller plus loin', '🔗 Continue with'), related, false));
+  }
+
+  embed.setFooter({ text: uiText(guildConfig, 'Neyora • fiche commande', 'Neyora • command card') });
   return applyEmbedVisualStyle(embed, guildConfig);
 }
+
 
 function chunkLines(lines, size = 12) {
   const chunks = [];
@@ -4845,10 +4936,15 @@ function chunkLines(lines, size = 12) {
 }
 
 function buildHelpLine(prefix, cmd, category = null, guildConfig = null) {
-  const summary = clipText(cmd.helpIntro || cmd.description || uiText(guildConfig, 'Commande disponible.', 'Available command.'), category === 'All' ? 52 : 62);
-  const categoryText = category === 'All' ? ` • ${CATEGORY_META[cmd.category]?.emoji || '•'} ${cmd.category}` : '';
-  return `• **${commandPill(prefix, cmd.name)}**${categoryText} — ${summary}`;
+  const summary = clipText(cmd.helpIntro || cmd.description || uiText(guildConfig, 'Commande disponible.', 'Available command.'), category === 'All' ? 70 : 84);
+  const usage = clipText(getCommandHelpUsage(cmd), 54);
+  const categoryText = category === 'All' ? ` • ${CATEGORY_META[cmd.category]?.emoji || '•'} ${categoryLabelFor(guildConfig, cmd.category)}` : '';
+  const usageText = usage && usage !== cmd.name ? `
+↳ \`${prefix}${usage}\`` : '';
+  return `• **${commandPill(prefix, cmd.name)}**${categoryText}${usageText}
+↳ ${summary}`;
 }
+
 
 function getSetupHelpPages() {
   const entries = Object.entries(CONFIG_HELP_GROUPS);
@@ -4885,7 +4981,7 @@ function brandEmbed(guildConfig, title, description) {
   return applyEmbedVisualStyle(
     new EmbedBuilder()
       .setColor(ensureHexColor(guildConfig?.embedColor, getVisualPalette(guildConfig).base || '#5865F2'))
-      .setTitle(String(title || 'DvL').slice(0, 256))
+      .setTitle(String(title || 'Neyora').slice(0, 256))
       .setDescription((resolvedDescription || 'No details.').slice(0, 4096)),
     guildConfig
   );
@@ -4894,55 +4990,133 @@ function brandEmbed(guildConfig, title, description) {
 function createSpecialHelpEmbed(guildConfig, kind = 'start') {
   const prefix = guildConfig?.prefix || '+';
   if (kind === 'start') {
-    return brandEmbed(guildConfig, uiText(guildConfig, '🚀 Aide • Démarrage rapide', '🚀 Help • Quick start'), [
-      uiText(guildConfig, 'Commence par les bases propres, puis affine le reste.', 'Set up the clean essentials first, then polish the rest.'),
-      '',
-      `1. \`${prefix}logs here\` ${uiText(guildConfig, 'ou', 'or')} \`${prefix}logs panel\``,
-      `2. \`${prefix}support panel\``,
-      `3. \`${prefix}welcome\` ${uiText(guildConfig, 'et', 'and')} \`${prefix}leave\``,
-      `4. \`${prefix}stats setup\` ${uiText(guildConfig, 'si tu veux les compteurs', 'if you want live counters')}`,
-      '',
-      `**${uiText(guildConfig, 'Raccourcis utiles', 'Useful shortcuts')}**`,
-      `• \`${prefix}setup check\``,
-      `• \`${prefix}panel\``,
-      `• \`${prefix}dashboard\``
-    ].join('\n'));
+    const embed = brandEmbed(guildConfig, uiText(guildConfig, '🚀 Neyora • démarrage rapide', '🚀 Neyora • quick start'), uiText(guildConfig, 'Le chemin le plus propre pour poser le bot, ranger les hubs essentiels et tester sans te perdre.', 'The cleanest path to set up the bot, open the right hubs and test without getting lost.'));
+    embed.addFields(
+      sectionField(uiText(guildConfig, '1️⃣ Base', '1️⃣ Base'), [
+        `• \`${prefix}help\``,
+        `• \`${prefix}setlanguage fr\` ${uiText(guildConfig, 'ou', 'or')} \`${prefix}setlanguage en\``,
+        `• \`${prefix}setembedcolor #C71010\``
+      ], true),
+      sectionField(uiText(guildConfig, '2️⃣ Hubs à ouvrir', '2️⃣ Hubs to open'), [
+        `• \`${prefix}panel\``,
+        `• \`${prefix}dashboard\``,
+        `• \`${prefix}logs panel\``
+      ], true),
+      sectionField(uiText(guildConfig, '3️⃣ Modules membres', '3️⃣ Member modules'), [
+        `• \`${prefix}support panel\``,
+        `• \`${prefix}welcome\` • \`${prefix}leave\` • \`${prefix}boost\``,
+        `• \`${prefix}confessions panel\``
+      ], true),
+      sectionField(uiText(guildConfig, '🧪 Tests à faire', '🧪 Tests to run'), [
+        `• \`${prefix}support preview\``,
+        `• \`${prefix}welcome test\` • \`${prefix}leave test\` • \`${prefix}boost test\``,
+        `• \`${prefix}confessions test\``,
+        `• \`${prefix}ready\``
+      ], false),
+      sectionField(uiText(guildConfig, '📌 Pour aller plus loin', '📌 Go further'), [
+        `• \`${prefix}help staff\``,
+        `• \`${prefix}help members\``,
+        `• \`${prefix}guide start\``
+      ], false)
+    );
+    return applyEmbedVisualStyle(embed, guildConfig);
   }
   if (kind === 'staff') {
-    return brandEmbed(guildConfig, uiText(guildConfig, '🛠️ Aide • Staff', '🛠️ Help • Staff'), [
-      `**${uiText(guildConfig, 'Routine utile', 'Useful routine')}**`,
-      `• Logs : \`${prefix}logs view\` • \`${prefix}logs panel\``,
-      `• Support : \`${prefix}support panel\` • \`${prefix}reply\``,
-      `• ${uiText(guildConfig, 'Sécurité', 'Security')} : \`${prefix}security\` • \`${prefix}wl list\``,
-      `• Tracking : \`${prefix}stats\` • \`${prefix}tracking\``,
-      '',
-      `**${uiText(guildConfig, 'Contrôles rapides', 'Fast checks')}**`,
-      `• \`${prefix}setup check\``,
-      `• \`${prefix}backup list\``,
-      `• \`${prefix}dashboard\``
-    ].join('\n'));
+    const embed = brandEmbed(guildConfig, uiText(guildConfig, '🛠️ Neyora • staff', '🛠️ Neyora • staff'), uiText(guildConfig, 'Vue staff rangée pour un vrai usage d’équipe : pilotage, recrutement, support, logs, modération et sécurité.', 'Staff view arranged for real team use: control, recruitment, support, logs, moderation and security.'));
+    embed.addFields(
+      sectionField(uiText(guildConfig, '🎛️ Pilotage staff', '🎛️ Staff control'), [
+        `• \`${prefix}dashboard\``,
+        `• \`${prefix}panel\``,
+        `• \`${prefix}setup check\``
+      ], true),
+      sectionField(uiText(guildConfig, '👥 Recrutement & onboarding', '👥 Recruitment & onboarding'), [
+        `• \`${prefix}help staff\``,
+        `• \`${prefix}permrole 1 @Helper\``,
+        `• \`${prefix}permcmd 1 add support\``,
+        `• \`${prefix}guide moderation\``
+      ], true),
+      sectionField(uiText(guildConfig, '🧾 Logs & suivi', '🧾 Logs & tracking'), [
+        `• \`${prefix}logs panel\``,
+        `• \`${prefix}logs view\``,
+        `• \`${prefix}tracking\``
+      ], true),
+      sectionField(uiText(guildConfig, '📨 Contact membres', '📨 Member contact'), [
+        `• \`${prefix}support panel\``,
+        `• \`${prefix}reply @user <texte>\``,
+        `• \`${prefix}confessions panel\``
+      ], false),
+      sectionField(uiText(guildConfig, '🛡️ Modération quotidienne', '🛡️ Daily moderation'), [
+        `• \`${prefix}help moderation\``,
+        `• \`${prefix}help security\``,
+        `• \`${prefix}warn\` • \`${prefix}timeout\` • \`${prefix}ban\``,
+        `• \`${prefix}warnings @user\``
+      ], false),
+      sectionField(uiText(guildConfig, '📋 Flow équipe conseillé', '📋 Recommended team flow'), [
+        uiText(guildConfig, '• vérifie le dashboard et les logs avant d’ouvrir le recrutement', '• check the dashboard and logs before opening recruitment'),
+        uiText(guildConfig, '• crée un niveau staff propre avec permrole / permcmd', '• create a clean staff level with permrole / permcmd'),
+        uiText(guildConfig, '• fais tester support, logs et modération aux nouveaux', '• make new staff test support, logs and moderation'),
+        uiText(guildConfig, '• garde le panel staff épinglé dans ton salon équipe', '• keep the staff panel pinned in your team channel')
+      ], false)
+    );
+    return applyEmbedVisualStyle(embed, guildConfig);
   }
   if (kind === 'members') {
-    return brandEmbed(guildConfig, uiText(guildConfig, '👥 Aide • Membres', '👥 Help • Members'), [
-      uiText(guildConfig, `Besoin du staff ? Utilise \`${prefix}support ton message\` dans le serveur ou envoie un MP au bot.`, `Need the staff? Use \`${prefix}support your message\` in the server or DM the bot.`),
-      uiText(guildConfig, 'Les boutons de rôles se trouvent sur le role panel si le serveur en utilise un.', 'Role buttons live on the role panel if the server uses one.'),
-      uiText(guildConfig, 'Les contrôles voc temporaires sont sur le voice panel si activé.', 'Temp voice controls are on the voice panel if enabled.'),
-      '',
-      `**${uiText(guildConfig, 'Commandes simples', 'Simple commands')}**`,
-      `• \`${prefix}help\``,
-      `• \`${prefix}invite\``,
-      `• \`${prefix}serverinfo\``,
-      `• \`${prefix}userinfo\``
-    ].join('\n'));
+    const embed = brandEmbed(guildConfig, uiText(guildConfig, '👥 Neyora • membres', '👥 Neyora • members'), uiText(guildConfig, 'Les commandes membres utiles sont regroupées ici : profil, infos, aide, support et confessions.', 'Useful member commands are grouped here: profile, info, help, support and confessions.'));
+    embed.addFields(
+      sectionField(uiText(guildConfig, '🪪 Profil & visuel', '🪪 Profile & visual'), [
+        `• \`${prefix}profile\``,
+        `• \`${prefix}avatar\``,
+        `• \`${prefix}banner\``
+      ], true),
+      sectionField(uiText(guildConfig, '📌 Infos utiles', '📌 Useful info'), [
+        `• \`${prefix}userinfo\``,
+        `• \`${prefix}serverinfo\``,
+        `• \`${prefix}membercount\``
+      ], true),
+      sectionField(uiText(guildConfig, '📚 Aide', '📚 Help'), [
+        `• \`${prefix}help\``,
+        `• \`${prefix}help members\``,
+        `• \`${prefix}help +profile\``
+      ], true),
+      sectionField(uiText(guildConfig, '📨 Support', '📨 Support'), [
+        `• \`${prefix}support ton message\``,
+        `• ${uiText(guildConfig, 'MP au bot possible aussi si le serveur le permet', 'DMing the bot also works if the server allows it')}`,
+        `• \`${prefix}support\` ${uiText(guildConfig, 'ouvre aussi la vue du module', 'also opens the module view')}`
+      ], false),
+      sectionField(uiText(guildConfig, '🤫 Confessions', '🤫 Confessions'), [
+        `• \`${prefix}confession ton message\``,
+        `• \`${prefix}confession send ton message\``,
+        `• \`${prefix}confession info\``
+      ], false)
+    );
+    return applyEmbedVisualStyle(embed, guildConfig);
   }
-  return brandEmbed(guildConfig, uiText(guildConfig, '🩺 Aide • Santé', '🩺 Help • Health'), [
-    uiText(guildConfig, 'La plupart des erreurs de setup sont corrigées automatiquement.', 'Most setup mistakes are auto-corrected now.'),
-    '',
-    `\`${prefix}setup check\` ${uiText(guildConfig, 'pour un contrôle clair', 'for a clean overview')}.`,
-    `\`${prefix}panel\` ${uiText(guildConfig, 'pour modifier logs, textes, support et automation', 'to tweak logs, texts, support and automation')}.`,
-    `\`${prefix}stats refresh\` ${uiText(guildConfig, 'seulement si tu veux forcer les compteurs', 'only if you want to force the counters')}.`
-  ].join('\n'));
+  const embed = brandEmbed(guildConfig, uiText(guildConfig, '🩺 Neyora • santé', '🩺 Neyora • health'), uiText(guildConfig, 'Petit check rapide quand un module semble bancal.', 'Quick check when one module feels off.'));
+  embed.addFields(
+    sectionField(uiText(guildConfig, '🔎 Vérifs rapides', '🔎 Quick checks'), [
+      `• \`${prefix}setup check\``,
+      `• \`${prefix}ready\``,
+      `• \`${prefix}dashboard\``
+    ], true),
+    sectionField(uiText(guildConfig, '🧾 Si les logs cassent', '🧾 If logs break'), [
+      `• \`${prefix}logs panel\``,
+      `• \`${prefix}logs view\``,
+      `• \`${prefix}logs test all\``
+    ], true),
+    sectionField(uiText(guildConfig, '📨 Si le support casse', '📨 If support breaks'), [
+      `• \`${prefix}support panel\``,
+      `• \`${prefix}support preview\``,
+      `• \`${prefix}support test\``
+    ], true),
+    sectionField(uiText(guildConfig, '🤫 Si les confessions cassent', '🤫 If confessions break'), [
+      `• \`${prefix}confessions panel\``,
+      `• \`${prefix}confessions test\``,
+      `• \`${prefix}help confessions\``
+    ], false)
+  );
+  return applyEmbedVisualStyle(embed, guildConfig);
 }
+
 
 
 const GUIDE_TARGET_ALIASES = {
@@ -5428,8 +5602,8 @@ function createGuideHomeEmbed(client, guildConfig) {
   const prefix = guildConfig?.prefix || '+';
   const visibleCategories = CATEGORY_ORDER.filter((name) => client.commandRegistry.some((cmd) => !cmd.hidden && cmd.category === name));
   const lines = visibleCategories.slice(0, 10).map((name) => `${CATEGORY_META[name]?.emoji || '•'} **${categoryLabelFor(guildConfig, name)}** — ${categoryBlurbFor(guildConfig, name)}`);
-  const embed = brandEmbed(guildConfig, uiText(guildConfig, '📚 Guide DvL', '📚 DvL guide'), [
-    uiText(guildConfig, 'Le guide sert à comprendre *à quoi sert* chaque famille de commandes, pas juste à les lister.', 'The guide explains *what each command family is for*, not just how to list it.'),
+  const embed = brandEmbed(guildConfig, uiText(guildConfig, '📚 Guide Neyora', '📚 Neyora guide'), [
+    uiText(guildConfig, 'Le guide sert à comprendre à quoi sert chaque famille de commandes, pas juste à les lister.', 'The guide explains what each command family is for, not just how to list it.'),
     '',
     uiText(guildConfig, `Essaye : \`${prefix}guide start\` • \`${prefix}guide support\` • \`${prefix}guide logs\` • \`${prefix}guide +welcome\` • \`${prefix}guide all\``, `Try: \`${prefix}guide start\` • \`${prefix}guide support\` • \`${prefix}guide logs\` • \`${prefix}guide +welcome\` • \`${prefix}guide all\``)
   ].join('\n'));
@@ -5448,13 +5622,14 @@ function createGuideHomeEmbed(client, guildConfig) {
       uiText(guildConfig, `• ${guidePill(prefix, 'help support')} = liste rapide`, `• ${guidePill(prefix, 'help support')} = quick list`)
     ])
   );
-  embed.setFooter({ text: uiText(guildConfig, 'DvL • guide', 'DvL • guide') });
+  embed.setFooter({ text: uiText(guildConfig, 'Neyora • guide', 'Neyora • guide') });
   return applyEmbedVisualStyle(embed, guildConfig);
 }
 
+
 function createGuideStartEmbed(guildConfig) {
   const prefix = guildConfig?.prefix || '+';
-  const embed = brandEmbed(guildConfig, uiText(guildConfig, '🚀 Guide • Démarrage conseillé', '🚀 Guide • Recommended start'), [
+  const embed = brandEmbed(guildConfig, uiText(guildConfig, '🚀 Guide • démarrage conseillé', '🚀 Guide • recommended start'), [
     uiText(guildConfig, 'Le chemin le plus simple pour mettre le bot en ligne sans te perdre.', 'The easiest path to launch the bot without getting lost.'),
     '',
     `1. ${guidePill(prefix, 'setlanguage fr')} ${uiText(guildConfig, 'ou', 'or')} ${guidePill(prefix, 'setlanguage en')}`,
@@ -5478,26 +5653,29 @@ function createGuideStartEmbed(guildConfig) {
       `• ${guidePill(prefix, 'guide roles')}`
     ])
   );
-  embed.setFooter({ text: uiText(guildConfig, 'DvL • guide démarrage', 'DvL • start guide') });
+  embed.setFooter({ text: uiText(guildConfig, 'Neyora • guide démarrage', 'Neyora • start guide') });
   return applyEmbedVisualStyle(embed, guildConfig);
 }
+
 
 function createGuideAllEmbed(client, guildConfig) {
   const prefix = guildConfig?.prefix || '+';
   const visibleCategories = CATEGORY_ORDER.filter((name) => client.commandRegistry.some((cmd) => !cmd.hidden && cmd.category === name));
   const lines = visibleCategories.map((name) => {
     const top = client.commandRegistry.filter((cmd) => !cmd.hidden && cmd.category === name).slice(0, 3).map((cmd) => guidePill(prefix, cmd.name)).join(' • ');
-    return `${CATEGORY_META[name]?.emoji || '•'} **${categoryLabelFor(guildConfig, name)}** — ${categoryBlurbFor(guildConfig, name)}\n${top || '—'}`;
+    return `${CATEGORY_META[name]?.emoji || '•'} **${categoryLabelFor(guildConfig, name)}** — ${categoryBlurbFor(guildConfig, name)}
+${top || '—'}`;
   });
-  const embed = brandEmbed(guildConfig, uiText(guildConfig, '🗂️ Guide • Toutes les catégories', '🗂️ Guide • All categories'), uiText(guildConfig, 'Vue rapide de toutes les familles avec leurs commandes d’entrée.', 'Quick view of every family with their entry commands.'));
+  const embed = brandEmbed(guildConfig, uiText(guildConfig, '🗂️ Guide • toutes les catégories', '🗂️ Guide • all categories'), uiText(guildConfig, 'Vue rapide de toutes les familles avec leurs commandes d’entrée.', 'Quick view of every family with their entry commands.'));
   const chunks = chunkLines(lines, 5);
   chunks.forEach((chunk, index) => embed.addFields(sectionField(uiText(guildConfig, `Page interne ${index + 1}`, `Internal page ${index + 1}`), chunk)));
   embed.addFields(sectionField(uiText(guildConfig, '🔎 Astuce', '🔎 Tip'), [
     uiText(guildConfig, `Ensuite ouvre une catégorie avec ${guidePill(prefix, 'guide support')} ou une commande avec ${guidePill(prefix, 'guide +support')}.`, `Then open one category with ${guidePill(prefix, 'guide support')} or one command with ${guidePill(prefix, 'guide +support')}.`)
   ]));
-  embed.setFooter({ text: uiText(guildConfig, 'DvL • guide catégories', 'DvL • category guide') });
+  embed.setFooter({ text: uiText(guildConfig, 'Neyora • guide catégories', 'Neyora • category guide') });
   return applyEmbedVisualStyle(embed, guildConfig);
 }
+
 
 function createGuideCategoryEmbed(client, guildConfig, category) {
   const prefix = guildConfig?.prefix || '+';
@@ -5518,7 +5696,7 @@ function createGuideCategoryEmbed(client, guildConfig, category) {
     sectionField(uiText(guildConfig, '🧩 Plus avancé', '🧩 More advanced'), advanced.length ? formatGuideCommandLines(client, guildConfig, advanced) : [uiText(guildConfig, 'Rien de plus utile à ce stade.', 'Nothing more useful at this stage.')]),
     sectionField(uiText(guildConfig, '🔗 Lié à', '🔗 Related'), formatGuideRelatedLines(client, guildConfig, recipe?.related || []))
   );
-  embed.setFooter({ text: uiText(guildConfig, `DvL • guide catégorie • ${categoryLabelFor(guildConfig, category)}`, `DvL • category guide • ${category}`) });
+  embed.setFooter({ text: uiText(guildConfig, `Neyora • guide catégorie • ${categoryLabelFor(guildConfig, category)}`, `Neyora • category guide • ${category}`) });
   return applyEmbedVisualStyle(embed, guildConfig);
 }
 
@@ -5541,7 +5719,7 @@ function createGuideCommandEmbed(client, guildConfig, command) {
     sectionField(uiText(guildConfig, '🔐 Permissions', '🔐 Permissions'), [access.perms], true),
     sectionField(uiText(guildConfig, '🔗 Lié à', '🔗 Related'), formatGuideRelatedLines(client, guildConfig, [command.category.toLowerCase(), ...categoryCommands]))
   );
-  embed.setFooter({ text: uiText(guildConfig, 'DvL • guide commande', 'DvL • command guide') });
+  embed.setFooter({ text: uiText(guildConfig, 'Neyora • guide commande', 'Neyora • command guide') });
   return applyEmbedVisualStyle(embed, guildConfig);
 }
 
@@ -5552,7 +5730,7 @@ function createUnknownGuideEmbed(guildConfig, raw) {
     '',
     uiText(guildConfig, `Essaie : ${guidePill(prefix, 'guide start')} • ${guidePill(prefix, 'guide support')} • ${guidePill(prefix, 'guide logs')} • ${guidePill(prefix, 'guide +welcome')}`, `Try: ${guidePill(prefix, 'guide start')} • ${guidePill(prefix, 'guide support')} • ${guidePill(prefix, 'guide logs')} • ${guidePill(prefix, 'guide +welcome')}`)
   ].join('\n'));
-  embed.setFooter({ text: uiText(guildConfig, 'DvL • guide', 'DvL • guide') });
+  embed.setFooter({ text: uiText(guildConfig, 'Neyora • guide', 'Neyora • guide') });
   return applyEmbedVisualStyle(embed, guildConfig);
 }
 
@@ -5607,7 +5785,7 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
   const embed = new EmbedBuilder()
     .setColor(ensureHexColor(guildConfig?.embedColor))
     .setTimestamp()
-    .setFooter({ text: uiText(guildConfig, 'DvL • aide', 'DvL • help') });
+    .setFooter({ text: uiText(guildConfig, 'Neyora • aide', 'Neyora • help') });
 
   const commands = client.commandRegistry.filter((cmd) => !cmd.hidden);
   const info = getHelpTargetInfo(client, target);
@@ -5619,25 +5797,63 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
 
   if (category === 'Home') {
     const configCount = new Set(Object.values(CONFIG_HELP_GROUPS).flat()).size;
+    const aliasCount = commands.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0);
+    const visibleCategories = CATEGORY_ORDER.filter((name) => commands.some((cmd) => cmd.category === name));
+    const majorLines = [
+      ['Support', '📨'],
+      ['Confessions', '🤫'],
+      ['Logs', '🧾'],
+      ['Moderation', '🛡️'],
+      ['Security', '🚨'],
+      ['Roles', '🎭']
+    ].filter(([name]) => visibleCategories.includes(name)).map(([name, emoji]) => `${emoji} **${categoryLabelFor(guildConfig, name)}** — ${categoryBlurbFor(guildConfig, name)}`);
     embed
-      .setTitle(uiText(guildConfig, '✨ Centre d’aide DvL', '✨ DvL help center'))
+      .setTitle(uiText(guildConfig, '✨ Neyora • centre d’aide', '✨ Neyora • help center'))
       .setDescription([
-        uiText(guildConfig, 'Les hubs principaux sont ici : aide, panel, dashboard, support et setup.', 'Main hubs are here: help, panel, dashboard, support and setup.'),
+        uiText(guildConfig, 'Tout est rangé pour aller vite : démarrage, commandes membres, pilotage staff, modération et modules publics.', 'Everything is sorted to move fast: quick start, member commands, staff control, moderation and public-facing modules.'),
         '',
         `**${uiText(guildConfig, 'Préfixe', 'Prefix')} :** \`${prefix}\``,
         `**${uiText(guildConfig, 'Commandes visibles', 'Visible commands')} :** **${commands.length}**`,
-        `**Alias :** **${commands.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}**`,
+        `**${uiText(guildConfig, 'Alias', 'Aliases')} :** **${aliasCount}**`,
+        `**${uiText(guildConfig, 'Réglages setup', 'Setup entries')} :** **${configCount}**`,
         '',
-        `**${uiText(guildConfig, 'Exemples', 'Examples')} :** \`${prefix}help logs\` • \`${prefix}guide support\` • \`${prefix}guide +welcome\` • \`${prefix}panel\``
+        `**${uiText(guildConfig, 'Recherche directe', 'Direct lookup')} :** \`${prefix}help +confession\` • \`${prefix}help members\` • \`${prefix}help staff\` • \`${prefix}help moderation\``
       ].join('\n'))
       .addFields(
-        { name: '🧩 Setup', value: uiText(guildConfig, `**${configCount}** commande(s) de configuration`, `**${configCount}** setup command(s)`), inline: true },
-        { name: uiText(guildConfig, '📂 Catégories', '📂 Categories'), value: uiText(guildConfig, 'Parcours propre par famille de commandes.', 'Clean browse by command family.'), inline: true },
-        { name: uiText(guildConfig, '📚 Liste complète', '📚 Full list'), value: `\`${prefix}help all\``, inline: true },
-        { name: uiText(guildConfig, '🚀 Démarrage', '🚀 Start'), value: `\`${prefix}help start\``, inline: true },
-        { name: '🛠️ Staff', value: `\`${prefix}help staff\``, inline: true },
-        { name: '📨 Support', value: `\`${prefix}help support\``, inline: true },
-        { name: '📚 Guide', value: `\`${prefix}guide start\``, inline: true }
+        sectionField(uiText(guildConfig, '🚀 Démarrage propre', '🚀 Clean start'), [
+          `• \`${prefix}start\``,
+          `• \`${prefix}help setup\``,
+          `• \`${prefix}guide start\``
+        ], true),
+        sectionField(uiText(guildConfig, '👥 Espace membres', '👥 Member space'), [
+          `• \`${prefix}help members\``,
+          `• \`${prefix}profile\` • \`${prefix}userinfo\``,
+          `• \`${prefix}support\` • \`${prefix}confession\``
+        ], true),
+        sectionField(uiText(guildConfig, '🛠️ Espace staff', '🛠️ Staff space'), [
+          `• \`${prefix}help staff\``,
+          `• \`${prefix}dashboard\` • \`${prefix}panel\``,
+          `• \`${prefix}logs panel\` • \`${prefix}reply\``,
+          `• \`${prefix}permrole\` • \`${prefix}permcmd\``
+        ], true),
+        sectionField(uiText(guildConfig, '👥 Staff & recrutement', '👥 Staff & recruitment'), [
+          uiText(guildConfig, '• ouvre `help staff` pour le flow équipe', '• open `help staff` for the team workflow'),
+          `• \`${prefix}permrole 1 @Helper\``,
+          `• \`${prefix}permcmd 1 add support\``,
+          `• \`${prefix}guide moderation\``
+        ], false),
+        sectionField(uiText(guildConfig, '🧭 Catégories à ouvrir d’abord', '🧭 Categories to open first'), majorLines.length ? majorLines : [uiText(guildConfig, 'Aucune catégorie visible pour le moment.', 'No visible category right now.')], false),
+        sectionField(uiText(guildConfig, '🔎 Recherches utiles', '🔎 Useful lookups'), [
+          `• \`${prefix}help +support\``,
+          `• \`${prefix}help +confession\``,
+          `• \`${prefix}help logs\``,
+          `• \`${prefix}help security\``
+        ], true),
+        sectionField(uiText(guildConfig, '⚡ Raccourcis rapides', '⚡ Quick picks'), [
+          `• \`${prefix}help categories\``,
+          `• \`${prefix}guide all\``,
+          `• \`${prefix}ready\``
+        ], true)
       );
     return applyEmbedVisualStyle(embed, guildConfig);
   }
@@ -5646,18 +5862,27 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     const grouped = {};
     for (const command of commands) grouped[command.category] = (grouped[command.category] || 0) + 1;
     const visibleCategories = CATEGORY_ORDER.filter((name) => grouped[name]);
-    const pages = chunkLines(visibleCategories, 10);
+    const pages = chunkLines(visibleCategories, 8);
     const current = pages[safePage - 1] || [];
     embed
       .setTitle(uiText(guildConfig, '📂 Catégories', '📂 Categories'))
       .setDescription([
-        uiText(guildConfig, `Page **${safePage}/${pages.length}** • choisis une famille avec les boutons dessous.`, `Page **${safePage}/${pages.length}** • choose a family with the buttons below.`),
-        uiText(guildConfig, `Tu peux aussi ouvrir une fiche expliquée avec \`${prefix}guide +commande\`.`, `You can also open an explained card with \`${prefix}guide +command\`.`)
+        uiText(guildConfig, `Page **${safePage}/${pages.length}** • ouvre une famille avec les boutons dessous.`, `Page **${safePage}/${pages.length}** • open a family with the buttons below.`),
+        uiText(guildConfig, `Tu peux aussi chercher direct une commande avec \`${prefix}help +commande\`.`, `You can also jump straight to a command with \`${prefix}help +command\`.`)
       ].join('\n'));
     current.forEach((name) => {
+      const topCommands = client.commandRegistry
+        .filter((cmd) => !cmd.hidden && cmd.category === name)
+        .slice(0, 3)
+        .map((cmd) => commandPill(prefix, cmd.name))
+        .join(' • ');
       embed.addFields({
-        name: `${CATEGORY_META[name]?.emoji || '•'} ${categoryLabelFor(guildConfig, name)}` ,
-        value: [uiText(guildConfig, `**${grouped[name] || 0}** commande(s)`, `**${grouped[name] || 0}** command(s)`), categoryBlurbFor(guildConfig, name)].filter(Boolean).join('\n'),
+        name: `${CATEGORY_META[name]?.emoji || '•'} ${categoryLabelFor(guildConfig, name)}`,
+        value: [
+          uiText(guildConfig, `**${grouped[name] || 0}** commande(s)`, `**${grouped[name] || 0}** command(s)`),
+          categoryBlurbFor(guildConfig, name),
+          topCommands || '—'
+        ].filter(Boolean).join('\n'),
         inline: true
       });
     });
@@ -5668,10 +5893,10 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     const setupPages = getSetupHelpPages();
     const currentGroups = setupPages[safePage - 1] || [];
     embed
-      .setTitle(uiText(guildConfig, '🧩 Centre setup', '🧩 Setup center'))
+      .setTitle(uiText(guildConfig, '🧩 Setup', '🧩 Setup'))
       .setDescription([
-        uiText(guildConfig, 'Vue propre pour configurer le serveur sans te perdre dans les anciennes commandes.', 'Clean overview to configure the server without getting lost in old commands.'),
-        uiText(guildConfig, `Raccourcis : \`${prefix}setup\` • \`${prefix}system\` • \`${prefix}logs\` • \`${prefix}help tracking\` • \`${prefix}help support\``, `Shortcuts: \`${prefix}setup\` • \`${prefix}system\` • \`${prefix}logs\` • \`${prefix}help tracking\` • \`${prefix}help support\``),
+        uiText(guildConfig, 'Vue propre pour configurer le serveur sans te perdre dans les vieilles commandes.', 'Clean overview to configure the server without getting lost in older commands.'),
+        uiText(guildConfig, `Raccourcis : \`${prefix}setup\` • \`${prefix}panel\` • \`${prefix}logs panel\` • \`${prefix}help support\``, `Shortcuts: \`${prefix}setup\` • \`${prefix}panel\` • \`${prefix}logs panel\` • \`${prefix}help support\``),
         `Page **${safePage}/${setupPages.length}**`
       ].join('\n'));
 
@@ -5681,9 +5906,10 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
         .filter(Boolean)
         .map((cmd) => {
           const aliasText = cmd.aliases?.length ? ` • ${uiText(guildConfig, 'alias', 'aliases')} : ${cmd.aliases.slice(0, 2).map((a) => `\`${prefix}${a}\``).join(', ')}` : '';
-          return `**\`${prefix}${cmd.name}\`** — \`${prefix}${cmd.usage || cmd.name}\`${aliasText}`;
+          return `**\`${prefix}${cmd.name}\`**
+↳ \`${prefix}${getCommandHelpUsage(cmd)}\`${aliasText}`;
         });
-      const chunks = chunkLines(lines, 4);
+      const chunks = chunkLines(lines, 3);
       chunks.forEach((chunk, index) => {
         if (chunk.length) {
           const setupLabel = setupGroupLabelFor(guildConfig, groupName);
@@ -5700,68 +5926,78 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     .filter((cmd) => category === 'All' ? true : cmd.category === category)
     .sort((a, b) => category === 'All' ? (a.category.localeCompare(b.category) || a.name.localeCompare(b.name)) : a.name.localeCompare(b.name));
   const selected = selectedCommands.map((cmd) => buildHelpLine(prefix, cmd, category, guildConfig));
-  const pages = chunkLines(selected, 5);
+  const pages = chunkLines(selected, 4);
   const currentLines = pages[safePage - 1] || [];
 
   embed.setTitle(`${CATEGORY_META[category]?.emoji || '•'} ${categoryLabelFor(guildConfig, category)}`);
 
   const intro = [];
   intro.push(uiText(guildConfig, `Page **${safePage}/${pages.length}** • **${selectedCommands.length}** commande(s).`, `Page **${safePage}/${pages.length}** • **${selectedCommands.length}** command(s).`));
-  intro.push(uiText(guildConfig, `Utilise \`${prefix}help +<commande>\` pour une fiche détaillée.`, `Use \`${prefix}help +<command>\` for a detailed card.`));
+  intro.push(uiText(guildConfig, `Utilise \`${prefix}help +<commande>\` pour la fiche détaillée.`, `Use \`${prefix}help +<command>\` for the detailed card.`));
   if (category === 'All') intro.push(uiText(guildConfig, 'Liste complète découpée en pages pour rester lisible.', 'Full list split into pages to stay readable.'));
-  if (category === 'System') intro.push(`Tout ce qui touche à \`${prefix}dashboard\`, \`${prefix}panel\`, \`${prefix}modules\` et \`${prefix}setupcheck\`.`);
+  if (category === 'System') intro.push(uiText(guildConfig, `Tout ce qui touche à \`${prefix}dashboard\`, \`${prefix}panel\`, \`${prefix}modules\` et \`${prefix}setupcheck\`.`, `Everything tied to \`${prefix}dashboard\`, \`${prefix}panel\`, \`${prefix}modules\` and \`${prefix}setupcheck\`.`));
   if (category === 'Tracking') intro.push(uiText(guildConfig, 'Compteurs, invites et refresh sont regroupés ici.', 'Counters, invites and refresh tools are grouped here.'));
   if (category === 'Support') intro.push(uiText(guildConfig, `Membres : \`${prefix}support <message>\` ou MP au bot • Staff : \`${prefix}reply @user <texte>\`.`, `Members: \`${prefix}support <message>\` or DM the bot • Staff: \`${prefix}reply @user <text>\`.`));
-  if (category === 'Permissions') intro.push(`Niveaux : \`${prefix}permrole 1 @Role\` • commandes : \`${prefix}permcmd 1 add timeout\`.`);
+  if (category === 'Confessions') intro.push(uiText(guildConfig, `Salon public + logs privés + envoi anonyme via \`${prefix}confession\`.`, `Public channel + private logs + anonymous posting with \`${prefix}confession\`.`));
+  if (category === 'Permissions') intro.push(uiText(guildConfig, `Niveaux : \`${prefix}permrole 1 @Role\` • commandes : \`${prefix}permcmd 1 add timeout\`.`, `Levels: \`${prefix}permrole 1 @Role\` • commands: \`${prefix}permcmd 1 add timeout\`.`));
   if (category === 'Voice') intro.push(uiText(guildConfig, 'Déplacements voc, temp voice et modération voc.', 'Voice moves, temp voice and voice moderation.'));
-  if (category === 'Logs') intro.push(`Utilise \`${prefix}logs view\`, \`${prefix}logs types\` ou \`${prefix}logs panel\`.`);
+  if (category === 'Logs') intro.push(uiText(guildConfig, `Commence souvent par \`${prefix}logs panel\`, \`${prefix}logs view\` ou \`${prefix}logtypes\`.`, `You will often start with \`${prefix}logs panel\`, \`${prefix}logs view\` or \`${prefix}logtypes\`.`));
   if (category === 'Security') intro.push(uiText(guildConfig, 'Ghost ping, anti-spam et presets sécurité sont regroupés ici.', 'Ghost ping, anti-spam and security presets are grouped here.'));
   if (category === 'Automation') intro.push(uiText(guildConfig, 'Sticky, auto-react et automatisations pratiques.', 'Sticky, auto-react and practical automations.'));
   if (category === 'Progress') intro.push(uiText(guildConfig, 'Trophées, milestones et progression serveur.', 'Trophies, milestones and server progress.'));
   embed.setDescription(intro.join('\n'));
 
-  const fieldChunks = chunkLines(currentLines, 3);
+  const fieldChunks = chunkLines(currentLines, 2);
   if (!currentLines.length) {
     embed.addFields({ name: uiText(guildConfig, 'Commandes', 'Commands'), value: uiText(guildConfig, 'Aucune commande ici.', 'No commands here.'), inline: false });
   } else {
     fieldChunks.forEach((chunk, idx) => embed.addFields({
       name: idx === 0 ? uiText(guildConfig, 'Commandes', 'Commands') : uiText(guildConfig, 'Suite', 'More'),
-      value: chunk.join('\n').slice(0, 1024),
+      value: chunk.join('\n\n').slice(0, 1024),
       inline: false
     }));
   }
   return applyEmbedVisualStyle(embed, guildConfig);
 }
 
+
 function createHelpComponents(current = 'Home', page = 1, totalPages = 1, guildConfig = null) {
   const rows = [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('help:Home:1').setLabel(uiText(guildConfig, '🏠 Accueil', '🏠 Home')).setStyle(current === 'Home' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('help:Setup:1').setLabel('🧩 Setup').setStyle(current === 'Setup' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:Setup:1').setLabel(uiText(guildConfig, '🧩 Setup', '🧩 Setup')).setStyle(current === 'Setup' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('help:Categories:1').setLabel(uiText(guildConfig, '📂 Catégories', '📂 Categories')).setStyle(current === 'Categories' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('help:All:1').setLabel(uiText(guildConfig, '📚 Tout', '📚 All')).setStyle(current === 'All' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('help:All:1').setLabel(uiText(guildConfig, '📚 Toutes', '📚 All')).setStyle(current === 'All' ? ButtonStyle.Primary : ButtonStyle.Secondary)
     ),
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('help:start:1').setLabel(uiText(guildConfig, '🚀 Début', '🚀 Start')).setStyle(current === 'start' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('help:staff:1').setLabel('🛠️ Staff').setStyle(current === 'staff' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('help:members:1').setLabel(uiText(guildConfig, '👥 Membres', '👥 Members')).setStyle(current === 'members' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('help:health:1').setLabel(uiText(guildConfig, '🩺 Santé', '🩺 Health')).setStyle(current === 'health' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('help:staff:1').setLabel('🛠️ Staff').setStyle(current === 'staff' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:Support:1').setLabel(uiText(guildConfig, '📨 Support', '📨 Support')).setStyle(current === 'Support' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:Confessions:1').setLabel(uiText(guildConfig, '🤫 Confessions', '🤫 Confessions')).setStyle(current === 'Confessions' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('help:Info:1').setLabel(uiText(guildConfig, '📌 Infos', '📌 Info')).setStyle(current === 'Info' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:Utility:1').setLabel(uiText(guildConfig, '🛠️ Outils', '🛠️ Utility')).setStyle(current === 'Utility' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:Logs:1').setLabel(uiText(guildConfig, '🧾 Logs', '🧾 Logs')).setStyle(current === 'Logs' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:Moderation:1').setLabel(uiText(guildConfig, '🛡️ Modération', '🛡️ Moderation')).setStyle(current === 'Moderation' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:Security:1').setLabel(uiText(guildConfig, '🚨 Sécurité', '🚨 Security')).setStyle(current === 'Security' ? ButtonStyle.Primary : ButtonStyle.Secondary)
     )
   ];
 
   if (current === 'Categories') {
     const visibleCategories = CATEGORY_ORDER.filter((category) => !['Home', 'Setup', 'All', 'Categories'].includes(category));
-    const totalCategoryPages = Math.max(1, Math.ceil(visibleCategories.length / 10));
+    const totalCategoryPages = Math.max(1, Math.ceil(visibleCategories.length / 8));
     const safePage = Math.min(Math.max(1, Number(page) || 1), totalCategoryPages);
-    const currentChunk = visibleCategories.slice((safePage - 1) * 10, safePage * 10);
-    if (visibleCategories.length > 10) {
+    const currentChunk = visibleCategories.slice((safePage - 1) * 8, safePage * 8);
+    if (visibleCategories.length > 8) {
       rows.push(new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.max(1, safePage - 1)}`).setLabel(uiText(guildConfig, '⬅️ Précédent', '⬅️ Prev')).setStyle(ButtonStyle.Secondary).setDisabled(safePage <= 1),
         new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.min(totalCategoryPages, safePage + 1)}`).setLabel(uiText(guildConfig, 'Suivant ➡️', 'Next ➡️')).setStyle(ButtonStyle.Secondary).setDisabled(safePage >= totalCategoryPages)
       ));
     }
-    for (let i = 0; i < currentChunk.length; i += 5) {
-      const chunk = currentChunk.slice(i, i + 5);
+    for (let i = 0; i < currentChunk.length; i += 4) {
+      const chunk = currentChunk.slice(i, i + 4);
       rows.push(new ActionRowBuilder().addComponents(
         ...chunk.map((category) => new ButtonBuilder()
           .setCustomId(`help:${category}:1`)
@@ -5786,8 +6022,10 @@ function createHelpComponents(current = 'Home', page = 1, totalPages = 1, guildC
       new ButtonBuilder().setCustomId(`helpnav:${current}:${Math.min(totalPages, page + 1)}`).setLabel(uiText(guildConfig, 'Suivant ➡️', 'Next ➡️')).setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages)
     ));
   }
+
   return rows;
 }
+
 
 function createLogsPanelEmbed(guildConfig, page = 1) {
   const logs = guildConfig.logs || { enabled: false, channelId: null, channels: {}, typeSalons: {}, types: {} };
@@ -6143,7 +6381,7 @@ function createCommands() {
       async execute(ctx) {
         const url = process.env.BOT_INVITE_URL || makeInviteUrl(ctx.client.meta.clientId);
         if (!url) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, 'Invite', 'No invite URL available. Set `BOT_INVITE_URL` or `DISCORD_CLIENT_ID`.')] });
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔗 Invite DvL', `[Click here to invite DvL](${url})`)] });
+        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔗 Invite Neyora', `[Click here to invite Neyora](${url})`)] });
       }
     }),
     makeSimpleCommand({
@@ -6157,7 +6395,7 @@ function createCommands() {
       async execute(ctx) {
         const guilds = ctx.client.guilds.cache.size;
         const users = ctx.client.users.cache.size;
-        const embed = baseEmbed(ctx.guildConfig, '🤖 DvL Info', `**Servers:** ${guilds}\n**Cached users:** ${users}\n**Primary commands:** ${ctx.client.commandRegistry.length}\n**Aliases:** ${ctx.client.commandRegistry.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\n**Latency:** ${ctx.client.ws.ping}ms`);
+        const embed = baseEmbed(ctx.guildConfig, '🤖 Neyora Info', `**Servers:** ${guilds}\n**Cached users:** ${users}\n**Primary commands:** ${ctx.client.commandRegistry.length}\n**Aliases:** ${ctx.client.commandRegistry.reduce((sum, cmd) => sum + (cmd.aliases?.length || 0), 0)}\n**Latency:** ${ctx.client.ws.ping}ms`);
         if (ctx.client.user) embed.setThumbnail(ctx.client.user.displayAvatarURL());
         await ctx.reply({ embeds: [embed] });
       }
@@ -6177,7 +6415,7 @@ function createCommands() {
         }
         if (['export', 'download'].includes(action)) {
           const payload = buildConfigExportPayload(ctx.guildConfig, ctx.guild);
-          const attachment = new AttachmentBuilder(Buffer.from(JSON.stringify(payload, null, 2), 'utf8'), { name: `dvl-config-${ctx.guild.id}.json` });
+          const attachment = new AttachmentBuilder(Buffer.from(JSON.stringify(payload, null, 2), 'utf8'), { name: `neyora-config-${ctx.guild.id}.json` });
           return ctx.reply({
             embeds: [createModuleActionEmbed(ctx.guildConfig, {
               moduleKey: 'config',
@@ -6907,7 +7145,7 @@ function createCommands() {
             metricLine(uiText(ctx.guildConfig, 'Reset', 'Reset'), commandPill(ctx.prefix, 'clearwarnings @member'))
           ],
           nextLines: [`• \`${ctx.prefix}warn @member spam\``, `• \`${ctx.prefix}warnings @member\``],
-          footerText: 'DvL • moderation hub'
+          footerText: 'Neyora • moderation hub'
         })] });
         if (action === 'timeout') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
           titleFr: 'Timeout flow',
@@ -6919,7 +7157,7 @@ function createCommands() {
             metricLine(uiText(ctx.guildConfig, 'Format', 'Format'), '`10m` • `1h` • `1d` • `7d`')
           ],
           nextLines: [`• \`${ctx.prefix}timeout @member 10m spam\``, `• \`${ctx.prefix}untimeout @member\``],
-          footerText: 'DvL • moderation hub'
+          footerText: 'Neyora • moderation hub'
         })] });
         if (action === 'ban') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
           titleFr: 'Ban flow',
@@ -6931,7 +7169,7 @@ function createCommands() {
             metricLine(uiText(ctx.guildConfig, 'Retrait', 'Removal'), commandPill(ctx.prefix, 'unban userId'))
           ],
           nextLines: [`• \`${ctx.prefix}ban @member raid\``, `• \`${ctx.prefix}unban 123456789012345678\``],
-          footerText: 'DvL • moderation hub'
+          footerText: 'Neyora • moderation hub'
         })] });
         if (action === 'kick') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
           titleFr: 'Kick flow',
@@ -6942,7 +7180,7 @@ function createCommands() {
             metricLine(uiText(ctx.guildConfig, 'À vérifier', 'Check first'), commandPill(ctx.prefix, 'warnings @member'))
           ],
           nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}kick @member insultes\``],
-          footerText: 'DvL • moderation hub'
+          footerText: 'Neyora • moderation hub'
         })] });
         if (action === 'clear') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
           titleFr: 'Nettoyage salon',
@@ -6954,7 +7192,7 @@ function createCommands() {
             metricLine(uiText(ctx.guildConfig, 'Reset', 'Reset'), commandPill(ctx.prefix, 'renew raison'))
           ],
           nextLines: [`• \`${ctx.prefix}clear 20\``, `• \`${ctx.prefix}purge @member 5\``],
-          footerText: 'DvL • moderation hub'
+          footerText: 'Neyora • moderation hub'
         })] });
         if (action === 'channel') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
           titleFr: 'Actions salon',
@@ -6967,7 +7205,7 @@ function createCommands() {
             metricLine(uiText(ctx.guildConfig, 'Renew', 'Renew'), commandPill(ctx.prefix, 'renew raison'))
           ],
           nextLines: [`• \`${ctx.prefix}slowmode 5\``, `• \`${ctx.prefix}lock\``],
-          footerText: 'DvL • moderation hub'
+          footerText: 'Neyora • moderation hub'
         })] });
         if (action === 'nick') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
           titleFr: 'Flow pseudo',
@@ -6975,7 +7213,7 @@ function createCommands() {
           summary: 'Change a nickname and keep the before / after visible for staff.',
           stateLines: [metricLine(uiText(ctx.guildConfig, 'Commande', 'Command'), commandPill(ctx.prefix, 'nick @member NouveauPseudo'))],
           nextLines: [`• \`${ctx.prefix}nick @member NewName\``],
-          footerText: 'DvL • moderation hub'
+          footerText: 'Neyora • moderation hub'
         })] });
         return ctx.invalidUsage(`Examples: \`${ctx.prefix}moderation\`, \`${ctx.prefix}moderation warn\`, \`${ctx.prefix}moderation timeout\`, \`${ctx.prefix}moderation clear\`.`);
       }
@@ -7069,17 +7307,22 @@ function createCommands() {
         const watchers = ctx.guildConfig.tiktok?.watchers || [];
         if (['view', 'config', 'show', 'status', 'setup'].includes(action)) return ctx.reply({ embeds: [buildTikTokHubEmbed(ctx.guildConfig, ctx.prefix)] });
         if (action === 'list') {
-          const lines = watchers.slice(0, 8).map((watcher) => `• **@${watcher.username}** → <#${watcher.channelId}> • ping: ${watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : 'none'} • live ${boolEmoji(watcher.announceLive)} • video ${boolEmoji(watcher.announceVideos)}`);
+          const errorCount = watchers.filter((watcher) => watcher.lastError).length;
+          const liveNow = watchers.filter((watcher) => watcher.wasLive).length;
+          const lines = watchers.slice(0, 8).map((watcher) => buildTikTokWatcherCompactBlock(ctx.guildConfig, watcher));
           return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
             moduleKey: 'tiktok',
             titleFr: 'Watchers TikTok',
             titleEn: 'TikTok watchers',
-            summary: watchers.length ? uiText(ctx.guildConfig, `**${watchers.length}** watcher(s) TikTok configuré(s).`, `**${watchers.length}** TikTok watcher(s) configured.`) : uiText(ctx.guildConfig, 'Aucun watcher TikTok configuré.', 'No TikTok watchers configured.'),
+            summary: watchers.length
+              ? uiText(ctx.guildConfig, `**${watchers.length}** watcher(s) TikTok configuré(s) • **${liveNow}** live détecté(s) • **${errorCount}** erreur(s).`, `**${watchers.length}** TikTok watcher(s) configured • **${liveNow}** live now • **${errorCount}** error(s).`)
+              : uiText(ctx.guildConfig, 'Aucun watcher TikTok configuré.', 'No TikTok watchers configured.'),
             stateLines: watchers[0] ? buildTikTokWatcherStateLines(ctx.guildConfig, watchers[0]) : [],
             extraFields: lines.length ? [sectionField(uiText(ctx.guildConfig, '🎯 Watchers récents', '🎯 Recent watchers'), lines, false)] : [],
             nextLines: [
               `• ${commandPill(ctx.prefix, 'tiktok add username here')}`,
-              `• ${commandPill(ctx.prefix, 'tiktok check')}`
+              `• ${commandPill(ctx.prefix, 'tiktok check')}`,
+              `• ${commandPill(ctx.prefix, 'tiktok test username')}`
             ]
           })] });
         }
@@ -7226,22 +7469,37 @@ function createCommands() {
           if (!username) return ctx.invalidUsage(`Example: \`${ctx.prefix}tiktok test username\`.`);
           const status = await fetchTikTokStatus(username).catch((error) => ({ error: error.message }));
           const preferredUrl = status?.isLive ? (`https://www.tiktok.com/@${username}/live`) : (status?.latestVideoUrl || status?.finalUrl || `https://www.tiktok.com/@${username}`);
+          const statsLine = [
+            status?.followerCount != null ? `${uiText(ctx.guildConfig, 'abonnés', 'followers')}: **${formatStatNumber(status.followerCount)}**` : null,
+            status?.heartCount != null ? `${uiText(ctx.guildConfig, 'likes', 'likes')}: **${formatStatNumber(status.heartCount)}**` : null,
+            status?.videoCount != null ? `${uiText(ctx.guildConfig, 'vidéos', 'videos')}: **${formatStatNumber(status.videoCount)}**` : null
+          ].filter(Boolean).join(' • ');
+          const bioLine = status?.bio ? clipText(String(status.bio), 220) : null;
           return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
             moduleKey: 'tiktok',
             titleFr: 'Test watcher TikTok',
             titleEn: 'TikTok watcher test',
             tone: status.error ? 'warning' : 'success',
-            summary: status.error ? uiText(ctx.guildConfig, `Erreur détectée pour **@${username}** : **${status.error}**`, `Detected error for **@${username}**: **${status.error}**`) : uiText(ctx.guildConfig, `Test direct terminé pour **@${username}**.`, `Direct test finished for **@${username}**.`),
+            summary: status.error
+              ? uiText(ctx.guildConfig, `Erreur détectée pour **@${username}** : **${status.error}**`, `Detected error for **@${username}**: **${status.error}**`)
+              : uiText(ctx.guildConfig, `Test direct terminé pour **@${username}**${status.displayName ? ` • **${status.displayName}**` : ''}.`, `Direct test finished for **@${username}**${status.displayName ? ` • **${status.displayName}**` : ''}.`),
             stateLines: [
               metricLine(uiText(ctx.guildConfig, 'Compte', 'Account'), `**@${username}**`),
+              metricLine(uiText(ctx.guildConfig, 'Nom affiché', 'Display name'), status.displayName || uiText(ctx.guildConfig, 'inconnu', 'unknown')),
               metricLine(uiText(ctx.guildConfig, 'Dernière vidéo', 'Latest video'), status.latestVideoId || uiText(ctx.guildConfig, 'aucune', 'none')),
               metricLine(uiText(ctx.guildConfig, 'Live', 'Live'), status.error ? uiText(ctx.guildConfig, 'inconnu', 'unknown') : (status.isLive ? uiText(ctx.guildConfig, 'oui', 'yes') : uiText(ctx.guildConfig, 'non', 'no'))),
-              metricLine(uiText(ctx.guildConfig, 'Source', 'Source'), status.source || 'n/a')
+              metricLine(uiText(ctx.guildConfig, 'Source', 'Source'), status.source || 'n/a'),
+              metricLine(uiText(ctx.guildConfig, 'Room', 'Room'), status.liveRoomId || '—')
             ],
-            extraFields: [sectionField(uiText(ctx.guildConfig, '🔗 URL', '🔗 URL'), [preferredUrl], false)],
+            extraFields: [
+              ...(statsLine ? [sectionField(uiText(ctx.guildConfig, '📊 Profil', '📊 Profile'), [statsLine], false)] : []),
+              ...(bioLine ? [sectionField(uiText(ctx.guildConfig, '📝 Bio', '📝 Bio'), [bioLine], false)] : []),
+              sectionField(uiText(ctx.guildConfig, '🔗 URL', '🔗 URL'), [preferredUrl], false)
+            ],
             nextLines: [
               `• ${commandPill(ctx.prefix, `tiktok role ${username} @Role`)}`,
-              `• ${commandPill(ctx.prefix, `tiktok channel ${username} here`)}`
+              `• ${commandPill(ctx.prefix, `tiktok channel ${username} here`)}`,
+              `• ${commandPill(ctx.prefix, `tiktok live ${username} on`)}`
             ]
           })] });
         }
@@ -7948,7 +8206,7 @@ makeSimpleCommand({
           summary: uiText(ctx.guildConfig, 'Place le rôle cible sous mon rôle le plus haut d’abord.', 'Move the target role below my highest role first.')
         })] });
         const add = ['add', 'give'].includes(sub);
-        await (add ? target.roles.add(role, `DvL roles ${sub} by ${ctx.user.tag}`) : target.roles.remove(role, `DvL roles ${sub} by ${ctx.user.tag}`)).catch(() => null);
+        await (add ? target.roles.add(role, `Neyora roles ${sub} by ${ctx.user.tag}`) : target.roles.remove(role, `Neyora roles ${sub} by ${ctx.user.tag}`)).catch(() => null);
         return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
           moduleKey: 'roles',
           titleFr: add ? 'Rôle ajouté' : 'Rôle retiré',
@@ -8517,7 +8775,7 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
           const parsed = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
           const importedSnapshot = parsed.snapshot || parsed;
           if (!importedSnapshot || typeof importedSnapshot !== 'object') {
-            return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Backup import', 'That file does not look like a valid DvL backup JSON.')] });
+            return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '💾 Backup import', 'That file does not look like a valid Neyora backup JSON.')] });
           }
           const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
           const entry = {
@@ -8625,7 +8883,7 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
         }
 
         if (['export', 'download'].includes(action)) {
-          const attachment = new AttachmentBuilder(Buffer.from(JSON.stringify(found, null, 2), 'utf8'), { name: `dvl-backup-${found.id}.json` });
+          const attachment = new AttachmentBuilder(Buffer.from(JSON.stringify(found, null, 2), 'utf8'), { name: `neyora-backup-${found.id}.json` });
           return ctx.reply({
             embeds: [createModuleActionEmbed(ctx.guildConfig, {
               moduleKey: 'backup',
@@ -8837,7 +9095,7 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
           .setColor(ensureHexColor(ctx.guildConfig.embedColor))
           .setTitle(uiText(ctx.guildConfig, '✦ Studio embed', '✦ Embed studio'))
           .setDescription(uiText(ctx.guildConfig, 'Crée un embed propre, copie un embed existant ou envoie ton message quand tout est prêt.', 'Create a clean embed, copy an existing one or send your message when everything is ready.'))
-          .setFooter({ text: uiText(ctx.guildConfig, 'DvL • studio embed', 'DvL • embed studio') })
+          .setFooter({ text: uiText(ctx.guildConfig, 'Neyora • studio embed', 'Neyora • embed studio') })
           .setTimestamp();
 
         ctx.client.embedDrafts.set(draftId, {
@@ -9035,7 +9293,7 @@ Example: \`${ctx.prefix}backup import imported-main\``)] });
         const lines = boosters.slice(0, 30).map((member) => `• ${member} • <t:${Math.floor(member.premiumSinceTimestamp / 1000)}:R>`);
         const embed = baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '✨ Boosters serveur', '✨ Server boosters'), boosters.length ? lines.join('\n') : uiText(ctx.guildConfig, 'Aucun booster trouvé pour le moment.', 'No boosters found right now.'));
         if (boosters.length > 30) embed.addFields({ name: uiText(ctx.guildConfig, 'Plus', 'More'), value: uiText(ctx.guildConfig, `+${boosters.length - 30} autre(s) booster(s)`, `+${boosters.length - 30} more booster(s)`), inline: false });
-        embed.setFooter({ text: uiText(ctx.guildConfig, `DvL • ${boosters.length} booster(s)`, `DvL • ${boosters.length} booster(s)`) });
+        embed.setFooter({ text: uiText(ctx.guildConfig, `Neyora • ${boosters.length} booster(s)`, `Neyora • ${boosters.length} booster(s)`) });
         return ctx.reply({ embeds: [embed] });
       }
     }),
@@ -9480,7 +9738,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       userPermissions: [PermissionFlagsBits.ManageSalons],
       slash: { root: 'voice', sub: 'createvoc', description: 'Create or register the temp voice hub', options: [
         { type: 'channel', name: 'channel', description: 'Existing voice channel to use as the hub', required: false, channelTypes: [ChannelType.GuildVoice, ChannelType.GuildStageVoice] },
-        { type: 'string', name: 'name', description: 'Name if DvL should create the hub channel', required: false },
+        { type: 'string', name: 'name', description: 'Name if Neyora should create the hub channel', required: false },
         { type: 'channel', name: 'category', description: 'Optional category for the hub', required: false, channelTypes: [ChannelType.GuildCategory] }
       ] },
       async execute(ctx) {
@@ -9516,7 +9774,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         });
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔊 Voice hub ready', [
           `Hub channel: ${channel}`,
-          'When a member joins this channel, DvL creates their private temp voice automatically.',
+          'When a member joins this channel, Neyora creates their private temp voice automatically.',
           `Use \`${ctx.prefix}voicepanel\` in a text channel to post the management panel.`
         ].join('\n'))] });
       }
@@ -9611,10 +9869,10 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
               action: '🔊 Voice disconnect',
               title: '🔊 Voice disconnect',
               description: `You were disconnected from voice in **${ctx.guild.name}**.`,
-              footerText: 'DvL • voice disconnect'
+              footerText: 'Neyora • voice disconnect'
             })
           : false;
-        await target.voice.disconnect('Disconnected by DvL').catch(() => null);
+        await target.voice.disconnect('Disconnected by Neyora').catch(() => null);
         const commonFields = [
           { name: 'Member', value: `${target}`, inline: true },
           { name: 'User ID', value: `\`${target.id}\``, inline: true },
@@ -9623,7 +9881,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
         ];
         await sendDetailedModerationLog(ctx, '🔊 Voice disconnect', `${target} was disconnected from voice.`, target, commonFields);
-        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔊 Voice disconnect', `${target} was disconnected from voice.`, target, commonFields, { footerText: 'DvL • voice disconnect' })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔊 Voice disconnect', `${target} was disconnected from voice.`, target, commonFields, { footerText: 'Neyora • voice disconnect' })] });
       }
     }),
 
@@ -9717,15 +9975,15 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const role = await getConfigurableRole(ctx, roleId);
         if (!role) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔇 Voice mute', 'The configured voice mute role no longer exists. Set it again.')] });
         if (!canBotManageRoleInGuild(ctx.guild, role)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔇 Voice mute', 'I cannot assign the configured voice mute role. Move it below my highest role.')] });
-        await target.roles.add(role, `DvL voice mute • ${reason}`).catch(() => null);
-        if (target.voice?.channelId) await target.voice.setMute(true, `DvL voice mute • ${reason}`).catch(() => null);
+        await target.roles.add(role, `Neyora voice mute • ${reason}`).catch(() => null);
+        if (target.voice?.channelId) await target.voice.setMute(true, `Neyora voice mute • ${reason}`).catch(() => null);
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '🔇 Voice mute',
               title: '🔇 Voice mute',
               description: `You were voice muted in **${ctx.guild.name}**.`,
               reason,
-              footerText: 'DvL • voice mute'
+              footerText: 'Neyora • voice mute'
             })
           : false;
         const commonFields = [
@@ -9737,7 +9995,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'Reason', value: reason.slice(0, 1024), inline: false }
         ];
         await sendDetailedModerationLog(ctx, '🔇 Voice mute', `${target} was voice muted.`, target, commonFields);
-        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔇 Voice mute', `${target} was voice muted.`, target, commonFields, { footerText: 'DvL • voice mute' })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔇 Voice mute', `${target} was voice muted.`, target, commonFields, { footerText: 'Neyora • voice mute' })] });
       }
     }),
     makeSimpleCommand({
@@ -9755,14 +10013,14 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const roleId = ctx.guildConfig.voice?.moderation?.muteRoleId;
         if (!roleId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🔊 Voice unmute', `No voice mute role is configured yet. Use \`${ctx.prefix}setvoicemuterole @Role\`.`)] });
         const role = await getConfigurableRole(ctx, roleId);
-        if (role && target.roles.cache.has(role.id)) await target.roles.remove(role, 'DvL voice unmute').catch(() => null);
-        if (target.voice?.channelId) await target.voice.setMute(false, 'DvL voice unmute').catch(() => null);
+        if (role && target.roles.cache.has(role.id)) await target.roles.remove(role, 'Neyora voice unmute').catch(() => null);
+        if (target.voice?.channelId) await target.voice.setMute(false, 'Neyora voice unmute').catch(() => null);
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '🔊 Voice unmute',
               title: '🔊 Voice unmute',
               description: `Your voice mute was removed in **${ctx.guild.name}**.`,
-              footerText: 'DvL • voice unmute'
+              footerText: 'Neyora • voice unmute'
             })
           : false;
         const commonFields = [
@@ -9772,7 +10030,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
         ];
         await sendDetailedModerationLog(ctx, '🔊 Voice unmute', `${target} is no longer voice muted.`, target, commonFields);
-        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔊 Voice unmute', `${target} is no longer voice muted.`, target, commonFields, { footerText: 'DvL • voice unmute' })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🔊 Voice unmute', `${target} is no longer voice muted.`, target, commonFields, { footerText: 'Neyora • voice unmute' })] });
       }
     }),
     makeSimpleCommand({
@@ -9797,15 +10055,15 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const role = await getConfigurableRole(ctx, roleId);
         if (!role) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⛔ Voice ban', 'The configured voice ban role no longer exists. Set it again.')] });
         if (!canBotManageRoleInGuild(ctx.guild, role)) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '⛔ Voice ban', 'I cannot assign the configured voice ban role. Move it below my highest role.')] });
-        await target.roles.add(role, `DvL voice ban • ${reason}`).catch(() => null);
-        if (target.voice?.channelId) await target.voice.disconnect(`DvL voice ban • ${reason}`).catch(() => null);
+        await target.roles.add(role, `Neyora voice ban • ${reason}`).catch(() => null);
+        if (target.voice?.channelId) await target.voice.disconnect(`Neyora voice ban • ${reason}`).catch(() => null);
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '⛔ Voice ban',
               title: '⛔ Voice ban',
               description: `You can no longer join voice in **${ctx.guild.name}**.`,
               reason,
-              footerText: 'DvL • voice ban'
+              footerText: 'Neyora • voice ban'
             })
           : false;
         const commonFields = [
@@ -9817,7 +10075,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'Reason', value: reason.slice(0, 1024), inline: false }
         ];
         await sendDetailedModerationLog(ctx, '⛔ Voice ban', `${target} received the configured voice ban role.`, target, commonFields);
-        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '⛔ Voice ban', `${target} can no longer join voice.`, target, commonFields, { footerText: 'DvL • voice ban' })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '⛔ Voice ban', `${target} can no longer join voice.`, target, commonFields, { footerText: 'Neyora • voice ban' })] });
       }
     }),
     makeSimpleCommand({
@@ -9835,13 +10093,13 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         const roleId = ctx.guildConfig.voice?.moderation?.banRoleId;
         if (!roleId) return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '✅ Voice unban', `No voice ban role is configured yet. Use \`${ctx.prefix}setvoicebanrole @Role\`.`)] });
         const role = await getConfigurableRole(ctx, roleId);
-        if (role && target.roles.cache.has(role.id)) await target.roles.remove(role, 'DvL voice unban').catch(() => null);
+        if (role && target.roles.cache.has(role.id)) await target.roles.remove(role, 'Neyora voice unban').catch(() => null);
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '✅ Voice unban',
               title: '✅ Voice unban',
               description: `You can join voice again in **${ctx.guild.name}**.`,
-              footerText: 'DvL • voice unban'
+              footerText: 'Neyora • voice unban'
             })
           : false;
         const commonFields = [
@@ -9851,7 +10109,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           { name: 'DM', value: getDmStatusLabel(dmSent), inline: true }
         ];
         await sendDetailedModerationLog(ctx, '✅ Voice unban', `${target} can join voice again.`, target, commonFields);
-        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '✅ Voice unban', `${target} can join voice again.`, target, commonFields, { footerText: 'DvL • voice unban' })] });
+        await ctx.reply({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '✅ Voice unban', `${target} can join voice again.`, target, commonFields, { footerText: 'Neyora • voice unban' })] });
       }
     }),
     makeSimpleCommand({
@@ -10389,7 +10647,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             affectedAmount: removed
           }),
           nextLines: [`• \`${ctx.prefix}purge @member 5\``, `• \`${ctx.prefix}slowmode 5\``],
-          footerText: 'DvL • channel cleanup'
+          footerText: 'Neyora • channel cleanup'
         })] });
         if (sent) setTimeout(() => sent.delete().catch(() => null), 10_000).unref?.();
       }
@@ -10428,7 +10686,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             target,
             stateLines: buildModerationStateLines(ctx.guildConfig, { channel: ctx.channel, moderator: ctx.user, target }),
             nextLines: [`• \`${ctx.prefix}clear 20\``],
-            footerText: 'DvL • purge failed'
+            footerText: 'Neyora • purge failed'
           })] });
           if (fail) setTimeout(() => fail.delete().catch(() => null), 10_000).unref?.();
           return;
@@ -10457,7 +10715,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             affectedAmount: removed
           }),
           nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}clear 20\``],
-          footerText: 'DvL • targeted purge'
+          footerText: 'Neyora • targeted purge'
         })] });
         if (sent) setTimeout(() => sent.delete().catch(() => null), 10_000).unref?.();
       }
@@ -10482,7 +10740,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'success',
           stateLines: buildModerationStateLines(ctx.guildConfig, { channel: ctx.channel, moderator: ctx.user, slowmode: seconds }),
           nextLines: [`• \`${ctx.prefix}lock\``, `• \`${ctx.prefix}clear 20\``],
-          footerText: 'DvL • slowmode'
+          footerText: 'Neyora • slowmode'
         })] });
       }
     }),
@@ -10504,7 +10762,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'success',
           stateLines: buildModerationStateLines(ctx.guildConfig, { channel: ctx.channel, moderator: ctx.user }),
           nextLines: [`• \`${ctx.prefix}unlock\``, `• \`${ctx.prefix}slowmode 5\``],
-          footerText: 'DvL • channel locked'
+          footerText: 'Neyora • channel locked'
         })] });
       }
     }),
@@ -10526,7 +10784,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'success',
           stateLines: buildModerationStateLines(ctx.guildConfig, { channel: ctx.channel, moderator: ctx.user }),
           nextLines: [`• \`${ctx.prefix}slowmode 5\``, `• \`${ctx.prefix}clear 20\``],
-          footerText: 'DvL • channel unlocked'
+          footerText: 'Neyora • channel unlocked'
         })] });
       }
     }),
@@ -10540,7 +10798,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       userPermissions: [PermissionFlagsBits.ManageSalons],
       slash: { root: 'mod', sub: 'renew', description: 'Clone the current channel and delete the old one', options: [{ type: 'string', name: 'reason', description: 'Optional reason', required: false }] },
       async execute(ctx) {
-        const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'Channel renewed by DvL.') : (ctx.getRest(0) || 'Channel renewed by DvL.');
+        const reason = ctx.interaction ? (ctx.interaction.options.getString('reason') || 'Channel renewed by Neyora.') : (ctx.getRest(0) || 'Channel renewed by Neyora.');
         if (!ctx.channel || ![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(ctx.channel.type)) {
           return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
             titleFr: 'Renew impossible',
@@ -10549,7 +10807,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             tone: 'warning',
             stateLines: buildModerationStateLines(ctx.guildConfig, { moderator: ctx.user }),
             nextLines: [`• \`${ctx.prefix}moderation channel\``],
-            footerText: 'DvL • renew unavailable'
+            footerText: 'Neyora • renew unavailable'
           })] });
         }
         const source = ctx.channel;
@@ -10560,7 +10818,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           summary: 'I could not clone this channel.',
           tone: 'error',
           stateLines: buildModerationStateLines(ctx.guildConfig, { channel: source, moderator: ctx.user, reason }),
-          footerText: 'DvL • renew failed'
+          footerText: 'Neyora • renew failed'
         })] });
         await clone.setPosition(source.position).catch(() => null);
         await clone.send({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
@@ -10570,7 +10828,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'success',
           stateLines: buildModerationStateLines(ctx.guildConfig, { channel: clone, moderator: ctx.user, reason }),
           nextLines: [`• \`${ctx.prefix}slowmode 5\``, `• \`${ctx.prefix}lock\``],
-          footerText: 'DvL • channel renewed'
+          footerText: 'Neyora • channel renewed'
         })] }).catch(() => null);
         await source.delete(reason).catch(() => null);
       }
@@ -10595,7 +10853,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'warning',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, reason }),
-          footerText: 'DvL • warn blocked'
+          footerText: 'Neyora • warn blocked'
         })] });
         let warningCount = 0;
         ctx.store.updateGuild(ctx.guild.id, (guild) => {
@@ -10610,7 +10868,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
               title: '⚠️ Warning',
               description: `You received a warning in **${ctx.guild.name}**.`,
               reason,
-              footerText: 'DvL • warning'
+              footerText: 'Neyora • warning'
             })
           : false;
         const commonFields = [
@@ -10636,7 +10894,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             reason
           }),
           nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}timeout @member 10m raison\``],
-          footerText: 'DvL • warning sent'
+          footerText: 'Neyora • warning sent'
         })] });
       }
     }),
@@ -10669,7 +10927,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             reason: latest?.reason || null
           }),
           nextLines: [`• \`${ctx.prefix}warn @member raison\``, `• \`${ctx.prefix}clearwarnings @member\``],
-          footerText: 'DvL • warning history'
+          footerText: 'Neyora • warning history'
         });
         const embeds = [first];
         if (recentLines.length) {
@@ -10680,7 +10938,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
               titleEn: 'Warning history',
               summary: 'Continuation',
               target,
-              footerText: 'DvL • warning history'
+              footerText: 'Neyora • warning history'
             });
             embed.addFields(sectionField(chunks.length > 1 ? `Recent warnings • page ${index + 1}/${chunks.length}` : 'Recent warnings', chunk, false));
             if (index !== 0) embeds.push(embed);
@@ -10710,7 +10968,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
               action: '🧽 Warnings cleared',
               title: '🧽 Warnings cleared',
               description: `Your warning history was cleared in **${ctx.guild.name}**.`,
-              footerText: 'DvL • warnings cleared'
+              footerText: 'Neyora • warnings cleared'
             })
           : false;
         const commonFields = [
@@ -10734,7 +10992,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             dmSent
           }),
           nextLines: [`• \`${ctx.prefix}warn @member raison\``, `• \`${ctx.prefix}timeout @member 10m raison\``],
-          footerText: 'DvL • warnings cleared'
+          footerText: 'Neyora • warnings cleared'
         })] });
       }
     }),
@@ -10760,7 +11018,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'warning',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, duration: formatDuration(duration), reason }),
-          footerText: 'DvL • timeout blocked'
+          footerText: 'Neyora • timeout blocked'
         })] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
@@ -10769,7 +11027,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
               description: `You were timed out in **${ctx.guild.name}**.`,
               reason,
               duration: formatDuration(duration),
-              footerText: 'DvL • timeout'
+              footerText: 'Neyora • timeout'
             })
           : false;
         const ok = await target.timeout(duration, reason).then(() => true).catch(() => false);
@@ -10780,7 +11038,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'error',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, duration: formatDuration(duration), reason }),
-          footerText: 'DvL • timeout failed'
+          footerText: 'Neyora • timeout failed'
         })] });
         const untilTs = Math.floor((Date.now() + duration) / 1000);
         const commonFields = [
@@ -10808,7 +11066,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             reason
           }),
           nextLines: [`• \`${ctx.prefix}untimeout @member\``, `• \`${ctx.prefix}warnings @member\``],
-          footerText: 'DvL • timeout applied'
+          footerText: 'Neyora • timeout applied'
         })] });
       }
     }),
@@ -10831,7 +11089,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'warning',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user }),
-          footerText: 'DvL • timeout removal blocked'
+          footerText: 'Neyora • timeout removal blocked'
         })] });
         const ok = await target.timeout(null).then(() => true).catch(() => false);
         if (!ok) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
@@ -10841,14 +11099,14 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'error',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user }),
-          footerText: 'DvL • timeout removal failed'
+          footerText: 'Neyora • timeout removal failed'
         })] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
               action: '✅ Timeout removed',
               title: '✅ Timeout removed',
               description: `Your timeout was removed in **${ctx.guild.name}**.`,
-              footerText: 'DvL • timeout removed'
+              footerText: 'Neyora • timeout removed'
             })
           : false;
         const commonFields = [
@@ -10866,7 +11124,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, dmSent }),
           nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}kick @member raison\``],
-          footerText: 'DvL • timeout removed'
+          footerText: 'Neyora • timeout removed'
         })] });
       }
     }),
@@ -10890,7 +11148,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'warning',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, reason }),
-          footerText: 'DvL • kick blocked'
+          footerText: 'Neyora • kick blocked'
         })] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
@@ -10898,7 +11156,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
               title: '👢 Kick',
               description: `You were kicked from **${ctx.guild.name}**.`,
               reason,
-              footerText: 'DvL • kick'
+              footerText: 'Neyora • kick'
             })
           : false;
         const commonFields = [
@@ -10916,7 +11174,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'error',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, reason }),
-          footerText: 'DvL • kick failed'
+          footerText: 'Neyora • kick failed'
         })] });
         await sendDetailedModerationLog(ctx, '👢 Member kicked', `${target.user.tag} was kicked.`, target, commonFields);
         await ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
@@ -10927,7 +11185,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, dmSent, reason }),
           nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}ban @member raison\``],
-          footerText: 'DvL • member kicked'
+          footerText: 'Neyora • member kicked'
         })] });
       }
     }),
@@ -10953,7 +11211,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'warning',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, duration: duration ? formatDuration(duration) : null, reason }),
-          footerText: 'DvL • ban blocked'
+          footerText: 'Neyora • ban blocked'
         })] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
@@ -10962,7 +11220,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
               description: `You were banned from **${ctx.guild.name}**.`,
               reason,
               duration: duration ? formatDuration(duration) : null,
-              footerText: 'DvL • ban'
+              footerText: 'Neyora • ban'
             })
           : false;
         const commonFields = [
@@ -10981,7 +11239,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'error',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, duration: duration ? formatDuration(duration) : null, reason }),
-          footerText: 'DvL • ban failed'
+          footerText: 'Neyora • ban failed'
         })] });
         if (duration) ctx.client.tempBans.set(`${ctx.guild.id}:${target.id}`, Date.now() + duration);
         await sendDetailedModerationLog(ctx, '🔨 Member banned', `${target.user.tag} was banned.`, target, commonFields);
@@ -10999,7 +11257,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             reason
           }),
           nextLines: [`• \`${ctx.prefix}unban ${target.id}\``, `• \`${ctx.prefix}warnings @member\``],
-          footerText: 'DvL • member banned'
+          footerText: 'Neyora • member banned'
         })] });
       }
     }),
@@ -11024,12 +11282,12 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'error',
           target: fetchedUser || { id: userId, tag: fetchedUser?.tag || `User ${userId}`, displayAvatarURL: () => null },
           stateLines: buildModerationStateLines(ctx.guildConfig, { moderator: ctx.user, extra: [metricLine(uiText(ctx.guildConfig, 'User ID', 'User ID'), `\`${userId}\``)] }),
-          footerText: 'DvL • unban failed'
+          footerText: 'Neyora • unban failed'
         })] });
         const dmSent = fetchedUser && !fetchedUser.bot
           ? await fetchedUser.send({ embeds: [buildMemberActionEmbed(ctx.guildConfig, '🕊️ Unbanned', `You can join **${ctx.guild.name}** again.`, fetchedUser, [
               { name: 'Moderator', value: `${ctx.user}`, inline: true }
-            ], { footerText: 'DvL • unbanned' })] }).then(() => true).catch(() => false)
+            ], { footerText: 'Neyora • unbanned' })] }).then(() => true).catch(() => false)
           : false;
         const userLike = fetchedUser || { id: userId, tag: fetchedUser?.tag || `User ${userId}`, displayAvatarURL: () => null };
         const commonFields = [
@@ -11051,7 +11309,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             extra: [metricLine(uiText(ctx.guildConfig, 'User ID', 'User ID'), `\`${userId}\``)]
           }),
           nextLines: [`• \`${ctx.prefix}ban @member raison\``, `• \`${ctx.prefix}moderation\``],
-          footerText: 'DvL • user unbanned'
+          footerText: 'Neyora • user unbanned'
         })] });
       }
     }),
@@ -11075,7 +11333,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'warning',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, after: nickname }),
-          footerText: 'DvL • nickname blocked'
+          footerText: 'Neyora • nickname blocked'
         })] });
         const before = target.nickname || target.user.username;
         const ok = await target.setNickname(nickname).then(() => true).catch(() => false);
@@ -11086,7 +11344,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
           tone: 'error',
           target,
           stateLines: buildModerationStateLines(ctx.guildConfig, { target, moderator: ctx.user, before, after: nickname }),
-          footerText: 'DvL • nickname failed'
+          footerText: 'Neyora • nickname failed'
         })] });
         const dmSent = typeof ctx.client.notifyModerationTarget === 'function'
           ? await ctx.client.notifyModerationTarget(target, ctx.user, {
@@ -11094,7 +11352,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
               title: '📝 Nickname changed',
               description: `Your nickname was updated in **${ctx.guild.name}**.`,
               reason: `Before: ${before} • After: ${nickname}`,
-              footerText: 'DvL • nickname'
+              footerText: 'Neyora • nickname'
             })
           : false;
         const commonFields = [
@@ -11120,7 +11378,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
             after: nickname
           }),
           nextLines: [`• \`${ctx.prefix}warnings @member\``, `• \`${ctx.prefix}nick @member NewName\``],
-          footerText: 'DvL • nickname updated'
+          footerText: 'Neyora • nickname updated'
         })] });
       }
     }),
@@ -12711,7 +12969,7 @@ Matched: **${result.matched}**.`)] });
           `**Boost mode:** ${getAnnouncementModeLabel(b.mode)}`,
           `**Boost title:** ${formatTemplatePreview(b.title, 'none')}`,
           `**Boost message:** ${formatTemplatePreview(b.message)}`,
-          `**Boost footer:** ${formatTemplatePreview(b.footer, 'DvL')}`,
+          `**Boost footer:** ${formatTemplatePreview(b.footer, 'Neyora')}`,
           `**Boost color:** ${code(b.color || ctx.guildConfig.embedColor)}`,
           `**Boost image:** ${formatTemplatePreview(b.imageUrl, 'none')}`
         ].join('\n');
@@ -12734,7 +12992,7 @@ Matched: **${result.matched}**.`)] });
           `**Welcome:** ${w.enabled ? 'on' : 'off'} • ${w.channelId ? `<#${w.channelId}>` : 'no channel'} • ${getAnnouncementModeLabel(w.mode)}`,
           `**Welcome title:** ${formatTemplatePreview(w.title, 'none')}`,
           `**Welcome message:** ${formatTemplatePreview(w.message)}`,
-          `**Welcome footer:** ${formatTemplatePreview(w.footer, 'DvL')}`,
+          `**Welcome footer:** ${formatTemplatePreview(w.footer, 'Neyora')}`,
           `**Welcome DM:** ${w.dmEnabled ? 'on' : 'off'} • ${getAnnouncementModeLabel(w.dmMode)}`,
           `**Welcome DM title:** ${formatTemplatePreview(w.dmTitle, 'none')}`,
           `**Welcome DM message:** ${formatTemplatePreview(w.dmMessage)}`,
@@ -12749,7 +13007,7 @@ Matched: **${result.matched}**.`)] });
           `**Boost:** ${b.enabled ? 'on' : 'off'} • ${b.channelId ? `<#${b.channelId}>` : 'no channel'} • ${getAnnouncementModeLabel(b.mode)}`,
           `**Boost title:** ${formatTemplatePreview(b.title, 'none')}`,
           `**Boost message:** ${formatTemplatePreview(b.message)}`,
-          `**Boost footer:** ${formatTemplatePreview(b.footer, 'DvL')}`
+          `**Boost footer:** ${formatTemplatePreview(b.footer, 'Neyora')}`
         ].join('\n');
         await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '📋 Welcome config', desc.slice(0, 4000))] });
       }
@@ -12789,8 +13047,16 @@ Matched: **${result.matched}**.`)] });
         }
 
         if (action === 'on' || action === 'off') {
-          ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.welcome.enabled = action === 'on'; return guild; });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Welcome', `Welcome messages are now **${action}**.`)] });
+          let autoChannel = null;
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.welcome.enabled = action === 'on';
+            if (action === 'on' && !guild.welcome.channelId && ctx.channel?.isTextBased?.()) {
+              guild.welcome.channelId = ctx.channel.id;
+              autoChannel = ctx.channel;
+            }
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Welcome', autoChannel ? `Welcome messages are now **${action}** in ${autoChannel}.` : `Welcome messages are now **${action}**.`)] });
         }
 
         if (action === 'preset') {
@@ -12806,8 +13072,12 @@ Matched: **${result.matched}**.`)] });
           if (rawDestination === 'here' && ctx.channel?.isTextBased?.()) channel = ctx.channel;
           if (!channel) channel = await ctx.getChannel('channel', 1);
           if (!channel?.isTextBased?.()) return ctx.invalidUsage(`Example: \`${ctx.prefix}welcome channel #welcome\` or \`${ctx.prefix}welcome channel here\`.`);
-          ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.welcome.channelId = channel.id; return guild; });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Welcome channel', `Welcome channel set to ${channel}.`)] });
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.welcome.channelId = channel.id;
+            guild.welcome.enabled = true;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Welcome channel', `Welcome channel set to ${channel}. Welcome messages were also enabled.`)] });
         }
 
         if (['mode', 'style', 'embed'].includes(action)) {
@@ -12904,7 +13174,7 @@ Matched: **${result.matched}**.`)] });
 
         if (action === 'dmfooter') {
           const value = (ctx.getRest(1) || '').trim();
-          if (!value) return ctx.invalidUsage(`Examples: \`${ctx.prefix}welcome dmfooter DvL\`, \`${ctx.prefix}welcome dmfooter off\`.`);
+          if (!value) return ctx.invalidUsage(`Examples: \`${ctx.prefix}welcome dmfooter Neyora\`, \`${ctx.prefix}welcome dmfooter off\`.`);
           const next = isOffWord(value) ? null : (isDefaultWord(value) ? DEFAULT_GUILD.welcome.dmFooter : value);
           ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.welcome.dmFooter = next; return guild; });
           return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Welcome DM footer', next ? `Welcome DM footer set to **${next}**.` : 'Welcome DM footer cleared.')] });
@@ -12992,8 +13262,16 @@ Matched: **${result.matched}**.`)] });
         }
 
         if (action === 'on' || action === 'off') {
-          ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.leave.enabled = action === 'on'; return guild; });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Leave', `Leave messages are now **${action}**.`)] });
+          let autoChannel = null;
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.leave.enabled = action === 'on';
+            if (action === 'on' && !guild.leave.channelId && ctx.channel?.isTextBased?.()) {
+              guild.leave.channelId = ctx.channel.id;
+              autoChannel = ctx.channel;
+            }
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Leave', autoChannel ? `Leave messages are now **${action}** in ${autoChannel}.` : `Leave messages are now **${action}**.`)] });
         }
 
         if (action === 'preset') {
@@ -13016,8 +13294,12 @@ Matched: **${result.matched}**.`)] });
           if (rawDestination === 'here' && ctx.channel?.isTextBased?.()) channel = ctx.channel;
           if (!channel) channel = await ctx.getChannel('channel', 1);
           if (!channel?.isTextBased?.()) return ctx.invalidUsage(`Example: \`${ctx.prefix}leave channel #logs\` or \`${ctx.prefix}leave channel here\`.`);
-          ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.leave.channelId = channel.id; return guild; });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Leave channel', `Leave channel set to ${channel}.`)] });
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.leave.channelId = channel.id;
+            guild.leave.enabled = true;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👋 Leave channel', `Leave channel set to ${channel}. Leave messages were also enabled.`)] });
         }
 
         if (['mode', 'style', 'embed'].includes(action)) {
@@ -13210,8 +13492,16 @@ Matched: **${result.matched}**.`)] });
         }
 
         if (action === 'on' || action === 'off') {
-          ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.boost.enabled = action === 'on'; return guild; });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚀 Boost', `Boost announcements are now **${action}**.`)] });
+          let autoChannel = null;
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.boost.enabled = action === 'on';
+            if (action === 'on' && !guild.boost.channelId && ctx.channel?.isTextBased?.()) {
+              guild.boost.channelId = ctx.channel.id;
+              autoChannel = ctx.channel;
+            }
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚀 Boost', autoChannel ? `Boost announcements are now **${action}** in ${autoChannel}.` : `Boost announcements are now **${action}**.`)] });
         }
 
         if (action === 'channel') {
@@ -13220,8 +13510,12 @@ Matched: **${result.matched}**.`)] });
           if (rawDestination === 'here' && ctx.channel?.isTextBased?.()) channel = ctx.channel;
           if (!channel) channel = await ctx.getChannel('channel', 1);
           if (!channel?.isTextBased?.()) return ctx.invalidUsage(`Example: \`${ctx.prefix}boost channel #boosts\` or \`${ctx.prefix}boost channel here\`.`);
-          ctx.store.updateGuild(ctx.guild.id, (guild) => { guild.boost.channelId = channel.id; return guild; });
-          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚀 Boost channel', `Boost channel set to ${channel}.`)] });
+          ctx.store.updateGuild(ctx.guild.id, (guild) => {
+            guild.boost.channelId = channel.id;
+            guild.boost.enabled = true;
+            return guild;
+          });
+          return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚀 Boost channel', `Boost channel set to ${channel}. Boost announcements were also enabled.`)] });
         }
 
         if (['mode', 'style', 'embed'].includes(action)) {
@@ -13628,7 +13922,13 @@ Matched: **${result.matched}**.`)] });
       aliases: ['confess', 'anonconfess'],
       category: 'Confessions',
       description: 'Send an anonymous confession to the configured confession channel',
-      usage: 'confession <message>',
+      usage: 'confession [message]',
+      helpUsageShort: 'confession [message|attachment]',
+      helpIntro: 'Envoie une confession anonyme dans le salon configuré, avec texte, image ou fichier selon la config.',
+      helpSyntaxGroups: [
+        { labelFr: 'Envoi', labelEn: 'Send', lines: ['{prefix}confession ton message', '{prefix}confession send ton message', '{prefix}help +confession'] },
+        { labelFr: 'Avec fichier', labelEn: 'With file', lines: ['Ajoute simplement une image ou un fichier au message', 'Le média est publié sans doublon visuel'] }
+      ],
       guildOnly: true,
       dmAllowed: false,
       slash: {
@@ -13642,6 +13942,9 @@ Matched: **${result.matched}**.`)] });
       },
       async execute(ctx) {
         const maybeView = String(ctx.args[0] || '').toLowerCase();
+        if (!ctx.interaction && ['help', 'aide', 'info'].includes(maybeView)) {
+          return ctx.reply({ embeds: [createCommandHelpEmbed(ctx.client, ctx.guildConfig, ctx.command)] });
+        }
         if (!ctx.interaction && ['panel', 'config', 'view', 'status'].includes(maybeView) && ctx.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
           return ctx.reply({ embeds: [createConfessionPanelEmbed(ctx.guildConfig, ctx.guild, ctx.prefix, ctx.channel)], components: createConfessionPanelComponents(ctx.guildConfig) });
         }
@@ -13651,12 +13954,21 @@ Matched: **${result.matched}**.`)] });
         const files = ctx.interaction
           ? (slashAttachment?.url ? [{ attachment: slashAttachment.url, name: slashAttachment.name || 'attachment' }] : [])
           : getCommandFiles(ctx);
+        const rawAttachmentNames = (ctx.interaction ? (slashAttachment ? [slashAttachment.name || 'attachment'] : []) : getCommandAttachments(ctx).map((file) => file.name || 'attachment')).slice(0, 8);
+        const hasImageAttachment = ctx.interaction
+          ? Boolean(slashAttachment && (String(slashAttachment.contentType || '').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(String(slashAttachment.name || slashAttachment.url || ''))))
+          : Boolean(getCommandImageUrl(ctx));
         const imageUrl = ctx.interaction
-          ? (slashAttachment && (String(slashAttachment.contentType || '').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(String(slashAttachment.name || slashAttachment.url || ''))) ? slashAttachment.url : null)
+          ? (hasImageAttachment ? slashAttachment.url : null)
           : getCommandImageUrl(ctx);
-        const attachmentNames = (ctx.interaction ? (slashAttachment ? [slashAttachment.name || 'attachment'] : []) : getCommandAttachments(ctx).map((file) => file.name || 'attachment')).slice(0, 8);
-        const textValue = String(ctx.interaction ? (ctx.interaction.options.getString('message') || '') : (ctx.getRest(0) || '')).trim();
+        const displayFileNames = hasImageAttachment ? rawAttachmentNames.filter((name) => !/\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(String(name || ''))) : rawAttachmentNames;
+        const rawTextValue = String(ctx.interaction ? (ctx.interaction.options.getString('message') || '') : (ctx.getRest(0) || '')).trim();
+        const textValue = !ctx.interaction && /^send\b/i.test(rawTextValue) ? rawTextValue.replace(/^send\b\s*/i, '').trim() : rawTextValue;
 
+        if (conf.allowAttachments === false && files.length) {
+          const payload = { embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🤫 Confessions', '🤫 Confessions'), uiText(ctx.guildConfig, 'Les pièces jointes sont désactivées pour les confessions sur ce serveur.', 'Attachments are disabled for confessions on this server.'))] };
+          return ctx.interaction ? ctx.reply({ ...payload, ephemeral: true }) : ctx.reply({ ...payload, deleteAfter: 10000 });
+        }
         if (!conf.enabled || !conf.channelId) {
           const payload = { embeds: [baseEmbed(ctx.guildConfig, uiText(ctx.guildConfig, '🤫 Confessions', '🤫 Confessions'), uiText(ctx.guildConfig, `Le module n’est pas encore configuré. Un staff doit utiliser \`${ctx.prefix}confessions panel\`.`, `The module is not configured yet. A manager should use \`${ctx.prefix}confessions panel\`.`))] };
           return ctx.interaction ? ctx.reply({ ...payload, ephemeral: true }) : ctx.reply({ ...payload, deleteAfter: 10000 });
@@ -13671,7 +13983,7 @@ Matched: **${result.matched}**.`)] });
 
         if (ctx.message) await ctx.message.delete().catch(() => null);
         const confessionId = crypto.randomBytes(3).toString('hex').toUpperCase();
-        const postEmbed = buildConfessionPostEmbed(ctx.guildConfig, conf, confessionId, textValue, { imageUrl, attachmentNames });
+        const postEmbed = buildConfessionPostEmbed(ctx.guildConfig, conf, confessionId, textValue, { imageUrl, fileNames: displayFileNames, showEmbedImage: !files.length && Boolean(imageUrl) });
         const sent = await targetChannel.send({
           embeds: [postEmbed],
           components: createConfessionPostComponents(ctx.guildConfig, confessionId),
@@ -13692,7 +14004,8 @@ Matched: **${result.matched}**.`)] });
               metricLine(uiText(ctx.guildConfig, 'Salon utilisé', 'Used in'), `${ctx.channel}`),
               metricLine(uiText(ctx.guildConfig, 'Salon public', 'Public channel'), `${targetChannel}`),
               metricLine(uiText(ctx.guildConfig, 'Message publié', 'Posted message'), sent.url || `\`${sent.id}\``),
-              metricLine(uiText(ctx.guildConfig, 'Contenu', 'Content'), textValue ? clipText(textValue, 700) : uiText(ctx.guildConfig, 'pièce jointe uniquement', 'attachment only'))
+              metricLine(uiText(ctx.guildConfig, 'Contenu', 'Content'), textValue ? clipText(textValue, 700) : uiText(ctx.guildConfig, 'pièce jointe uniquement', 'attachment only')),
+              metricLine(uiText(ctx.guildConfig, 'Fichiers', 'Files'), rawAttachmentNames.length ? rawAttachmentNames.join(', ').slice(0, 700) : uiText(ctx.guildConfig, 'aucun', 'none'))
             ].join('\n')).setColor(ensureHexColor(conf.color || '#EC4899'));
             if (imageUrl) logEmbed.setImage(imageUrl);
             await logChannel.send({ embeds: [logEmbed], allowedMentions: { parse: [] } }).catch(() => null);
@@ -13722,6 +14035,12 @@ Matched: **${result.matched}**.`)] });
       category: 'Confessions',
       description: 'Configure the anonymous confession system',
       usage: 'confessions [panel|on|off|channel <here|#channel|id|off>|logs <here|#channel|id|off>|title <text>|color <hex|default>|test]',
+      helpIntro: 'Hub de configuration rapide pour le module de confessions anonymes.',
+      helpSyntaxGroups: [
+        { labelFr: 'Base', labelEn: 'Basics', lines: ['{prefix}confessions panel', '{prefix}confessions on', '{prefix}confessions test'] },
+        { labelFr: 'Routage', labelEn: 'Routing', lines: ['{prefix}confessions channel #confessions', '{prefix}confessions logs #confession-logs'] },
+        { labelFr: 'Style', labelEn: 'Style', lines: ['{prefix}confessions title 🤫 Confession anonyme', '{prefix}confessions color #EC4899'] }
+      ],
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ManageGuild],
       slash: {
@@ -14236,7 +14555,7 @@ Matched: **${result.matched}**.`)] });
         const dm = await ctx.user.createDM().catch(() => null);
         if (!dm) return ctx.channel.send({ embeds: [baseEmbed(ctx.guildConfig, '📨 Support', 'I could not DM you. Please enable DMs and try again.')] }).catch(() => null);
 
-        await dm.send({ embeds: [baseEmbed(ctx.guildConfig, '📨 DvL Support', `Support is linked to **${ctx.guild.name}**.
+        await dm.send({ embeds: [baseEmbed(ctx.guildConfig, '📨 Neyora Support', `Support is linked to **${ctx.guild.name}**.
 Send your message here and staff replies will come back here.`)] }).catch(() => null);
 
         if (textValue || files.length) {
@@ -15185,7 +15504,38 @@ ${value.slice(0, 1800)}`,
         if (!username) return ctx.invalidUsage();
         const status = await fetchTikTokStatus(username).catch((error) => ({ error: error.message }));
         const preferredUrl = status?.isLive ? (`https://www.tiktok.com/@${username}/live`) : (status?.latestVideoUrl || status?.finalUrl || `https://www.tiktok.com/@${username}`);
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok test', status.error ? `Error: **${status.error}**` : `Account: **@${username}**\nLatest video: ${status.latestVideoId || 'none'}\nLive: ${status.isLive ? 'yes' : 'no'}\nLive room: ${status.liveRoomId || 'none'}\nSource: ${status.source || 'n/a'}\nURL: ${preferredUrl}`)] });
+        if (status?.error) {
+          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+            moduleKey: 'tiktok',
+            titleFr: 'Test TikTok',
+            titleEn: 'TikTok test',
+            tone: 'warning',
+            summary: uiText(ctx.guildConfig, `Impossible de vérifier **@${username}** pour le moment.`, `Could not check **@${username}** right now.`),
+            stateLines: [metricLine(uiText(ctx.guildConfig, 'Erreur', 'Error'), clipText(String(status.error), 140))],
+            nextLines: [
+              `• ${commandPill(ctx.prefix, `tiktok test ${username}`)}`,
+              `• ${commandPill(ctx.prefix, 'tiktok check')}`
+            ]
+          })] });
+        }
+        return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+          moduleKey: 'tiktok',
+          titleFr: 'Test TikTok',
+          titleEn: 'TikTok test',
+          summary: uiText(ctx.guildConfig, `Le compte **@${username}** a bien été vérifié.`, `Account **@${username}** was checked successfully.`),
+          stateLines: [
+            metricLine(uiText(ctx.guildConfig, 'Compte', 'Account'), `**@${username}**`),
+            metricLine(uiText(ctx.guildConfig, 'Live', 'Live'), status.isLive ? uiText(ctx.guildConfig, 'oui', 'yes') : uiText(ctx.guildConfig, 'non', 'no')),
+            metricLine(uiText(ctx.guildConfig, 'Vidéo récente', 'Latest video'), status.latestVideoId ? `\`${status.latestVideoId}\`` : uiText(ctx.guildConfig, 'aucune', 'none')),
+            metricLine(uiText(ctx.guildConfig, 'Salon live', 'Live room'), status.liveRoomId ? `\`${status.liveRoomId}\`` : uiText(ctx.guildConfig, 'aucun', 'none')),
+            metricLine(uiText(ctx.guildConfig, 'Source', 'Source'), status.source || 'n/a')
+          ],
+          extraFields: [sectionField(uiText(ctx.guildConfig, '🔗 Ouvrir', '🔗 Open'), [`• ${preferredUrl}`], false)],
+          nextLines: [
+            `• ${commandPill(ctx.prefix, `tiktok add ${username} here`)}`,
+            `• ${commandPill(ctx.prefix, `tiktok role ${username} @Role`)}`
+          ]
+        })] });
       }
     }),
     makeSimpleCommand({
@@ -15200,7 +15550,17 @@ ${value.slice(0, 1800)}`,
       async execute(ctx) {
         await ctx.client.runTikTokCheck();
         const count = ctx.guildConfig.tiktok.watchers.length;
-        await ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🎵 TikTok', `Forced watcher check complete for **${count}** watcher(s). Use \`${ctx.prefix}tiktoklist\` to see latest errors/sources.`)] });
+        await ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
+          moduleKey: 'tiktok',
+          titleFr: 'Check TikTok forcé',
+          titleEn: 'Forced TikTok check',
+          tone: 'success',
+          summary: uiText(ctx.guildConfig, `Le check forcé a été terminé pour **${count}** watcher(s).`, `Forced check completed for **${count}** watcher(s).`),
+          nextLines: [
+            `• ${commandPill(ctx.prefix, 'tiktok list')}`,
+            `• ${commandPill(ctx.prefix, 'tiktok test username')}`
+          ]
+        })] });
       }
     }),
 
@@ -15560,247 +15920,161 @@ function computeServerProgressSnapshot(guild, guildConfig = {}) {
 
 function createDashboardEmbed(guildConfig, guild, page = 'home') {
   const g = guildConfig || {};
-  const pages = ['home', 'setup', 'logs', 'security', 'voice', 'automation', 'progress'];
-  const safePage = pages.includes(page) ? page : 'home';
+  const safePage = ['home', 'security', 'voice', 'progress'].includes(page) ? page : 'home';
   const memberCount = guild?.memberCount || guild?.members?.cache?.size || 0;
   const boostCount = guild?.premiumSubscriptionCount || 0;
   const onlineCount = guild?.presences?.cache ? guild.presences.cache.filter((presence) => presence?.status && presence.status !== 'offline').size : 0;
   const voiceCount = guild?.voiceStates?.cache ? guild.voiceStates.cache.filter((state) => state?.channelId && !state?.member?.user?.bot).size : 0;
+  const health = getSetupHealthDetails(g, guild);
   const snapshot = computeServerProgressSnapshot(guild, g);
-  const autoReactEntries = Object.entries(g.autoReact?.channels || {});
-  const autoReactActive = autoReactEntries.filter(([, entry]) => normalizeAutoReactEntry(entry).enabled && normalizeAutoReactEntry(entry).emojis.length).length;
-  const stickyCount = Object.keys(g.sticky || {}).length;
-  const noValue = uiText(g, 'non défini', 'not set');
-  const defaultRoute = uiText(g, 'défaut', 'default');
-  const done = uiText(g, 'terminé', 'done');
-  const embed = polishGuildPanelEmbed(
-    baseEmbed(g, uiText(g, '🧭 Dashboard DvL', '🧭 DvL dashboard'), uiText(g, 'Vue claire du serveur : état, modules, setup et raccourcis utiles.', 'Clear server overview: status, modules, setup and useful shortcuts.')),
+  const embed = applyHubFrame(
+    baseEmbed(
+      g,
+      uiText(g, '🧩 Dashboard Neyora', '🧩 Neyora dashboard'),
+      uiText(g, 'Vue claire du serveur : état live, modules, sécurité, vocal et progression depuis un seul hub.', 'Clear server view: live state, modules, security, voice and progress from one hub.')
+    ),
+    g,
     guild,
-    uiText(g, 'Dashboard', 'Dashboard')
+    'Dashboard',
+    'Dashboard',
+    [
+      hubBadge(g, '👥', 'Membres', 'Members', `**${formatStatNumber(memberCount)}**`),
+      hubBadge(g, '🌐', 'En ligne', 'Online', `**${formatStatNumber(onlineCount)}**`),
+      hubBadge(g, '🔊', 'En vocal', 'In voice', `**${formatStatNumber(voiceCount)}**`),
+      hubBadge(g, '📈', 'Santé setup', 'Setup health', `**${health.moduleScore}%**`)
+    ]
   );
 
   if (safePage === 'home') {
     embed
-      .setDescription(uiText(g, 'Le hub principal du serveur. Passe d’une page à l’autre avec les boutons dessous.', 'The main server hub. Move between pages with the buttons below.'))
+      .setTitle(uiText(g, '🏠 Dashboard • accueil', '🏠 Dashboard • home'))
       .addFields(
-        {
-          name: uiText(g, '📊 Vue rapide', '📊 Quick view'),
-          value: [
-            `**${uiText(g, 'Membres', 'Members')} :** ${formatStatNumber(memberCount)}`,
-            `**${uiText(g, 'En ligne', 'Online')} :** ${formatStatNumber(onlineCount)}`,
-            `**${uiText(g, 'En vocal', 'In voice')} :** ${formatStatNumber(voiceCount)}`,
-            `**Boosts :** ${formatStatNumber(boostCount)}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '🧩 Modules', '🧩 Modules'),
-          value: [
-            `**Logs :** ${uiState(g.logs?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Welcome :** ${uiState(g.welcome?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Support :** ${uiState(g.support?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Stats :** ${uiState(g.stats?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Trophy :** ${uiState(g.progress?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Auto-react :** **${autoReactActive}** ${uiText(g, 'salon(s)', 'channel(s)')}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '⚡ Raccourcis utiles', '⚡ Useful shortcuts'),
-          value: `\`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}panel\` • \`${g.prefix || '+'}support panel\` • \`${g.prefix || '+'}stats setup\` • \`${g.prefix || '+'}trophychannel here\``,
-          inline: false
-        }
-      );
-  } else if (safePage === 'setup') {
-    embed
-      .setTitle(uiText(g, '🧩 Dashboard • Setup', '🧩 Dashboard • Setup'))
-      .setDescription(uiText(g, 'Progression du setup global et prochains réglages conseillés.', 'Overall setup progress and the next recommended steps.'))
-      .addFields(
-        {
-          name: uiText(g, '🛠️ Base', '🛠️ Base'),
-          value: [
-            `**${uiText(g, 'Préfixe', 'Prefix')} :** \`${g.prefix || '+'}\``,
-            `**${uiText(g, 'Couleur', 'Color')} :** \`${g.embedColor || '#5865F2'}\``,
-            `**${uiText(g, 'Langue', 'Language')} :** **${g.language || 'en'}**`,
-            `**${uiText(g, 'Niveau', 'Tier')} :** **${snapshot.setupTier}**`,
-            `**${uiText(g, 'Progression', 'Progress')} :** **${snapshot.completionPercent}%**`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '✅ Modules configurés', '✅ Configured modules'),
-          value: snapshot.modules.map(([label, ok]) => `${ok ? '✅' : '⬜'} ${label}`).join('\n').slice(0, 1024),
-          inline: true
-        },
-        {
-          name: uiText(g, '➡️ Suite logique', '➡️ Next steps'),
-          value: `\`${g.prefix || '+'}setup\` • \`${g.prefix || '+'}setup check\` • \`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}panel\` • \`${g.prefix || '+'}dashboard automation\``,
-          inline: false
-        }
-      );
-  } else if (safePage === 'logs') {
-    const routes = g.logs?.channels || {};
-    embed
-      .setTitle(uiText(g, '🧾 Dashboard • Logs', '🧾 Dashboard • Logs'))
-      .setDescription(uiText(g, 'Routage principal des logs et vue rapide des salons utilisés.', 'Main log routing and a quick view of the channels in use.'))
-      .addFields(
-        {
-          name: uiText(g, '📍 Routage', '📍 Routing'),
-          value: [
-            `**Master :** ${uiState(g.logs?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**${uiText(g, 'Défaut', 'Default')} :** ${routes.default ? `<#${routes.default}>` : (g.logs?.channelId ? `<#${g.logs.channelId}>` : noValue)}`,
-            `**${uiText(g, 'Messages', 'Messages')} :** ${routes.messages ? `<#${routes.messages}>` : defaultRoute}`,
-            `**${uiText(g, 'Membres', 'Members')} :** ${routes.members ? `<#${routes.members}>` : defaultRoute}`,
-            `**${uiText(g, 'Modération', 'Moderation')} :** ${routes.moderation ? `<#${routes.moderation}>` : defaultRoute}`,
-            `**${uiText(g, 'Vocal', 'Voice')} :** ${routes.voice ? `<#${routes.voice}>` : defaultRoute}`,
-            `**${uiText(g, 'Serveur', 'Server')} :** ${routes.server ? `<#${routes.server}>` : defaultRoute}`,
-            `**Social :** ${routes.social ? `<#${routes.social}>` : defaultRoute}`
-          ].join('\n'),
-          inline: false
-        },
-        {
-          name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'),
-          value: `\`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}setlogchannel #logs\` • \`${g.prefix || '+'}setlogchannel messages #msg-logs\` • \`${g.prefix || '+'}logconfig\``,
-          inline: false
-        }
-      );
-  } else if (safePage === 'security') {
-    const mod = g.automod || {};
-    embed
-      .setTitle(uiText(g, '🚨 Dashboard • Sécurité', '🚨 Dashboard • Security'))
-      .setDescription(uiText(g, 'État des protections AutoMod, ghost ping et filtres principaux.', 'Status of AutoMod protections, ghost ping and the main filters.'))
-      .addFields(
-        { name: uiText(g, '🛡️ Filtres', '🛡️ Filters'), value: [
-          `**Anti-spam :** ${automodRuleLabel(mod.antiSpam)}`,
-          `**${uiText(g, 'Anti-lien', 'Anti-link')} :** ${automodRuleLabel(mod.antiLink)}`,
-          `**${uiText(g, 'Anti-invite', 'Anti-invite')} :** ${automodRuleLabel(mod.antiInvite)}`,
-          `**Ghost ping :** ${uiState(mod.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`
-        ].join('\n'), inline: false },
-        { name: uiText(g, '🚧 Protection', '🚧 Protection'), value: [
-          `**${uiText(g, 'Mentions', 'Mentions')} :** ${automodRuleLabel(mod.antiMention)}`,
-          `**Caps :** ${automodRuleLabel(mod.antiCaps)}`,
-          `**${uiText(g, 'Spam emojis', 'Emoji spam')} :** ${automodRuleLabel(mod.antiEmojiSpam)}`,
-          `**Raid mode :** ${automodRuleLabel(mod.raidMode, 'delete')}`,
-          `**${uiText(g, 'Mots bloqués', 'Blocked words')} :** ${uiState(mod.badWordsEnabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))} • ${mod.badWords?.length || 0} ${uiText(g, 'mot(s)', 'word(s)')}`
-        ].join('\n'), inline: false },
-        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}securitypreset balanced\` • \`${g.prefix || '+'}setantispam 6 6 timeout\` • \`${g.prefix || '+'}ghostping test\` • \`${g.prefix || '+'}automodignore #channel\``, inline: false }
-      );
-  } else if (safePage === 'voice') {
-    const temp = g.voice?.temp || {};
-    const moderation = g.voice?.moderation || {};
-    embed
-      .setTitle(uiText(g, '🔊 Dashboard • Vocal', '🔊 Dashboard • Voice'))
-      .setDescription(uiText(g, 'Temp voice, panel voc et modération voc en un seul endroit.', 'Temp voice, voice panel and voice moderation in one place.'))
-      .addFields(
-        { name: uiText(g, '🎛️ Temp voice', '🎛️ Temp voice'), value: [
-          `**Hub :** ${temp.hubChannelId ? `<#${temp.hubChannelId}>` : noValue}`,
-          `**${uiText(g, 'Panel', 'Panel')} :** ${temp.panelChannelId ? `<#${temp.panelChannelId}>` : noValue}`,
-          `**${uiText(g, 'Catégorie', 'Category')} :** ${temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : noValue}`,
-          `**${uiText(g, 'Limite par défaut', 'Default limit')} :** ${temp.defaultLimit || 0}`
-        ].join('\n'), inline: true },
-        { name: uiText(g, '🔨 Modération voc', '🔨 Voice moderation'), value: [
-          `**${uiText(g, 'Rôle mute', 'Mute role')} :** ${moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : noValue}`,
-          `**${uiText(g, 'Rôle ban', 'Ban role')} :** ${moderation.banRoleId ? `<@&${moderation.banRoleId}>` : noValue}`,
-          `**Stats panel :** ${uiState(g.stats?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-          `**${uiText(g, 'Utilisateurs en vocal', 'Users in voice')} :** ${formatStatNumber(voiceCount)}`
-        ].join('\n'), inline: true },
-        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}voicepanel\` • \`${g.prefix || '+'}createvoc\` • \`${g.prefix || '+'}setvoicemuterole @role\` • \`${g.prefix || '+'}setvoicebanrole @role\` • \`${g.prefix || '+'}stats setup\``, inline: false }
-      );
-  } else if (safePage === 'automation') {
-    embed
-      .setTitle(uiText(g, '⚡ Dashboard • Automation', '⚡ Dashboard • Automation'))
-      .setDescription(uiText(g, 'Auto-react, sticky, rôles auto et petits systèmes utiles.', 'Auto-react, sticky posts, auto roles and useful automations.'))
-      .addFields(
-        {
-          name: uiText(g, '✨ Auto-react', '✨ Auto-react'),
-          value: [
-            `**${uiText(g, 'Salons configurés', 'Configured channels')} :** ${autoReactEntries.length}`,
-            `**${uiText(g, 'Salons actifs', 'Active channels')} :** ${autoReactActive}`,
-            `**${uiText(g, 'Exemple', 'Example')} :** \`${g.prefix || '+'}autoreact add #general 🔥 😂\``,
-            `**Preset :** \`${g.prefix || '+'}autoreact preset #general hype\``
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '📌 Autres automatisations', '📌 Other automations'),
-          value: [
-            `**${uiText(g, 'Auto rôles', 'Auto roles')} :** ${(g.roles?.autoRoles || []).length}`,
-            `**Sticky :** ${stickyCount}`,
-            `**Ghost ping :** ${uiState(g.automod?.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Status role :** ${uiState(g.roles?.statusRole?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '🎛️ Panneaux et annexes', '🎛️ Panels and extras'),
-          value: [
-            `**Support relay :** ${uiState(g.support?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**TikTok watchers :** ${(g.tiktok?.watchers || []).length}`,
-            `**Role panels :** ${Object.keys(g.roles?.rolePanels || {}).length + Object.keys(g.roles?.reactionRoles || {}).length}`,
-            `**${uiText(g, 'Config rapide', 'Quick config')} :** \`${g.prefix || '+'}panel\``
-          ].join('\n'),
-          inline: false
-        },
-        {
-          name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'),
-          value: `\`${g.prefix || '+'}autoreact config\` • \`${g.prefix || '+'}autorolelist\` • \`${g.prefix || '+'}stickyconfig\` • \`${g.prefix || '+'}ghostping config\` • \`${g.prefix || '+'}panel\``,
-          inline: false
-        }
-      );
-  } else if (safePage === 'progress') {
-    embed
-      .setTitle(uiText(g, '🏆 Dashboard • Progression', '🏆 Dashboard • Progress'))
-      .setDescription(uiText(g, 'Trophées, milestones et avancement du serveur.', 'Trophies, milestones and overall server progress.'))
-      .addFields(
-        { name: uiText(g, '📈 Progression', '📈 Progress'), value: [
-          `**Setup :** ${snapshot.completionPercent}%`,
-          `**${uiText(g, 'Modules terminés', 'Completed modules')} :** ${snapshot.completedModules}/${snapshot.modules.length}`,
-          `**${uiText(g, 'Trophées membres', 'Member trophies')} :** ${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}`,
-          `**${uiText(g, 'Trophées boosts', 'Boost trophies')} :** ${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}`,
-          `**${uiText(g, 'Trophées voc', 'Voice trophies')} :** ${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}`
-        ].join('\n'), inline: true },
-        { name: uiText(g, '🥇 Board', '🥇 Board'), value: [
-          `**Trophy board :** ${uiState(g.progress?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-          `**${uiText(g, 'Salon', 'Channel')} :** ${g.progress?.channelId ? `<#${g.progress.channelId}>` : noValue}`,
-          `**${uiText(g, 'Prochain palier membres', 'Next member milestone')} :** ${snapshot.nextGrowth || done}`,
-          `**${uiText(g, 'Prochain palier boosts', 'Next boost milestone')} :** ${snapshot.nextBoost || done}`,
-          `**${uiText(g, 'Prochain palier voc', 'Next voice milestone')} :** ${snapshot.nextVoice || done}`
-        ].join('\n'), inline: true },
-        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}trophy\` • \`${g.prefix || '+'}trophychannel here\` • \`${g.prefix || '+'}trophyrefresh\` • \`${g.prefix || '+'}dashboard\``, inline: false }
+        sectionField(uiText(g, '📍 Snapshot serveur', '📍 Server snapshot'), [
+          metricLine(uiText(g, 'Membres', 'Members'), `**${formatStatNumber(memberCount)}**`),
+          metricLine(uiText(g, 'En ligne', 'Online'), `**${formatStatNumber(onlineCount)}**`),
+          metricLine(uiText(g, 'En vocal', 'In voice'), `**${formatStatNumber(voiceCount)}**`),
+          metricLine(uiText(g, 'Boosts', 'Boosts'), `**${formatStatNumber(boostCount)}**`)
+        ], true),
+        sectionField(uiText(g, '🧩 Modules principaux', '🧩 Core modules'), [
+          metricLine('Logs', uiState(Boolean(g.logs?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Welcome', uiState(Boolean(g.welcome?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Support', uiState(Boolean(g.support?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Confessions', uiState(Boolean(g.confessions?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Stats', uiState(Boolean(g.stats?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine(uiText(g, 'Trophy board', 'Trophy board'), uiState(Boolean(g.progress?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off')))
+        ], true),
+        sectionField(uiText(g, '🩺 Santé globale', '🩺 Overall health'), [
+          metricLine(uiText(g, 'Score setup', 'Setup score'), `**${health.moduleScore}%**`),
+          metricLine(uiText(g, 'Modules prêts', 'Healthy modules'), `**${health.healthyModules}/${health.modules.length}**`),
+          metricLine(uiText(g, 'Tier', 'Tier'), `**${snapshot.setupTier}**`),
+          metricLine(uiText(g, 'À corriger', 'Needs attention'), `**${health.issueCount}**`)
+        ], true),
+        sectionField(uiText(g, '⚡ Ouverture rapide', '⚡ Quick jump'), [
+          commandPill(g.prefix || '+', 'panel'),
+          commandPill(g.prefix || '+', 'logs panel'),
+          commandPill(g.prefix || '+', 'support panel'),
+          commandPill(g.prefix || '+', 'texts'),
+          commandPill(g.prefix || '+', 'help staff'),
+          commandPill(g.prefix || '+', 'setup check')
+        ], false),
+        sectionField(uiText(g, '👥 Staff & onboarding', '👥 Staff & onboarding'), [
+          commandPill(g.prefix || '+', 'permrole 1 @Helper'),
+          commandPill(g.prefix || '+', 'permcmd 1 add support'),
+          commandPill(g.prefix || '+', 'guide moderation'),
+          commandPill(g.prefix || '+', 'reply @user merci')
+        ], false)
       );
   }
 
-  embed.setFooter({ text: uiText(g, `DvL • dashboard • page : ${safePage}`, `DvL • dashboard • page: ${safePage}`) });
+  if (safePage === 'security') {
+    const mod = g.automod || {};
+    const filtersOn = ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => mod?.[key]?.enabled).length;
+    embed
+      .setTitle(uiText(g, '🚨 Dashboard • sécurité', '🚨 Dashboard • security'))
+      .setDescription(uiText(g, 'Vue sécurité : filtres actifs, ghost ping, raid mode et points faibles évidents.', 'Security view: active filters, ghost ping, raid mode and obvious weak spots.'))
+      .addFields(
+        sectionField(uiText(g, '🛡️ Filtres actifs', '🛡️ Active filters'), [
+          metricLine(uiText(g, 'Anti-spam', 'Anti-spam'), automodRuleLabel(mod.antiSpam)),
+          metricLine(uiText(g, 'Anti-link', 'Anti-link'), automodRuleLabel(mod.antiLink)),
+          metricLine(uiText(g, 'Anti-invite', 'Anti-invite'), automodRuleLabel(mod.antiInvite)),
+          metricLine(uiText(g, 'Ghost ping', 'Ghost ping'), `${uiState(Boolean(mod.ghostPing?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))}${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`)
+        ], true),
+        sectionField(uiText(g, '🚧 Abus & raid', '🚧 Abuse & raid'), [
+          metricLine(uiText(g, 'Mentions', 'Mentions'), automodRuleLabel(mod.antiMention)),
+          metricLine('Caps', automodRuleLabel(mod.antiCaps)),
+          metricLine(uiText(g, 'Emoji spam', 'Emoji spam'), automodRuleLabel(mod.antiEmojiSpam)),
+          metricLine(uiText(g, 'Raid mode', 'Raid mode'), automodRuleLabel(mod.raidMode, 'delete')),
+          metricLine(uiText(g, 'Bad words', 'Bad words'), `${uiState(Boolean(mod.badWordsEnabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))} • ${(mod.badWords || []).length}`)
+        ], true),
+        sectionField(uiText(g, '🧪 Suite logique', '🧪 Next moves'), [
+          metricLine(uiText(g, 'Filtres actifs', 'Enabled filters'), `**${filtersOn}/7**`),
+          `• ${commandPill(g.prefix || '+', 'security preset balanced')}`,
+          `• ${commandPill(g.prefix || '+', 'ghostping on')}`,
+          `• ${commandPill(g.prefix || '+', 'automodconfig')}`,
+          `• ${commandPill(g.prefix || '+', 'automodignore #channel')}`
+        ], false)
+      );
+  }
+
+  if (safePage === 'voice') {
+    const temp = g.voice?.temp || {};
+    const moderation = g.voice?.moderation || {};
+    embed
+      .setTitle(uiText(g, '🔊 Dashboard • vocal', '🔊 Dashboard • voice'))
+      .setDescription(uiText(g, 'Hub vocal : temp voice, modération voc et compteurs live dans une seule vue.', 'Voice hub: temp voice, voice moderation and live counters in one view.'))
+      .addFields(
+        sectionField(uiText(g, '🎛️ Temp voice', '🎛️ Temp voice'), [
+          metricLine('Hub', temp.hubChannelId ? `<#${temp.hubChannelId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine('Panel', temp.panelChannelId ? `<#${temp.panelChannelId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Catégorie', 'Category'), temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : uiText(g, 'non définie', 'not set')),
+          metricLine(uiText(g, 'Limite par défaut', 'Default limit'), `**${temp.defaultLimit || 0}**`)
+        ], true),
+        sectionField(uiText(g, '🛡️ Modération voc', '🛡️ Voice moderation'), [
+          metricLine(uiText(g, 'Rôle mute', 'Mute role'), moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Rôle ban', 'Ban role'), moderation.banRoleId ? `<@&${moderation.banRoleId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Stats live', 'Live stats'), uiState(Boolean(g.stats?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine(uiText(g, 'Utilisateurs voc', 'Current voice users'), `**${formatStatNumber(voiceCount)}**`)
+        ], true),
+        sectionField(uiText(g, '⚡ Commandes utiles', '⚡ Useful commands'), [
+          commandPill(g.prefix || '+', 'voicepanel'),
+          commandPill(g.prefix || '+', 'createvoc'),
+          commandPill(g.prefix || '+', 'setvoicemuterole @role'),
+          commandPill(g.prefix || '+', 'setvoicebanrole @role'),
+          commandPill(g.prefix || '+', 'stats setup')
+        ], false)
+      );
+  }
+
+  if (safePage === 'progress') {
+    embed
+      .setTitle(uiText(g, '🏆 Dashboard • progression', '🏆 Dashboard • progress'))
+      .setDescription(uiText(g, 'Progression setup, trophées et prochain palier utile à viser.', 'Setup progress, trophies and the next useful milestone to target.'))
+      .addFields(
+        sectionField(uiText(g, '📈 Avancement', '📈 Completion'), [
+          metricLine(uiText(g, 'Setup complété', 'Setup completion'), `**${snapshot.completionPercent}%**`),
+          metricLine(uiText(g, 'Modules prêts', 'Completed modules'), `**${snapshot.completedModules}/${snapshot.modules.length}**`),
+          metricLine(uiText(g, 'Trophées membres', 'Member trophies'), `**${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}**`),
+          metricLine(uiText(g, 'Trophées boosts', 'Boost trophies'), `**${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}**`),
+          metricLine(uiText(g, 'Trophées vocal', 'Voice trophies'), `**${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}**`)
+        ], true),
+        sectionField(uiText(g, '🎯 Prochaines cibles', '🎯 Next targets'), [
+          metricLine(uiText(g, 'Membres', 'Members'), snapshot.nextGrowth || uiText(g, 'fait', 'done')),
+          metricLine('Boost', snapshot.nextBoost || uiText(g, 'fait', 'done')),
+          metricLine(uiText(g, 'Vocal', 'Voice'), snapshot.nextVoice || uiText(g, 'fait', 'done')),
+          metricLine(uiText(g, 'Récompense', 'Reward'), snapshot.memberMilestoneReward?.enabled && snapshot.memberMilestoneReward?.roleId ? `${formatStatNumber(snapshot.nextMemberRewardAt)} → <@&${snapshot.memberMilestoneReward.roleId}>` : uiText(g, 'off', 'off'))
+        ], true),
+        sectionField(uiText(g, '🧭 Commandes utiles', '🧭 Useful commands'), [
+          commandPill(g.prefix || '+', 'trophy'),
+          commandPill(g.prefix || '+', 'trophychannel here'),
+          commandPill(g.prefix || '+', 'trophyimage <url>'),
+          commandPill(g.prefix || '+', 'milestonerole @role'),
+          commandPill(g.prefix || '+', 'milestoneinterval 100')
+        ], false)
+      );
+  }
+
+  embed.setFooter({ text: `Neyora • dashboard • ${safePage}` });
   return translateEmbedForUi(guildConfig, embed);
-}
-
-
-function normalizeDashboardPage(page = 'home') {
-  const raw = String(page || 'home').trim().toLowerCase();
-  const aliases = {
-    home: 'home',
-    accueil: 'home',
-    view: 'home',
-    setup: 'setup',
-    config: 'setup',
-    configuration: 'setup',
-    logs: 'logs',
-    log: 'logs',
-    security: 'security',
-    securite: 'security',
-    sécurité: 'security',
-    voice: 'voice',
-    vocal: 'voice',
-    voc: 'voice',
-    automation: 'automation',
-    automatisation: 'automation',
-    progress: 'progress',
-    progression: 'progress',
-    trophy: 'progress',
-    trophee: 'progress',
-    trophée: 'progress'
-  };
-  return aliases[raw] || 'home';
 }
 
 function createDashboardComponents(current = 'home', guildConfig = null) {
@@ -15906,14 +16180,14 @@ function normalizeCustomizationSection(section = 'home') {
 const SMART_TEXT_PRESETS = {
   clean: {
     mode: 'embed',
-    footer: 'DvL',
+    footer: 'Neyora',
     imageUrl: null,
     color: null,
     titleTransform: (fallback) => fallback || null
   },
   premium: {
     mode: 'embed',
-    footer: 'DvL • premium',
+    footer: 'Neyora • premium',
     imageUrl: null,
     color: '#8B5CF6',
     titleTransform: (fallback) => fallback ? `✦ ${String(fallback).replace(/^✦\s*/,'')}` : '✦ Announcement'
@@ -16249,7 +16523,7 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
   const defaultRoute = uiText(g, 'par défaut', 'default');
 
   const embed = polishGuildPanelEmbed(
-    baseEmbed(g, uiText(g, '🎛️ Smart Panel DvL', '🎛️ DvL smart panel'), uiText(g, `Hub staff pour ${channelMention}. Un seul panel propre au lieu de courir après des commandes doublonnées.`, `Staff hub for ${channelMention}. One clean panel instead of chasing duplicated commands.`)),
+    baseEmbed(g, uiText(g, '🎛️ Smart Panel Neyora', '🎛️ Neyora smart panel'), uiText(g, `Hub staff pour ${channelMention}. Un seul panel propre au lieu de courir après des commandes doublonnées.`, `Staff hub for ${channelMention}. One clean panel instead of chasing duplicated commands.`)),
     guild,
     uiText(g, 'Smart Panel', 'Smart Panel')
   );
@@ -16293,6 +16567,16 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
           `• **Support** ${uiText(g, 'pour le prompt public + le relais', 'for the public prompt + relay')}`,
           `• **Style** ${uiText(g, 'pour le thème global', 'for the global theme')}`,
           `• **Salons** ${uiText(g, 'pour les logs et compteurs live', 'for logs and live counters')}`
+        ].join('\n'),
+        inline: false
+      },
+      {
+        name: uiText(g, '👥 Routine staff', '👥 Staff routine'),
+        value: [
+          `• ${uiText(g, 'garde le panel staff épinglé dans un salon équipe', 'keep the staff panel pinned in a team channel')}`,
+          `• ${uiText(g, 'ouvre dashboard + logs panel avant de recruter', 'open dashboard + logs panel before recruiting')}`,
+          `• ${uiText(g, 'prépare un niveau helper avec permrole / permcmd', 'prepare a helper level with permrole / permcmd')}`,
+          `• ${uiText(g, 'teste support, logs et modération avec les nouveaux', 'test support, logs and moderation with new recruits')}`
         ].join('\n'),
         inline: false
       }
@@ -16400,6 +16684,16 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
             `• ${uiText(g, 'lier le salon membre ici', 'bind member channel here')}`,
             `• ${uiText(g, 'restreindre le support à un salon', 'restrict support to one channel')}`,
             `• ${uiText(g, 'ouvrir l’éditeur complet', 'open the full text editor')}`
+          ].join('\n'),
+          inline: false
+        },
+        {
+          name: uiText(g, '👥 Routine staff', '👥 Staff routine'),
+          value: [
+            `• ${uiText(g, 'les nouveaux staff commencent ici pour apprendre le flux support', 'new staff should start here to learn the support flow')}`,
+            `• ${uiText(g, 'fais un test avec support preview puis reply @user', 'run one support preview then reply @user')}`,
+            `• ${uiText(g, 'garde le salon relais séparé du salon membre', 'keep the relay channel separate from the member channel')}`,
+            `• ${uiText(g, 'ajoute un rôle ping seulement si nécessaire', 'only add a ping role if it is really needed')}`
           ].join('\n'),
           inline: false
         }
@@ -16519,7 +16813,7 @@ function createConfigPanelEmbed(guildConfig, guild, page = 'home', channel = nul
       );
   }
 
-  embed.setFooter({ text: uiText(g, `DvL • smart panel • page : ${safePage}`, `DvL • smart panel • page: ${safePage}`) });
+  embed.setFooter({ text: uiText(g, `Neyora • smart panel • page : ${safePage}`, `Neyora • smart panel • page: ${safePage}`) });
   return translateEmbedForUi(g, embed);
 }
 
@@ -16696,7 +16990,7 @@ function createFallbackConfigPanelEmbed(guildConfig, guild, page = 'home', chann
     style: [uiText(guildConfig, 'Panel style ouvert en mode secours.', 'Style panel opened in safe mode.'), uiText(guildConfig, 'Choisis un thème puis actualise.', 'Pick a theme preset then refresh.')]
   };
   return baseEmbed(guildConfig || {}, titleMap[safePage] || uiText(guildConfig, '🎛️ Smart panel', '🎛️ Smart panel'), linesMap[safePage].join('\n'))
-    .setFooter({ text: uiText(guildConfig, `DvL • smart panel safe mode • page : ${safePage}${safePage === 'texts' ? ` • module : ${focus}` : ''}`, `DvL • smart panel safe mode • page: ${safePage}${safePage === 'texts' ? ` • module: ${focus}` : ''}`) });
+    .setFooter({ text: uiText(guildConfig, `Neyora • smart panel safe mode • page : ${safePage}${safePage === 'texts' ? ` • module : ${focus}` : ''}`, `Neyora • smart panel safe mode • page: ${safePage}${safePage === 'texts' ? ` • module: ${focus}` : ''}`) });
 }
 
 function createFallbackConfigPanelComponents(current = 'home', guildConfig = null) {
@@ -16869,14 +17163,14 @@ function applySecurityPresetToGuild(guild, preset = 'balanced') {
   return guild;
 }
 
-function setPromptStyleDefaults(guild, color = null, footer = 'DvL Support') {
+function setPromptStyleDefaults(guild, color = null, footer = 'Neyora Support') {
   guild.support = guild.support || {};
   guild.support.promptMode = 'embed';
   guild.support.promptFooter = footer;
   guild.support.promptColor = color;
   guild.mpall = guild.mpall || {};
   guild.mpall.mode = 'embed';
-  guild.mpall.footer = footer.replace('Support', '').trim() || 'DvL';
+  guild.mpall.footer = footer.replace('Support', '').trim() || 'Neyora';
   guild.mpall.color = color;
   return guild;
 }
@@ -16896,7 +17190,7 @@ function applyServerPreset(guild, presetKey = 'clean') {
     applySmartTextPreset(guild, 'leave', 'minimal');
     applySmartTextPreset(guild, 'leave-dm', 'minimal');
     applySmartTextPreset(guild, 'boost', 'minimal');
-    setPromptStyleDefaults(guild, '#0F172A', 'DvL • dark');
+    setPromptStyleDefaults(guild, '#0F172A', 'Neyora • dark');
     guild.confessions.color = '#334155';
     return guild;
   }
@@ -16907,7 +17201,7 @@ function applyServerPreset(guild, presetKey = 'clean') {
     applySmartTextPreset(guild, 'leave', 'premium');
     applySmartTextPreset(guild, 'leave-dm', 'premium');
     applySmartTextPreset(guild, 'boost', 'premium');
-    setPromptStyleDefaults(guild, '#8B5CF6', 'DvL • premium');
+    setPromptStyleDefaults(guild, '#8B5CF6', 'Neyora • premium');
     guild.confessions.color = '#EC4899';
     return guild;
   }
@@ -16918,7 +17212,7 @@ function applyServerPreset(guild, presetKey = 'clean') {
     applySmartTextPreset(guild, 'leave', 'clean');
     applySmartTextPreset(guild, 'leave-dm', 'clean');
     applySmartTextPreset(guild, 'boost', 'clean');
-    setPromptStyleDefaults(guild, '#10B981', 'DvL Community');
+    setPromptStyleDefaults(guild, '#10B981', 'Neyora Community');
     guild.confessions.color = '#10B981';
     applySecurityPresetToGuild(guild, 'balanced');
     return guild;
@@ -16930,7 +17224,7 @@ function applyServerPreset(guild, presetKey = 'clean') {
     applySmartTextPreset(guild, 'leave', 'clean');
     applySmartTextPreset(guild, 'leave-dm', 'clean');
     applySmartTextPreset(guild, 'boost', 'premium');
-    setPromptStyleDefaults(guild, '#F97316', 'DvL Creator');
+    setPromptStyleDefaults(guild, '#F97316', 'Neyora Creator');
     guild.confessions.color = '#F97316';
     guild.progress.title = guild.progress.title || '🏆 Server Progress';
     return guild;
@@ -16941,7 +17235,7 @@ function applyServerPreset(guild, presetKey = 'clean') {
   applySmartTextPreset(guild, 'leave', 'clean');
   applySmartTextPreset(guild, 'leave-dm', 'clean');
   applySmartTextPreset(guild, 'boost', 'clean');
-  setPromptStyleDefaults(guild, null, 'DvL Support');
+  setPromptStyleDefaults(guild, null, 'Neyora Support');
   guild.confessions.color = '#EC4899';
   return guild;
 }
@@ -16978,7 +17272,7 @@ function createServerPresetEmbed(guildConfig, appliedPreset = null, prefix = '+'
   if (note) embed.addFields(sectionField(uiText(guildConfig, 'ℹ️ Info', 'ℹ️ Info'), note, false));
   if (appliedPreset && SERVER_PRESETS[appliedPreset]) {
     const label = isFrenchUi(guildConfig) ? SERVER_PRESETS[appliedPreset].label.fr : SERVER_PRESETS[appliedPreset].label.en;
-    embed.setFooter({ text: uiText(guildConfig, `DvL • preset appliqué : ${label}`, `DvL • applied preset: ${label}`) });
+    embed.setFooter({ text: uiText(guildConfig, `Neyora • preset appliqué : ${label}`, `Neyora • applied preset: ${label}`) });
   }
   return embed;
 }
@@ -17064,312 +17358,161 @@ function createCommandFinderEmbed(client, guildConfig, query = '') {
 
 function createDashboardEmbed(guildConfig, guild, page = 'home') {
   const g = guildConfig || {};
-  const pages = ['home', 'setup', 'logs', 'security', 'voice', 'automation', 'progress', 'tools'];
-  const safePage = pages.includes(page) ? page : 'home';
+  const safePage = ['home', 'security', 'voice', 'progress'].includes(page) ? page : 'home';
   const memberCount = guild?.memberCount || guild?.members?.cache?.size || 0;
   const boostCount = guild?.premiumSubscriptionCount || 0;
   const onlineCount = guild?.presences?.cache ? guild.presences.cache.filter((presence) => presence?.status && presence.status !== 'offline').size : 0;
   const voiceCount = guild?.voiceStates?.cache ? guild.voiceStates.cache.filter((state) => state?.channelId && !state?.member?.user?.bot).size : 0;
-  const snapshot = computeServerProgressSnapshot(guild, g);
-  const autoReactEntries = Object.entries(g.autoReact?.channels || {});
-  const autoReactActive = autoReactEntries.filter(([, entry]) => normalizeAutoReactEntry(entry).enabled && normalizeAutoReactEntry(entry).emojis.length).length;
-  const stickyCount = Object.keys(g.sticky || {}).length;
-  const noValue = uiText(g, 'non défini', 'not set');
-  const defaultRoute = uiText(g, 'défaut', 'default');
-  const done = uiText(g, 'terminé', 'done');
   const health = getSetupHealthDetails(g, guild);
-  const logsRoutes = Object.values(g.logs?.channels || {}).filter(Boolean).length + Object.values(g.logs?.typeSalons || {}).filter(Boolean).length;
-  const logsDisabled = LOG_TYPE_CHOICES.filter(([key]) => g.logs?.types?.[key] === false).length;
-  const supportReady = Boolean(g.support?.enabled && g.support?.channelId);
-  const supportEntryReady = !g.support?.restrictToEntry || Boolean(g.support?.entryChannelId);
-  const embed = polishGuildPanelEmbed(
-    baseEmbed(g, uiText(g, '🧭 Dashboard DvL', '🧭 DvL dashboard'), uiText(g, 'Vue claire du serveur : état, modules, setup et raccourcis utiles.', 'Clear server overview: status, modules, setup and useful shortcuts.')),
+  const snapshot = computeServerProgressSnapshot(guild, g);
+  const embed = applyHubFrame(
+    baseEmbed(
+      g,
+      uiText(g, '🧩 Dashboard Neyora', '🧩 Neyora dashboard'),
+      uiText(g, 'Vue claire du serveur : état live, modules, sécurité, vocal et progression depuis un seul hub.', 'Clear server view: live state, modules, security, voice and progress from one hub.')
+    ),
+    g,
     guild,
-    uiText(g, 'Dashboard', 'Dashboard')
+    'Dashboard',
+    'Dashboard',
+    [
+      hubBadge(g, '👥', 'Membres', 'Members', `**${formatStatNumber(memberCount)}**`),
+      hubBadge(g, '🌐', 'En ligne', 'Online', `**${formatStatNumber(onlineCount)}**`),
+      hubBadge(g, '🔊', 'En vocal', 'In voice', `**${formatStatNumber(voiceCount)}**`),
+      hubBadge(g, '📈', 'Santé setup', 'Setup health', `**${health.moduleScore}%**`)
+    ]
   );
 
   if (safePage === 'home') {
     embed
-      .setDescription(uiText(g, 'Le hub principal du serveur. Passe d’une page à l’autre avec les boutons dessous.', 'The main server hub. Move between pages with the buttons below.'))
+      .setTitle(uiText(g, '🏠 Dashboard • accueil', '🏠 Dashboard • home'))
       .addFields(
-        {
-          name: uiText(g, '📊 Vue rapide', '📊 Quick view'),
-          value: [
-            `**${uiText(g, 'Membres', 'Members')} :** ${formatStatNumber(memberCount)}`,
-            `**${uiText(g, 'En ligne', 'Online')} :** ${formatStatNumber(onlineCount)}`,
-            `**${uiText(g, 'En vocal', 'In voice')} :** ${formatStatNumber(voiceCount)}`,
-            `**Boosts :** ${formatStatNumber(boostCount)}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '🧩 Modules', '🧩 Modules'),
-          value: [
-            `**Logs :** ${uiState(g.logs?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Welcome :** ${uiState(g.welcome?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Support :** ${uiState(g.support?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Stats :** ${uiState(g.stats?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Trophy :** ${uiState(g.progress?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Auto-react :** **${autoReactActive}** ${uiText(g, 'salon(s)', 'channel(s)')}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '⚡ Raccourcis utiles', '⚡ Useful shortcuts'),
-          value: `\`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}support panel\` • \`${g.prefix || '+'}find support\` • \`${g.prefix || '+'}preset clean\` • \`${g.prefix || '+'}dashboard tools\``,
-          inline: false
-        },
-        {
-          name: uiText(g, '🩺 Santé setup', '🩺 Setup health'),
-          value: [
-            `**${uiText(g, 'Modules propres', 'Healthy modules')} :** ${health.healthyModules}/${health.modules.length}`,
-            `**${uiText(g, 'Points à corriger', 'Issues to fix')} :** ${health.issueCount}`,
-            `**${uiText(g, 'Diagnostic', 'Diagnostic')} :** \`${g.prefix || '+'}setup check\``,
-            health.issues.length ? `• ${health.issues[0]}` : uiText(g, '• rien de bloquant', '• nothing blocking')
-          ].join('\n').slice(0, 1024),
-          inline: false
-        }
-      );
-  } else if (safePage === 'setup') {
-    embed
-      .setTitle(uiText(g, '🧩 Dashboard • Setup', '🧩 Dashboard • Setup'))
-      .setDescription(uiText(g, 'Progression du setup global et prochains réglages conseillés.', 'Overall setup progress and the next recommended steps.'))
-      .addFields(
-        {
-          name: uiText(g, '🛠️ Base', '🛠️ Base'),
-          value: [
-            `**${uiText(g, 'Préfixe', 'Prefix')} :** \`${g.prefix || '+'}\``,
-            `**${uiText(g, 'Couleur', 'Color')} :** \`${g.embedColor || '#5865F2'}\``,
-            `**${uiText(g, 'Langue', 'Language')} :** **${g.language || 'en'}**`,
-            `**${uiText(g, 'Niveau', 'Tier')} :** **${snapshot.setupTier}**`,
-            `**${uiText(g, 'Progression', 'Progress')} :** **${snapshot.completionPercent}%**`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '✅ Modules configurés', '✅ Configured modules'),
-          value: snapshot.modules.map(([label, ok]) => `${ok ? '✅' : '⬜'} ${label}`).join('\n').slice(0, 1024),
-          inline: true
-        },
-        {
-          name: uiText(g, '➡️ Suite logique', '➡️ Next steps'),
-          value: `\`${g.prefix || '+'}setup\` • \`${g.prefix || '+'}setup check\` • \`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}support panel\` • \`${g.prefix || '+'}dashboard tools\``,
-          inline: false
-        },
-        {
-          name: uiText(g, '🧪 À surveiller', '🧪 Watch list'),
-          value: health.issues.length ? health.issues.slice(0, 4).map((line) => `• ${line}`).join('\n').slice(0, 1024) : uiText(g, 'rien de bloquant détecté', 'nothing blocking detected'),
-          inline: false
-        }
-      );
-  } else if (safePage === 'logs') {
-    const routes = g.logs?.channels || {};
-    embed
-      .setTitle(uiText(g, '🧾 Dashboard • Logs', '🧾 Dashboard • Logs'))
-      .setDescription(uiText(g, 'Routage principal des logs, overrides et événements désactivés.', 'Main log routing, overrides and disabled events.'))
-      .addFields(
-        {
-          name: uiText(g, '📍 Routage', '📍 Routing'),
-          value: [
-            `**Master :** ${uiState(g.logs?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**${uiText(g, 'Défaut', 'Default')} :** ${routes.default ? `<#${routes.default}>` : (g.logs?.channelId ? `<#${g.logs.channelId}>` : noValue)}`,
-            `**${uiText(g, 'Familles routées', 'Routed families')} :** ${logsRoutes}`,
-            `**${uiText(g, 'Overrides type', 'Type overrides')} :** ${Object.keys(g.logs?.typeSalons || {}).length}`,
-            `**${uiText(g, 'Types désactivés', 'Disabled types')} :** ${logsDisabled}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '🧭 Familles', '🧭 Families'),
-          value: [
-            `**${uiText(g, 'Messages', 'Messages')} :** ${routes.messages ? `<#${routes.messages}>` : defaultRoute}`,
-            `**${uiText(g, 'Membres', 'Members')} :** ${routes.members ? `<#${routes.members}>` : defaultRoute}`,
-            `**${uiText(g, 'Modération', 'Moderation')} :** ${routes.moderation ? `<#${routes.moderation}>` : defaultRoute}`,
-            `**${uiText(g, 'Vocal', 'Voice')} :** ${routes.voice ? `<#${routes.voice}>` : defaultRoute}`,
-            `**${uiText(g, 'Serveur', 'Server')} :** ${routes.server ? `<#${routes.server}>` : defaultRoute}`,
-            `**Social :** ${routes.social ? `<#${routes.social}>` : defaultRoute}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'),
-          value: `\`${g.prefix || '+'}logs\` • \`${g.prefix || '+'}logs panel\` • \`${g.prefix || '+'}setlogchannel messages #msg-logs\` • \`${g.prefix || '+'}logs test all\``,
-          inline: false
-        }
-      );
-  } else if (safePage === 'security') {
-    const mod = g.automod || {};
-    embed
-      .setTitle(uiText(g, '🚨 Dashboard • Sécurité', '🚨 Dashboard • Security'))
-      .setDescription(uiText(g, 'État des protections AutoMod, ghost ping et filtres principaux.', 'Status of AutoMod protections, ghost ping and the main filters.'))
-      .addFields(
-        { name: uiText(g, '🛡️ Filtres', '🛡️ Filters'), value: [
-          `**Anti-spam :** ${automodRuleLabel(mod.antiSpam)}`,
-          `**${uiText(g, 'Anti-lien', 'Anti-link')} :** ${automodRuleLabel(mod.antiLink)}`,
-          `**${uiText(g, 'Anti-invite', 'Anti-invite')} :** ${automodRuleLabel(mod.antiInvite)}`,
-          `**Ghost ping :** ${uiState(mod.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`
-        ].join('\n'), inline: false },
-        { name: uiText(g, '🚧 Protection', '🚧 Protection'), value: [
-          `**${uiText(g, 'Mentions', 'Mentions')} :** ${automodRuleLabel(mod.antiMention)}`,
-          `**Caps :** ${automodRuleLabel(mod.antiCaps)}`,
-          `**${uiText(g, 'Spam emojis', 'Emoji spam')} :** ${automodRuleLabel(mod.antiEmojiSpam)}`,
-          `**Raid mode :** ${automodRuleLabel(mod.raidMode, 'delete')}`,
-          `**${uiText(g, 'Mots bloqués', 'Blocked words')} :** ${uiState(mod.badWordsEnabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))} • ${mod.badWords?.length || 0} ${uiText(g, 'mot(s)', 'word(s)')}`
-        ].join('\n'), inline: false },
-        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}securitypreset balanced\` • \`${g.prefix || '+'}setantispam 6 6 timeout\` • \`${g.prefix || '+'}ghostping test\` • \`${g.prefix || '+'}automodignore #channel\``, inline: false }
-      );
-  } else if (safePage === 'voice') {
-    const temp = g.voice?.temp || {};
-    const moderation = g.voice?.moderation || {};
-    embed
-      .setTitle(uiText(g, '🔊 Dashboard • Vocal', '🔊 Dashboard • Voice'))
-      .setDescription(uiText(g, 'Temp voice, panel voc et modération voc en un seul endroit.', 'Temp voice, voice panel and voice moderation in one place.'))
-      .addFields(
-        { name: uiText(g, '🎛️ Temp voice', '🎛️ Temp voice'), value: [
-          `**Hub :** ${temp.hubChannelId ? `<#${temp.hubChannelId}>` : noValue}`,
-          `**${uiText(g, 'Catégorie', 'Category')} :** ${temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : noValue}`,
-          `**${uiText(g, 'Panel', 'Panel')} :** ${temp.panelChannelId ? `<#${temp.panelChannelId}>` : noValue}`,
-          `**${uiText(g, 'Salons actifs', 'Active channels')} :** ${Object.keys(temp.channels || {}).length}`
-        ].join('\n'), inline: true },
-        { name: uiText(g, '🛡️ Modération voc', '🛡️ Voice moderation'), value: [
-          `**${uiText(g, 'Rôle mute', 'Mute role')} :** ${moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : noValue}`,
-          `**${uiText(g, 'Rôle ban', 'Ban role')} :** ${moderation.banRoleId ? `<@&${moderation.banRoleId}>` : noValue}`,
-          `**${uiText(g, 'Commandes', 'Commands')} :** \`${g.prefix || '+'}vmute\` • \`${g.prefix || '+'}vban\``
-        ].join('\n'), inline: true },
-        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}voice\` • \`${g.prefix || '+'}createvoicepanel\` • \`${g.prefix || '+'}voiceconfig\``, inline: false }
-      );
-  } else if (safePage === 'automation') {
-    embed
-      .setTitle(uiText(g, '⚡ Dashboard • Automation', '⚡ Dashboard • Automation'))
-      .setDescription(uiText(g, 'Auto-react, sticky, rôles auto et petits systèmes utiles.', 'Auto-react, sticky posts, auto roles and useful automations.'))
-      .addFields(
-        {
-          name: uiText(g, '✨ Auto-react', '✨ Auto-react'),
-          value: [
-            `**${uiText(g, 'Salons configurés', 'Configured channels')} :** ${autoReactEntries.length}`,
-            `**${uiText(g, 'Salons actifs', 'Active channels')} :** ${autoReactActive}`,
-            `**${uiText(g, 'Exemple', 'Example')} :** \`${g.prefix || '+'}autoreact add #general 🔥 😂\``,
-            `**Preset :** \`${g.prefix || '+'}autoreact preset #general hype\``
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '📌 Autres automatisations', '📌 Other automations'),
-          value: [
-            `**${uiText(g, 'Auto rôles', 'Auto roles')} :** ${(g.roles?.autoRoles || []).length}`,
-            `**Sticky :** ${stickyCount}`,
-            `**Ghost ping :** ${uiState(g.automod?.ghostPing?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**Status role :** ${uiState(g.roles?.statusRole?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`
-          ].join('\n'),
-          inline: true
-        },
-        {
-          name: uiText(g, '🎛️ Panneaux et annexes', '🎛️ Panels and extras'),
-          value: [
-            `**Support relay :** ${uiState(g.support?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-            `**TikTok watchers :** ${(g.tiktok?.watchers || []).length}`,
-            `**Role panels :** ${Object.keys(g.roles?.rolePanels || {}).length + Object.keys(g.roles?.reactionRoles || {}).length}`,
-            `**${uiText(g, 'Config rapide', 'Quick config')} :** \`${g.prefix || '+'}panel\``
-          ].join('\n'),
-          inline: false
-        },
-        {
-          name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'),
-          value: `\`${g.prefix || '+'}autoreact config\` • \`${g.prefix || '+'}autorolelist\` • \`${g.prefix || '+'}stickyconfig\` • \`${g.prefix || '+'}ghostping config\` • \`${g.prefix || '+'}panel\``,
-          inline: false
-        }
-      );
-  } else if (safePage === 'progress') {
-    embed
-      .setTitle(uiText(g, '🏆 Dashboard • Progression', '🏆 Dashboard • Progress'))
-      .setDescription(uiText(g, 'Trophées, milestones et avancement du serveur.', 'Trophies, milestones and overall server progress.'))
-      .addFields(
-        { name: uiText(g, '📈 Progression', '📈 Progress'), value: [
-          `**Setup :** ${snapshot.completionPercent}%`,
-          `**${uiText(g, 'Modules terminés', 'Completed modules')} :** ${snapshot.completedModules}/${snapshot.modules.length}`,
-          `**${uiText(g, 'Trophées membres', 'Member trophies')} :** ${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}`,
-          `**${uiText(g, 'Trophées boosts', 'Boost trophies')} :** ${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}`,
-          `**${uiText(g, 'Trophées voc', 'Voice trophies')} :** ${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}`
-        ].join('\n'), inline: true },
-        { name: uiText(g, '🥇 Board', '🥇 Board'), value: [
-          `**Trophy board :** ${uiState(g.progress?.enabled, uiText(g, 'actif', 'enabled'), uiText(g, 'inactif', 'disabled'))}`,
-          `**${uiText(g, 'Salon', 'Channel')} :** ${g.progress?.channelId ? `<#${g.progress.channelId}>` : noValue}`,
-          `**${uiText(g, 'Prochain palier membres', 'Next member milestone')} :** ${snapshot.nextGrowth || done}`,
-          `**${uiText(g, 'Prochain palier boosts', 'Next boost milestone')} :** ${snapshot.nextBoost || done}`,
-          `**${uiText(g, 'Prochain palier voc', 'Next voice milestone')} :** ${snapshot.nextVoice || done}`
-        ].join('\n'), inline: true },
-        { name: uiText(g, '⚙️ Commandes utiles', '⚙️ Useful commands'), value: `\`${g.prefix || '+'}trophy\` • \`${g.prefix || '+'}trophychannel here\` • \`${g.prefix || '+'}trophyrefresh\` • \`${g.prefix || '+'}dashboard\``, inline: false }
-      );
-  } else if (safePage === 'tools') {
-    embed
-      .setTitle(uiText(g, '🧰 Dashboard • Outils', '🧰 Dashboard • Tools'))
-      .setDescription(uiText(g, 'Page pratique pour retrouver vite les commandes, appliquer un preset propre et ouvrir les bons hubs.', 'Practical page to find commands fast, apply a clean preset and open the right hubs.'))
-      .addFields(
-        sectionField(uiText(g, '🔎 Finder', '🔎 Finder'), [
-          metricLine(uiText(g, 'Recherche rapide', 'Quick search'), commandPill(g.prefix || '+', 'find welcome')),
-          metricLine(uiText(g, 'Mot-clé flou', 'Loose keyword'), commandPill(g.prefix || '+', 'find status')),
-          metricLine(uiText(g, 'Rôles', 'Roles'), commandPill(g.prefix || '+', 'find role'))
+        sectionField(uiText(g, '📍 Snapshot serveur', '📍 Server snapshot'), [
+          metricLine(uiText(g, 'Membres', 'Members'), `**${formatStatNumber(memberCount)}**`),
+          metricLine(uiText(g, 'En ligne', 'Online'), `**${formatStatNumber(onlineCount)}**`),
+          metricLine(uiText(g, 'En vocal', 'In voice'), `**${formatStatNumber(voiceCount)}**`),
+          metricLine(uiText(g, 'Boosts', 'Boosts'), `**${formatStatNumber(boostCount)}**`)
         ], true),
-        sectionField(uiText(g, '🎨 Presets', '🎨 Presets'), [
-          metricLine(uiText(g, 'Vue', 'View'), commandPill(g.prefix || '+', 'preset')),
-          metricLine(uiText(g, 'Style clean', 'Clean style'), commandPill(g.prefix || '+', 'preset clean')),
-          metricLine(uiText(g, 'Style premium', 'Premium style'), commandPill(g.prefix || '+', 'preset premium'))
+        sectionField(uiText(g, '🧩 Modules principaux', '🧩 Core modules'), [
+          metricLine('Logs', uiState(Boolean(g.logs?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Welcome', uiState(Boolean(g.welcome?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Support', uiState(Boolean(g.support?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Confessions', uiState(Boolean(g.confessions?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine('Stats', uiState(Boolean(g.stats?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine(uiText(g, 'Trophy board', 'Trophy board'), uiState(Boolean(g.progress?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off')))
         ], true),
-        sectionField(uiText(g, '🧭 Hubs utiles', '🧭 Useful hubs'), [
-          commandPill(g.prefix || '+', 'custom'),
+        sectionField(uiText(g, '🩺 Santé globale', '🩺 Overall health'), [
+          metricLine(uiText(g, 'Score setup', 'Setup score'), `**${health.moduleScore}%**`),
+          metricLine(uiText(g, 'Modules prêts', 'Healthy modules'), `**${health.healthyModules}/${health.modules.length}**`),
+          metricLine(uiText(g, 'Tier', 'Tier'), `**${snapshot.setupTier}**`),
+          metricLine(uiText(g, 'À corriger', 'Needs attention'), `**${health.issueCount}**`)
+        ], true),
+        sectionField(uiText(g, '⚡ Ouverture rapide', '⚡ Quick jump'), [
           commandPill(g.prefix || '+', 'panel'),
+          commandPill(g.prefix || '+', 'logs panel'),
           commandPill(g.prefix || '+', 'support panel'),
-          commandPill(g.prefix || '+', 'info'),
-          commandPill(g.prefix || '+', 'utility')
+          commandPill(g.prefix || '+', 'texts'),
+          commandPill(g.prefix || '+', 'help staff'),
+          commandPill(g.prefix || '+', 'setup check')
         ], false),
-        sectionField(uiText(g, '📌 Infos rapides', '📌 Quick info'), [
-          metricLine(uiText(g, 'Serveur', 'Server'), `\`${g.prefix || '+'}serverinfo\` • \`${g.prefix || '+'}servericon\``),
-          metricLine(uiText(g, 'Membres', 'Members'), `\`${g.prefix || '+'}membercount\` • \`${g.prefix || '+'}boosters\``),
-          metricLine(uiText(g, 'Rôles / emojis', 'Roles / emojis'), `\`${g.prefix || '+'}rolemembers @role\` • \`${g.prefix || '+'}emojiinfo <:emoji:123>\``)
-        ], false),
-        sectionField(uiText(g, '📨 Support & logs', '📨 Support & logs'), [
-          metricLine(uiText(g, 'Support prêt', 'Support ready'), uiBool(supportReady && supportEntryReady, uiText(g, 'oui', 'yes'), uiText(g, 'non', 'no'))),
-          metricLine(uiText(g, 'Logs prêts', 'Logs ready'), uiBool(Boolean(g.logs?.enabled && logsRoutes), uiText(g, 'oui', 'yes'), uiText(g, 'non', 'no'))),
-          metricLine(uiText(g, 'Tests utiles', 'Useful tests'), `\`${g.prefix || '+'}support test\` • \`${g.prefix || '+'}logs test all\``)
+        sectionField(uiText(g, '👥 Staff & onboarding', '👥 Staff & onboarding'), [
+          commandPill(g.prefix || '+', 'permrole 1 @Helper'),
+          commandPill(g.prefix || '+', 'permcmd 1 add support'),
+          commandPill(g.prefix || '+', 'guide moderation'),
+          commandPill(g.prefix || '+', 'reply @user merci')
         ], false)
       );
   }
 
-  embed.setFooter({ text: uiText(g, `DvL • dashboard • page : ${safePage}`, `DvL • dashboard • page: ${safePage}`) });
-  return translateEmbedForUi(guildConfig, embed);
-}
+  if (safePage === 'security') {
+    const mod = g.automod || {};
+    const filtersOn = ['antiSpam', 'antiLink', 'antiInvite', 'antiMention', 'antiCaps', 'antiEmojiSpam', 'raidMode'].filter((key) => mod?.[key]?.enabled).length;
+    embed
+      .setTitle(uiText(g, '🚨 Dashboard • sécurité', '🚨 Dashboard • security'))
+      .setDescription(uiText(g, 'Vue sécurité : filtres actifs, ghost ping, raid mode et points faibles évidents.', 'Security view: active filters, ghost ping, raid mode and obvious weak spots.'))
+      .addFields(
+        sectionField(uiText(g, '🛡️ Filtres actifs', '🛡️ Active filters'), [
+          metricLine(uiText(g, 'Anti-spam', 'Anti-spam'), automodRuleLabel(mod.antiSpam)),
+          metricLine(uiText(g, 'Anti-link', 'Anti-link'), automodRuleLabel(mod.antiLink)),
+          metricLine(uiText(g, 'Anti-invite', 'Anti-invite'), automodRuleLabel(mod.antiInvite)),
+          metricLine(uiText(g, 'Ghost ping', 'Ghost ping'), `${uiState(Boolean(mod.ghostPing?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))}${mod.ghostPing?.channelId ? ` • <#${mod.ghostPing.channelId}>` : ''}`)
+        ], true),
+        sectionField(uiText(g, '🚧 Abus & raid', '🚧 Abuse & raid'), [
+          metricLine(uiText(g, 'Mentions', 'Mentions'), automodRuleLabel(mod.antiMention)),
+          metricLine('Caps', automodRuleLabel(mod.antiCaps)),
+          metricLine(uiText(g, 'Emoji spam', 'Emoji spam'), automodRuleLabel(mod.antiEmojiSpam)),
+          metricLine(uiText(g, 'Raid mode', 'Raid mode'), automodRuleLabel(mod.raidMode, 'delete')),
+          metricLine(uiText(g, 'Bad words', 'Bad words'), `${uiState(Boolean(mod.badWordsEnabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))} • ${(mod.badWords || []).length}`)
+        ], true),
+        sectionField(uiText(g, '🧪 Suite logique', '🧪 Next moves'), [
+          metricLine(uiText(g, 'Filtres actifs', 'Enabled filters'), `**${filtersOn}/7**`),
+          `• ${commandPill(g.prefix || '+', 'security preset balanced')}`,
+          `• ${commandPill(g.prefix || '+', 'ghostping on')}`,
+          `• ${commandPill(g.prefix || '+', 'automodconfig')}`,
+          `• ${commandPill(g.prefix || '+', 'automodignore #channel')}`
+        ], false)
+      );
+  }
 
-function normalizeDashboardPage(page = 'home') {
-  const raw = String(page || 'home').trim().toLowerCase();
-  const aliases = {
-    home: 'home',
-    accueil: 'home',
-    view: 'home',
-    setup: 'setup',
-    config: 'setup',
-    configuration: 'setup',
-    logs: 'logs',
-    log: 'logs',
-    security: 'security',
-    securite: 'security',
-    sécurité: 'security',
-    voice: 'voice',
-    vocal: 'voice',
-    voc: 'voice',
-    automation: 'automation',
-    automatisation: 'automation',
-    progress: 'progress',
-    progression: 'progress',
-    trophy: 'progress',
-    trophee: 'progress',
-    trophée: 'progress',
-    tools: 'tools',
-    tool: 'tools',
-    outils: 'tools',
-    finder: 'tools',
-    preset: 'tools'
-  };
-  return aliases[raw] || 'home';
+  if (safePage === 'voice') {
+    const temp = g.voice?.temp || {};
+    const moderation = g.voice?.moderation || {};
+    embed
+      .setTitle(uiText(g, '🔊 Dashboard • vocal', '🔊 Dashboard • voice'))
+      .setDescription(uiText(g, 'Hub vocal : temp voice, modération voc et compteurs live dans une seule vue.', 'Voice hub: temp voice, voice moderation and live counters in one view.'))
+      .addFields(
+        sectionField(uiText(g, '🎛️ Temp voice', '🎛️ Temp voice'), [
+          metricLine('Hub', temp.hubChannelId ? `<#${temp.hubChannelId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine('Panel', temp.panelChannelId ? `<#${temp.panelChannelId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Catégorie', 'Category'), temp.hubCategoryId ? `<#${temp.hubCategoryId}>` : uiText(g, 'non définie', 'not set')),
+          metricLine(uiText(g, 'Limite par défaut', 'Default limit'), `**${temp.defaultLimit || 0}**`)
+        ], true),
+        sectionField(uiText(g, '🛡️ Modération voc', '🛡️ Voice moderation'), [
+          metricLine(uiText(g, 'Rôle mute', 'Mute role'), moderation.muteRoleId ? `<@&${moderation.muteRoleId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Rôle ban', 'Ban role'), moderation.banRoleId ? `<@&${moderation.banRoleId}>` : uiText(g, 'non défini', 'not set')),
+          metricLine(uiText(g, 'Stats live', 'Live stats'), uiState(Boolean(g.stats?.enabled), uiText(g, 'actif', 'enabled'), uiText(g, 'off', 'off'))),
+          metricLine(uiText(g, 'Utilisateurs voc', 'Current voice users'), `**${formatStatNumber(voiceCount)}**`)
+        ], true),
+        sectionField(uiText(g, '⚡ Commandes utiles', '⚡ Useful commands'), [
+          commandPill(g.prefix || '+', 'voicepanel'),
+          commandPill(g.prefix || '+', 'createvoc'),
+          commandPill(g.prefix || '+', 'setvoicemuterole @role'),
+          commandPill(g.prefix || '+', 'setvoicebanrole @role'),
+          commandPill(g.prefix || '+', 'stats setup')
+        ], false)
+      );
+  }
+
+  if (safePage === 'progress') {
+    embed
+      .setTitle(uiText(g, '🏆 Dashboard • progression', '🏆 Dashboard • progress'))
+      .setDescription(uiText(g, 'Progression setup, trophées et prochain palier utile à viser.', 'Setup progress, trophies and the next useful milestone to target.'))
+      .addFields(
+        sectionField(uiText(g, '📈 Avancement', '📈 Completion'), [
+          metricLine(uiText(g, 'Setup complété', 'Setup completion'), `**${snapshot.completionPercent}%**`),
+          metricLine(uiText(g, 'Modules prêts', 'Completed modules'), `**${snapshot.completedModules}/${snapshot.modules.length}**`),
+          metricLine(uiText(g, 'Trophées membres', 'Member trophies'), `**${snapshot.unlockedGrowth}/${snapshot.growthMilestones.length}**`),
+          metricLine(uiText(g, 'Trophées boosts', 'Boost trophies'), `**${snapshot.unlockedBoosts}/${snapshot.boostMilestones.length}**`),
+          metricLine(uiText(g, 'Trophées vocal', 'Voice trophies'), `**${snapshot.unlockedVoice}/${snapshot.voiceMilestones.length}**`)
+        ], true),
+        sectionField(uiText(g, '🎯 Prochaines cibles', '🎯 Next targets'), [
+          metricLine(uiText(g, 'Membres', 'Members'), snapshot.nextGrowth || uiText(g, 'fait', 'done')),
+          metricLine('Boost', snapshot.nextBoost || uiText(g, 'fait', 'done')),
+          metricLine(uiText(g, 'Vocal', 'Voice'), snapshot.nextVoice || uiText(g, 'fait', 'done')),
+          metricLine(uiText(g, 'Récompense', 'Reward'), snapshot.memberMilestoneReward?.enabled && snapshot.memberMilestoneReward?.roleId ? `${formatStatNumber(snapshot.nextMemberRewardAt)} → <@&${snapshot.memberMilestoneReward.roleId}>` : uiText(g, 'off', 'off'))
+        ], true),
+        sectionField(uiText(g, '🧭 Commandes utiles', '🧭 Useful commands'), [
+          commandPill(g.prefix || '+', 'trophy'),
+          commandPill(g.prefix || '+', 'trophychannel here'),
+          commandPill(g.prefix || '+', 'trophyimage <url>'),
+          commandPill(g.prefix || '+', 'milestonerole @role'),
+          commandPill(g.prefix || '+', 'milestoneinterval 100')
+        ], false)
+      );
+  }
+
+  embed.setFooter({ text: `Neyora • dashboard • ${safePage}` });
+  return translateEmbedForUi(guildConfig, embed);
 }
 
 function createDashboardComponents(current = 'home', guildConfig = null) {

@@ -416,10 +416,10 @@ function buildNoticeTitle(guildConfig, kind) {
 function buildNoticeFooter(guildConfig, kind, deleteAfterMs = null) {
   const fr = isFrenchGuild(guildConfig);
   const label = {
-    error: fr ? 'DvL • Erreur' : 'DvL • Error',
-    warning: fr ? 'DvL • Attention' : 'DvL • Warning',
-    success: fr ? 'DvL • Succès' : 'DvL • Success',
-    info: fr ? 'DvL • Info' : 'DvL • Info'
+    error: fr ? 'Neyora • Erreur' : 'Neyora • Error',
+    warning: fr ? 'Neyora • Attention' : 'Neyora • Warning',
+    success: fr ? 'Neyora • Succès' : 'Neyora • Success',
+    info: fr ? 'Neyora • Info' : 'Neyora • Info'
   }[kind || 'info'];
   if (!Number.isFinite(deleteAfterMs) || deleteAfterMs <= 0) return label;
   const seconds = Math.max(1, Math.round(deleteAfterMs / 1000));
@@ -473,7 +473,7 @@ function normalizeSystemNoticePayload(payload = {}, guildConfig, options = {}) {
       embed.setColor(ensureHexColor(guildConfig?.embedColor));
     }
     const currentFooter = embed.data?.footer?.text ? String(embed.data.footer.text) : '';
-    if (!currentFooter || /^DvL(?:\s|•|$)/i.test(currentFooter)) {
+    if (!currentFooter || /^(?:Neyora|DvL)(?:\s|•|$)/i.test(currentFooter)) {
       embed.setFooter({ ...(embed.data?.footer || {}), text: buildNoticeFooter(guildConfig, kind, suggestedDeleteAfter) });
     }
     next.embeds = [applyEmbedVisualStyle(embed, guildConfig)];
@@ -486,14 +486,14 @@ function normalizeSystemNoticePayload(payload = {}, guildConfig, options = {}) {
 function getVisualAuthorLabel(guildConfig) {
   const themeKey = resolveVisualThemeKey(guildConfig);
   const badge = { default: '✦', emerald: '✳️', sunset: '🌇', neon: '💠' }[themeKey] || '✦';
-  return isFrenchGuild(guildConfig) ? `${badge} DvL • Interface` : `${badge} DvL • Control`;
+  return isFrenchGuild(guildConfig) ? `${badge} Neyora • Interface` : `${badge} Neyora • Control`;
 }
 
 function getVisualFooterLabel(guildConfig) {
   const prefix = guildConfig?.prefix ? ` • ${guildConfig.prefix}` : '';
   const themeKey = resolveVisualThemeKey(guildConfig);
   const themeLabel = { default: 'Default', emerald: 'Emerald', sunset: 'Sunset', neon: 'Neon' }[themeKey] || 'Default';
-  return isFrenchGuild(guildConfig) ? `DvL • Interface serveur • ${themeLabel}${prefix}` : `DvL • Server control • ${themeLabel}${prefix}`;
+  return isFrenchGuild(guildConfig) ? `Neyora • Interface serveur • ${themeLabel}${prefix}` : `Neyora • Server control • ${themeLabel}${prefix}`;
 }
 
 function applyEmbedVisualStyle(embed, guildConfig) {
@@ -504,7 +504,7 @@ function applyEmbedVisualStyle(embed, guildConfig) {
     if (!target.color) target.color = ensureHexColor(guildConfig?.embedColor, palette.base || '#5865F2');
     if (!target.author?.name) target.author = { ...(target.author || {}), name: getVisualAuthorLabel(guildConfig) };
     if (!target.footer?.text) target.footer = { ...(target.footer || {}), text: getVisualFooterLabel(guildConfig) };
-    else if (/^DvL(?:\s|•|$)/i.test(String(target.footer.text))) target.footer = { ...(target.footer || {}), text: getVisualFooterLabel(guildConfig) };
+    else if (/^(?:Neyora|DvL)(?:\s|•|$)/i.test(String(target.footer.text))) target.footer = { ...(target.footer || {}), text: getVisualFooterLabel(guildConfig) };
     if (typeof target.description === 'string') target.description = beautifyStructuredLines(target.description).slice(0, 4096);
     if (Array.isArray(target.fields)) target.fields = target.fields.map((field) => ({ ...field, name: String(field?.name || '•').trim().slice(0, 256), value: beautifyStructuredLines(field?.value || '—').slice(0, 1024) }));
     if (!target.timestamp) target.timestamp = new Date().toISOString();
@@ -514,7 +514,7 @@ function applyEmbedVisualStyle(embed, guildConfig) {
   if (embed?.data) {
     if (!embed.data.color) embed.setColor(ensureHexColor(guildConfig?.embedColor, palette.base || '#5865F2'));
     if (!embed.data.author?.name) embed.setAuthor({ ...(embed.data.author || {}), name: getVisualAuthorLabel(guildConfig) });
-    if (!embed.data.footer?.text || /^DvL(?:\s|•|$)/i.test(String(embed.data.footer.text))) {
+    if (!embed.data.footer?.text || /^(?:Neyora|DvL)(?:\s|•|$)/i.test(String(embed.data.footer.text))) {
       embed.setFooter({ ...(embed.data.footer || {}), text: getVisualFooterLabel(guildConfig) });
     }
     if (typeof embed.data.description === 'string') embed.setDescription(beautifyStructuredLines(embed.data.description).slice(0, 4096));
@@ -638,7 +638,7 @@ function baseEmbed(guildConfig, title, description) {
     : String(description || '').trim();
   return applyEmbedVisualStyle(new EmbedBuilder()
     .setColor(resolveBaseEmbedColor(guildConfig, title, resolvedDescription))
-    .setTitle(translateText(String(title || 'DvL'), guildConfig).slice(0, 256))
+    .setTitle(translateText(String(title || 'Neyora'), guildConfig).slice(0, 256))
     .setDescription(translateText((resolvedDescription || 'No details.'), guildConfig).slice(0, 4096)), guildConfig);
 }
 

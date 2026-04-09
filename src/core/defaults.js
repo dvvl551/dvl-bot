@@ -9,14 +9,14 @@ const DEFAULT_GUILD = {
     title: '👋 Bienvenue',
     message: 'Bienvenue {user} sur **{server}**. Tu es le membre **#{memberCount}**.',
     mode: 'embed',
-    footer: 'DvL',
+    footer: 'Neyora',
     color: null,
     imageUrl: null,
     dmEnabled: false,
     dmMode: 'embed',
     dmTitle: '👋 Bienvenue sur {server}',
     dmMessage: 'Bienvenue sur **{server}**. Profite bien de ton arrivée.',
-    dmFooter: 'DvL',
+    dmFooter: 'Neyora',
     dmColor: null,
     dmImageUrl: null
   },
@@ -26,14 +26,14 @@ const DEFAULT_GUILD = {
     title: '👋 Départ membre',
     message: '{userTag} a quitté **{server}**.',
     mode: 'embed',
-    footer: 'DvL',
+    footer: 'Neyora',
     color: null,
     imageUrl: null,
     dmEnabled: false,
     dmMode: 'embed',
     dmTitle: '👋 Tu as quitté {server}',
     dmMessage: 'Tu as quitté **{server}**. Tu peux toujours revenir plus tard.',
-    dmFooter: 'DvL',
+    dmFooter: 'Neyora',
     dmColor: null,
     dmImageUrl: null
   },
@@ -43,7 +43,7 @@ const DEFAULT_GUILD = {
     title: '🚀 Nouveau boost',
     message: '{user} vient de booster **{server}**. Total des boosts : **{boostCount}** • Niveau : **{boostTier}**.',
     mode: 'embed',
-    footer: 'DvL',
+    footer: 'Neyora',
     color: null,
     imageUrl: null
   },
@@ -143,7 +143,7 @@ const DEFAULT_GUILD = {
     promptMode: 'embed',
     promptTitle: '📨 Besoin d’aide ?',
     promptMessage: 'Pour contacter le staff, écris dans {supportChannel} ou envoie un MP au bot. `{prefix}support ton message` marche aussi.',
-    promptFooter: 'DvL Support',
+    promptFooter: 'Neyora Support',
     promptColor: null,
     promptImageUrl: null
   },
@@ -153,13 +153,14 @@ const DEFAULT_GUILD = {
     logChannelId: null,
     title: '🤫 Confession anonyme',
     color: '#EC4899',
-    allowAttachments: true
+    allowAttachments: true,
+    showBadges: true
   },
   mpall: {
     mode: 'embed',
     title: '📨 Message de {server}',
     message: '',
-    footer: 'DvL',
+    footer: 'Neyora',
     color: null,
     imageUrl: null
   },
@@ -248,24 +249,24 @@ const LOCALIZED_DEFAULT_TEXTS = {
       fr: 'Bienvenue {user} sur **{server}**. Tu es le membre **#{memberCount}**.',
       en: 'Welcome {user} to **{server}**. You are member **#{memberCount}**.'
     },
-    footer: { fr: 'DvL', en: 'DvL' },
+    footer: { fr: 'Neyora', en: 'Neyora' },
     dmTitle: { fr: '👋 Bienvenue sur {server}', en: '👋 Welcome to {server}' },
     dmMessage: {
       fr: 'Bienvenue sur **{server}**. Profite bien de ton arrivée.',
       en: 'Welcome to **{server}**. Enjoy your arrival.'
     },
-    dmFooter: { fr: 'DvL', en: 'DvL' }
+    dmFooter: { fr: 'Neyora', en: 'Neyora' }
   },
   leave: {
     title: { fr: '👋 Départ membre', en: '👋 Member left' },
     message: { fr: '{userTag} a quitté **{server}**.', en: '{userTag} left **{server}**.' },
-    footer: { fr: 'DvL', en: 'DvL' },
+    footer: { fr: 'Neyora', en: 'Neyora' },
     dmTitle: { fr: '👋 Tu as quitté {server}', en: '👋 You left {server}' },
     dmMessage: {
       fr: 'Tu as quitté **{server}**. Tu peux toujours revenir plus tard.',
       en: 'You left **{server}**. You can always come back with a fresh start.'
     },
-    dmFooter: { fr: 'DvL', en: 'DvL' }
+    dmFooter: { fr: 'Neyora', en: 'Neyora' }
   },
   boost: {
     title: { fr: '🚀 Nouveau boost', en: '🚀 New boost' },
@@ -273,7 +274,7 @@ const LOCALIZED_DEFAULT_TEXTS = {
       fr: '{user} vient de booster **{server}**. Total des boosts : **{boostCount}** • Niveau : **{boostTier}**.',
       en: '{user} just boosted **{server}**. Total boosts: **{boostCount}** • Tier: **{boostTier}**.'
     },
-    footer: { fr: 'DvL', en: 'DvL' }
+    footer: { fr: 'Neyora', en: 'Neyora' }
   },
   support: {
     promptTitle: { fr: '📨 Besoin d’aide ?', en: '📨 Need help?' },
@@ -281,14 +282,14 @@ const LOCALIZED_DEFAULT_TEXTS = {
       fr: 'Pour contacter le staff, écris dans {supportChannel} ou envoie un MP au bot. `{prefix}support ton message` marche aussi.',
       en: 'To contact the staff, write in {supportChannel} or DM the bot. `{prefix}support your message` also works.'
     },
-    promptFooter: { fr: 'DvL Support', en: 'DvL Support' }
+    promptFooter: { fr: 'Neyora Support', en: 'Neyora Support' }
   },
   confessions: {
     title: { fr: '🤫 Confession anonyme', en: '🤫 Anonymous confession' }
   },
   mpall: {
     title: { fr: '📨 Message de {server}', en: '📨 Message from {server}' },
-    footer: { fr: 'DvL', en: 'DvL' }
+    footer: { fr: 'Neyora', en: 'Neyora' }
   }
 };
 
