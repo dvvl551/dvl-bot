@@ -407,10 +407,13 @@ function buildTikTokWatcherStateLines(guildConfig, watcher = {}) {
     : (watcher.wasLive ? uiText(guildConfig, '🟢 live détecté au dernier check', '🟢 live detected on the last check') : uiText(guildConfig, '✅ propre', '✅ healthy'));
   const latestVideo = watcher.lastVideoId ? `\`${String(watcher.lastVideoId).slice(0, 18)}\`` : none;
   const latestLink = watcher.lastVideoUrl ? `[${uiText(guildConfig, 'ouvrir', 'open')}](${watcher.lastVideoUrl})` : none;
+  const profileName = watcher.lastDisplayName && watcher.lastDisplayName !== watcher.username ? `**${clipText(String(watcher.lastDisplayName), 28)}** • ` : '';
+  const followerLabel = watcher.followerCount != null ? formatStatNumber(watcher.followerCount) : none;
   return [
-    metricLine(uiText(guildConfig, 'Compte', 'Account'), `**@${watcher.username || 'unknown'}**`),
+    metricLine(uiText(guildConfig, 'Compte', 'Account'), `${profileName}**@${watcher.username || 'unknown'}**${watcher.verified ? ' ✓' : ''}`),
     metricLine(uiText(guildConfig, 'Routage', 'Routing'), `${route} • ${ping}`),
     metricLine(uiText(guildConfig, 'Alertes', 'Alerts'), `${watcher.announceLive === false ? '⚫' : '🔴'} live • ${watcher.announceVideos === false ? '⚫' : '🎬'} video`),
+    metricLine(uiText(guildConfig, 'Audience', 'Audience'), `${uiText(guildConfig, 'abonnés', 'followers')} **${followerLabel}**`),
     metricLine(uiText(guildConfig, 'Dernière vidéo', 'Latest video'), `${latestVideo} • ${latestLink}`),
     metricLine(uiText(guildConfig, 'Dernier check', 'Last check'), lastCheck),
     metricLine(uiText(guildConfig, 'Source', 'Source'), source),
@@ -429,11 +432,13 @@ function buildTikTokWatcherCompactBlock(guildConfig, watcher = {}) {
     watcher.wasLive ? uiText(guildConfig, '🟢 live vu', '🟢 live seen') : uiText(guildConfig, '⚪ hors live', '⚪ offline')
   ];
   const infoBits = [];
+  if (watcher.lastDisplayName && watcher.lastDisplayName !== watcher.username) infoBits.push(clipText(String(watcher.lastDisplayName), 22));
+  if (watcher.followerCount != null) infoBits.push(`${uiText(guildConfig, 'followers', 'followers')} ${formatStatNumber(watcher.followerCount)}`);
   if (watcher.lastVideoId) infoBits.push(`${uiText(guildConfig, 'vidéo', 'video')} ${code(String(watcher.lastVideoId).slice(0, 18))}`);
   if (watcher.lastSource) infoBits.push(`${uiText(guildConfig, 'source', 'source')} ${watcher.lastSource}`);
   infoBits.push(uiText(guildConfig, `check ${lastCheck}`, `checked ${lastCheck}`));
   const lines = [
-    `**@${watcher.username || 'unknown'}**`,
+    `**@${watcher.username || 'unknown'}**${watcher.verified ? ' ✓' : ''}`,
     `↳ ${stateBits.join(' • ')}`,
     `↳ ${routeLine}`,
     `↳ ${infoBits.join(' • ')}`
@@ -468,6 +473,11 @@ function quickExamplesForCommand(command, prefix = '+') {
     embed: [`${prefix}embed`, `${prefix}embed`, `${prefix}say test`],
     botbanner: [`${prefix}botbanner https://image.url/banner.png`, `${prefix}botbanner`, `${prefix}botbanner off`],
     mpall: [`${prefix}mpall`, `${prefix}mpall send`, `${prefix}mpall test`],
+    mute: [`${prefix}mute @member 10m spam`, `${prefix}timeout @member 10m spam`, `${prefix}unmute @member`],
+    unmute: [`${prefix}unmute @member`, `${prefix}untimeout @member`, `${prefix}warnings @member`],
+    bl: [`${prefix}bl @member raid alt`, `${prefix}bl 123456789012345678 alt détecté`, `${prefix}bllist`],
+    unbl: [`${prefix}unbl @member`, `${prefix}unbl 123456789012345678`, `${prefix}bllist`],
+    bllist: [`${prefix}bllist`, `${prefix}bl @member raison`, `${prefix}unbl @member`],
     clear: [`${prefix}clear 10`, `${prefix}clear 1`, `${prefix}purge @user 5`],
     purge: [`${prefix}purge @user 5`, `${prefix}purge 123456789012345678 10`, `${prefix}clear 20`],
     warn: [`${prefix}warn @user Spam`, `${prefix}warnings @user`, `${prefix}clearwarnings @user`],
@@ -1291,22 +1301,16 @@ function buildTikTokWatcherEmbeds(ctx) {
   const errorCount = watchers.filter((watcher) => watcher.lastError).length;
   const withRole = watchers.filter((watcher) => watcher.mentionRoleId).length;
   const routed = watchers.filter((watcher) => watcher.channelId).length;
-  const lines = watchers.map((watcher, index) => {
-    const checked = watcher.lastCheckAt ? `<t:${Math.floor(Number(watcher.lastCheckAt) / 1000)}:R>` : uiText(ctx.guildConfig, 'jamais', 'never');
-    return [
-      `**${index + 1}. @${watcher.username}** • ${watcher.wasLive ? '🟢' : '⚪'} ${watcher.wasLive ? uiText(ctx.guildConfig, 'live', 'live') : uiText(ctx.guildConfig, 'offline', 'offline')}`,
-      `↳ ${uiText(ctx.guildConfig, 'salon', 'channel')} : ${watcher.channelId ? `<#${watcher.channelId}>` : uiText(ctx.guildConfig, 'non défini', 'not set')} • ${uiText(ctx.guildConfig, 'ping', 'ping')} : ${watcher.mentionRoleId ? `<@&${watcher.mentionRoleId}>` : uiText(ctx.guildConfig, 'aucun', 'none')}`,
-      `↳ live: ${boolEmoji(watcher.announceLive)} • video: ${boolEmoji(watcher.announceVideos)} • ${uiText(ctx.guildConfig, 'source', 'source')} : ${watcher.lastSource || 'n/a'} • ${uiText(ctx.guildConfig, 'check', 'check')} : ${checked}` + (watcher.lastError ? ` • ${uiText(ctx.guildConfig, 'erreur', 'error')} : ${clipText(String(watcher.lastError), 60)}` : ''),
-      watcher.lastVideoUrl ? `↳ ${uiText(ctx.guildConfig, 'lien', 'link')} : ${watcher.lastVideoUrl}` : null
-    ].filter(Boolean).join('\n');
-  });
+  const ready = watchers.filter((watcher) => watcher.channelId && (watcher.announceLive !== false || watcher.announceVideos !== false)).length;
+  const lines = watchers.map((watcher) => buildTikTokWatcherCompactBlock(ctx.guildConfig, watcher));
   return buildSectionedListEmbeds(
     ctx.guildConfig,
     uiText(ctx.guildConfig, '🎵 TikTok • watchers', '🎵 TikTok • watchers'),
     [
       `**${uiText(ctx.guildConfig, 'Watchers', 'Watchers')} :** ${watchers.length}`,
+      `**${uiText(ctx.guildConfig, 'Prêts', 'Ready')} :** ${ready}/${Math.max(1, watchers.length || 1)}`,
       `**${uiText(ctx.guildConfig, 'Routés', 'Routed')} :** ${routed}/${Math.max(1, watchers.length || 1)}`,
-      `**${uiText(ctx.guildConfig, 'Live vus', 'Lives seen')} :** ${liveNow}`,
+      `**${uiText(ctx.guildConfig, 'Lives vus', 'Lives seen')} :** ${liveNow}`,
       `**${uiText(ctx.guildConfig, 'Rôles ping', 'Ping roles')} :** ${withRole}`,
       `**${uiText(ctx.guildConfig, 'Erreurs', 'Errors')} :** ${errorCount}`,
       '',
@@ -1314,7 +1318,7 @@ function buildTikTokWatcherEmbeds(ctx) {
     ],
     [[uiText(ctx.guildConfig, 'Watchers', 'Watchers'), lines]],
     {
-      chunkSize: 4,
+      chunkSize: 3,
       emptyText: uiText(ctx.guildConfig, 'Aucun watcher TikTok configuré.', 'No TikTok watcher configured.')
     }
   );
@@ -1407,6 +1411,63 @@ function buildModerationStateLines(guildConfig, {
   if (reason) lines.push(metricLine(uiText(guildConfig, 'Raison', 'Reason'), clipText(String(reason), 120)));
   const extraLines = Array.isArray(extra) ? extra : [extra];
   return [...lines, ...extraLines.filter(Boolean)].slice(0, 8);
+}
+
+
+function getBlacklistUserLike(target, fallbackId = null) {
+  if (target?.user) return target.user;
+  if (target?.id || target?.tag || target?.username) return target;
+  if (fallbackId) return { id: fallbackId, tag: `User ${fallbackId}`, username: `User ${fallbackId}`, displayAvatarURL: () => null };
+  return null;
+}
+
+function buildBlacklistStateLines(guildConfig, {
+  target = null,
+  moderator = null,
+  reason = null,
+  bannedNow = null,
+  alreadyBlacklisted = null,
+  storedAt = null,
+  extra = []
+} = {}) {
+  const user = getBlacklistUserLike(target);
+  const lines = [];
+  if (user?.id) lines.push(metricLine(uiText(guildConfig, 'Utilisateur', 'User'), `<@${user.id}>`));
+  if (moderator) lines.push(metricLine(uiText(guildConfig, 'Staff', 'Staff'), `${moderator}`));
+  if (storedAt) lines.push(metricLine(uiText(guildConfig, 'Ajouté', 'Added'), `<t:${Math.floor(Number(storedAt) / 1000)}:R>`));
+  if (alreadyBlacklisted !== null && typeof alreadyBlacklisted !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Déjà blacklisté', 'Already blacklisted'), alreadyBlacklisted ? uiText(guildConfig, 'oui', 'yes') : uiText(guildConfig, 'non', 'no')));
+  if (bannedNow !== null && typeof bannedNow !== 'undefined') lines.push(metricLine(uiText(guildConfig, 'Ban immédiat', 'Immediate ban'), bannedNow ? uiText(guildConfig, 'oui', 'yes') : uiText(guildConfig, 'non', 'no')));
+  if (reason) lines.push(metricLine(uiText(guildConfig, 'Raison', 'Reason'), clipText(String(reason), 120)));
+  const extraLines = Array.isArray(extra) ? extra : [extra];
+  return [...lines, ...extraLines.filter(Boolean)].slice(0, 8);
+}
+
+function buildBlacklistEmbeds(ctx, entries = {}) {
+  const list = Object.entries(entries || {}).sort((a, b) => Number((b[1] || {}).at || 0) - Number((a[1] || {}).at || 0));
+  const lines = list.map(([userId, entry], index) => {
+    const addedBy = entry?.by ? `<@${entry.by}>` : uiText(ctx.guildConfig, 'inconnu', 'unknown');
+    const addedAt = entry?.at ? `<t:${Math.floor(Number(entry.at) / 1000)}:R>` : uiText(ctx.guildConfig, 'inconnu', 'unknown');
+    const tag = entry?.tag ? ` • ${entry.tag}` : '';
+    return [
+      `**${index + 1}.** <@${userId}>${tag}`,
+      `↳ ${uiText(ctx.guildConfig, 'ajouté par', 'added by')} ${addedBy} • ${addedAt}`,
+      `↳ ${uiText(ctx.guildConfig, 'raison', 'reason')} : ${clipText(String(entry?.reason || uiText(ctx.guildConfig, 'aucune', 'none')), 180)}`
+    ].join('\n');
+  });
+  return buildSectionedListEmbeds(
+    ctx.guildConfig,
+    uiText(ctx.guildConfig, '⛔ Blacklist staff', '⛔ Staff blacklist'),
+    [
+      `**${uiText(ctx.guildConfig, 'Entrées', 'Entries')} :** ${list.length}`,
+      '',
+      `${uiText(ctx.guildConfig, 'Raccourcis', 'Quick flow')} : \`${ctx.prefix}bl @member raison\` • \`${ctx.prefix}unbl @member\``
+    ],
+    [[uiText(ctx.guildConfig, 'Blacklist', 'Blacklist'), lines]],
+    {
+      chunkSize: 4,
+      emptyText: uiText(ctx.guildConfig, 'Aucune entrée blacklist staff.', 'No staff blacklist entries.')
+    }
+  );
 }
 
 function buildMemberActionEmbed(guildConfig, title, description, target, fields = [], options = {}) {
@@ -4260,18 +4321,21 @@ function buildTrackingHubEmbed(guildConfig, prefix = '+') {
 
 function buildModerationHubEmbed(guildConfig, prefix = '+') {
   const warnings = guildConfig.moderation?.warnings || {};
+  const blacklistEntries = guildConfig.moderation?.blacklist?.users || {};
+  const blacklistCount = Object.keys(blacklistEntries).length;
   const totalWarnings = Object.values(warnings).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
   const warnedMembers = Object.keys(warnings).length;
   const modRoute = guildConfig.logs?.channels?.moderation || guildConfig.logs?.channels?.default || guildConfig.logs?.channelId || null;
   const issues = [];
   if (!modRoute) issues.push(uiText(guildConfig, 'aucune route de logs modération définie', 'no moderation log route is defined'));
   if (!warnedMembers) issues.push(uiText(guildConfig, 'aucun avertissement stocké pour le moment', 'no warnings are stored yet'));
+  if (!blacklistCount) issues.push(uiText(guildConfig, 'aucun blacklist staff stocké pour le moment', 'no staff blacklist entries are stored yet'));
 
   const embed = applyHubFrame(
     baseEmbed(
       guildConfig,
       uiText(guildConfig, '🛡️ Hub modération', '🛡️ Moderation hub'),
-      uiText(guildConfig, 'Warns, timeouts, kicks et bans avec réponses staff plus propres, DMs utiles et logs cohérents.', 'Warns, timeouts, kicks and bans with cleaner staff replies, useful DMs and consistent logs.')
+      uiText(guildConfig, 'Warns, mutes, blacklist staff, kicks et bans avec réponses staff plus propres, DMs utiles et logs cohérents.', 'Warns, mutes, staff blacklist, kicks and bans with cleaner staff replies, useful DMs and consistent logs.')
     ),
     guildConfig,
     null,
@@ -4280,29 +4344,29 @@ function buildModerationHubEmbed(guildConfig, prefix = '+') {
     [
       hubBadge(guildConfig, '⚠️', 'Avertissements', 'Warnings', `**${formatStatNumber(totalWarnings)}**`),
       hubBadge(guildConfig, '👥', 'Membres concernés', 'Warned members', `**${warnedMembers}**`),
-      hubBadge(guildConfig, '🧾', 'Route modération', 'Moderation route', modRoute ? `<#${modRoute}>` : uiText(guildConfig, 'non définie', 'not set')),
-      hubBadge(guildConfig, '🔊', 'Modération voc', 'Voice moderation', commandPill(prefix, 'voice'))
+      hubBadge(guildConfig, '⛔', 'Blacklist', 'Blacklist', `**${blacklistCount}**`),
+      hubBadge(guildConfig, '🧾', 'Route modération', 'Moderation route', modRoute ? `<#${modRoute}>` : uiText(guildConfig, 'non définie', 'not set'))
     ]
   );
 
   embed.addFields(
     sectionField(uiText(guildConfig, '📍 Vue rapide', '📍 Quick view'), [
       metricLine(uiText(guildConfig, 'Warn flow', 'Warn flow'), uiText(guildConfig, 'warn + compteur + raison propre', 'warn + counter + clean reason')),
-      metricLine(uiText(guildConfig, 'Timeout flow', 'Timeout flow'), uiText(guildConfig, 'DM + durée + log', 'DM + duration + log')),
-      metricLine(uiText(guildConfig, 'Kick / ban', 'Kick / ban'), uiText(guildConfig, 'DM si possible + recap staff', 'DM when possible + staff recap')),
-      metricLine(uiText(guildConfig, 'Avertissements stockés', 'Stored warnings'), `**${formatStatNumber(totalWarnings)}**`)
+      metricLine(uiText(guildConfig, 'Mute flow', 'Mute flow'), uiText(guildConfig, 'mute/timeout + durée + log', 'mute/timeout + duration + log')),
+      metricLine(uiText(guildConfig, 'Blacklist staff', 'Staff blacklist'), uiText(guildConfig, 'blocage commandes + ban auto au join', 'command block + auto-ban on join')),
+      metricLine(uiText(guildConfig, 'Kick / ban', 'Kick / ban'), uiText(guildConfig, 'DM si possible + recap staff', 'DM when possible + staff recap'))
     ], false),
     sectionField(uiText(guildConfig, '⚡ Plus utilisés', '⚡ Most used'), [
       commandPill(prefix, 'warn @member raison'),
-      commandPill(prefix, 'warnings @member'),
-      commandPill(prefix, 'timeout @member 10m raison'),
-      commandPill(prefix, 'untimeout @member')
+      commandPill(prefix, 'mute @member 10m raison'),
+      commandPill(prefix, 'unmute @member'),
+      commandPill(prefix, 'warnings @member')
     ], true),
-    sectionField(uiText(guildConfig, '🧩 Autres actions', '🧩 More actions'), [
-      commandPill(prefix, 'kick @member raison'),
-      commandPill(prefix, 'ban @member raison'),
-      commandPill(prefix, 'unban userId'),
-      commandPill(prefix, 'clearwarnings @member')
+    sectionField(uiText(guildConfig, '🧩 Staff blacklist', '🧩 Staff blacklist'), [
+      commandPill(prefix, 'bl @member raison'),
+      commandPill(prefix, 'unbl @member'),
+      commandPill(prefix, 'bllist'),
+      commandPill(prefix, 'ban @member raison')
     ], true),
     sectionField(uiText(guildConfig, '🩺 Diagnostic', '🩺 Diagnosis'), issues.length ? issues.map((issue) => `• ${issue}`) : [uiText(guildConfig, 'rien de bloquant détecté côté modération', 'nothing blocking detected for moderation')], false)
   );
@@ -7129,7 +7193,7 @@ function createCommands() {
       aliases: ['modhub', 'modhelp', 'staffmod'],
       category: 'Moderation',
       description: 'Clean moderation hub for warns, timeouts, kicks and bans',
-      usage: 'moderation [view|warn|timeout|ban|kick|clear|channel|nick|status]',
+      usage: 'moderation [view|warn|mute|timeout|ban|kick|clear|blacklist|channel|nick|status]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ModerateMembers],
       async execute(ctx) {
@@ -7147,7 +7211,7 @@ function createCommands() {
           nextLines: [`• \`${ctx.prefix}warn @member spam\``, `• \`${ctx.prefix}warnings @member\``],
           footerText: 'Neyora • moderation hub'
         })] });
-        if (action === 'timeout') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
+        if (action === 'timeout' || action === 'mute') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
           titleFr: 'Timeout flow',
           titleEn: 'Timeout flow',
           summary: 'Timeout with a duration, DM when possible, and keep a clean recap for staff.',
@@ -7157,6 +7221,18 @@ function createCommands() {
             metricLine(uiText(ctx.guildConfig, 'Format', 'Format'), '`10m` • `1h` • `1d` • `7d`')
           ],
           nextLines: [`• \`${ctx.prefix}timeout @member 10m spam\``, `• \`${ctx.prefix}untimeout @member\``],
+          footerText: 'Neyora • moderation hub'
+        })] });
+        if (action === 'blacklist' || action === 'bl') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
+          titleFr: 'Flow blacklist staff',
+          titleEn: 'Staff blacklist flow',
+          summary: 'Block a user from using commands, keep the reason stored, and auto-ban them on join if they come back.',
+          stateLines: [
+            metricLine(uiText(ctx.guildConfig, 'Ajout', 'Add'), commandPill(ctx.prefix, 'bl @member raison')),
+            metricLine(uiText(ctx.guildConfig, 'Retrait', 'Removal'), commandPill(ctx.prefix, 'unbl @member')),
+            metricLine(uiText(ctx.guildConfig, 'Lecture', 'Readback'), commandPill(ctx.prefix, 'bllist'))
+          ],
+          nextLines: [`• \`${ctx.prefix}bl @member alt détecté\``, `• \`${ctx.prefix}bllist\``],
           footerText: 'Neyora • moderation hub'
         })] });
         if (action === 'ban') return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
@@ -7307,24 +7383,7 @@ function createCommands() {
         const watchers = ctx.guildConfig.tiktok?.watchers || [];
         if (['view', 'config', 'show', 'status', 'setup'].includes(action)) return ctx.reply({ embeds: [buildTikTokHubEmbed(ctx.guildConfig, ctx.prefix)] });
         if (action === 'list') {
-          const errorCount = watchers.filter((watcher) => watcher.lastError).length;
-          const liveNow = watchers.filter((watcher) => watcher.wasLive).length;
-          const lines = watchers.slice(0, 8).map((watcher) => buildTikTokWatcherCompactBlock(ctx.guildConfig, watcher));
-          return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
-            moduleKey: 'tiktok',
-            titleFr: 'Watchers TikTok',
-            titleEn: 'TikTok watchers',
-            summary: watchers.length
-              ? uiText(ctx.guildConfig, `**${watchers.length}** watcher(s) TikTok configuré(s) • **${liveNow}** live détecté(s) • **${errorCount}** erreur(s).`, `**${watchers.length}** TikTok watcher(s) configured • **${liveNow}** live now • **${errorCount}** error(s).`)
-              : uiText(ctx.guildConfig, 'Aucun watcher TikTok configuré.', 'No TikTok watchers configured.'),
-            stateLines: watchers[0] ? buildTikTokWatcherStateLines(ctx.guildConfig, watchers[0]) : [],
-            extraFields: lines.length ? [sectionField(uiText(ctx.guildConfig, '🎯 Watchers récents', '🎯 Recent watchers'), lines, false)] : [],
-            nextLines: [
-              `• ${commandPill(ctx.prefix, 'tiktok add username here')}`,
-              `• ${commandPill(ctx.prefix, 'tiktok check')}`,
-              `• ${commandPill(ctx.prefix, 'tiktok test username')}`
-            ]
-          })] });
+          return ctx.reply({ embeds: buildTikTokWatcherEmbeds(ctx) });
         }
         if (action === 'add') {
           const username = String(ctx.args[1] || '').replace(/^@/, '');
@@ -7335,7 +7394,28 @@ function createCommands() {
           ctx.store.updateGuild(ctx.guild.id, (guild) => {
             guild.tiktok.watchers = guild.tiktok.watchers || [];
             guild.tiktok.watchers = guild.tiktok.watchers.filter((entry) => entry.username.toLowerCase() !== username.toLowerCase());
-            guild.tiktok.watchers.push({ username, channelId: channel.id, announceVideos: true, announceLive: true, mentionRoleId: null, lastVideoId: status?.latestVideoId || null, wasLive: Boolean(status?.isLive), lastLiveRoomId: status?.liveRoomId || null, lastSource: status?.source || null, lastCheckAt: Date.now(), lastError: null });
+            guild.tiktok.watchers.push({
+              username,
+              channelId: channel.id,
+              announceVideos: true,
+              announceLive: true,
+              mentionRoleId: null,
+              lastVideoId: status?.latestVideoId || null,
+              wasLive: Boolean(status?.isLive),
+              lastLiveRoomId: status?.liveRoomId || null,
+              lastSource: status?.source || null,
+              lastCheckAt: Date.now(),
+              lastError: null,
+              lastDisplayName: status?.displayName || username,
+              avatarUrl: status?.avatarUrl || null,
+              verified: status?.verified === true,
+              followerCount: status?.followerCount ?? null,
+              heartCount: status?.heartCount ?? null,
+              videoCount: status?.videoCount ?? null,
+              lastVideoUrl: status?.latestVideoUrl || null,
+              latestTitle: status?.latestTitle || null,
+              profileUrl: status?.finalUrl || `https://www.tiktok.com/@${username}`
+            });
             return guild;
           });
           const freshWatcher = (ctx.store.getGuild(ctx.guild.id).tiktok?.watchers || []).find((entry) => entry.username.toLowerCase() === username.toLowerCase()) || null;
@@ -7499,19 +7579,21 @@ function createCommands() {
             nextLines: [
               `• ${commandPill(ctx.prefix, `tiktok role ${username} @Role`)}`,
               `• ${commandPill(ctx.prefix, `tiktok channel ${username} here`)}`,
-              `• ${commandPill(ctx.prefix, `tiktok live ${username} on`)}`
+              `• ${commandPill(ctx.prefix, `tiktok live ${username} on`)}`,
+              `• ${commandPill(ctx.prefix, `tiktok add ${username} here`)}`
             ]
           })] });
         }
         if (action === 'check') {
           await ctx.client.runTikTokCheck();
+          const freshWatchers = ctx.store.getGuild(ctx.guild.id).tiktok?.watchers || [];
           return ctx.reply({ embeds: [createModuleActionEmbed(ctx.guildConfig, {
             moduleKey: 'tiktok',
             titleFr: 'Check TikTok terminé',
             titleEn: 'TikTok check completed',
             tone: 'success',
-            summary: uiText(ctx.guildConfig, `Le check forcé TikTok est terminé pour **${watchers.length}** watcher(s).`, `Forced TikTok check completed for **${watchers.length}** watcher(s).`),
-            stateLines: watchers[0] ? buildTikTokWatcherStateLines(ctx.guildConfig, watchers[0]) : [],
+            summary: uiText(ctx.guildConfig, `Le check forcé TikTok est terminé pour **${freshWatchers.length}** watcher(s).`, `Forced TikTok check completed for **${freshWatchers.length}** watcher(s).`),
+            stateLines: freshWatchers[0] ? buildTikTokWatcherStateLines(ctx.guildConfig, freshWatchers[0]) : [],
             nextLines: [
               `• ${commandPill(ctx.prefix, 'tiktok list')}`,
               `• ${commandPill(ctx.prefix, 'tiktok test username')}`
@@ -11000,7 +11082,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
       name: 'timeout',
       aliases: ['mute', 'tempmute'],
       category: 'Moderation',
-      description: 'Timeout a member',
+      description: 'Timeout / mute a member',
       usage: 'timeout <@member> <time> [reason]',
       guildOnly: true,
       userPermissions: [PermissionFlagsBits.ModerateMembers],
@@ -11072,7 +11154,7 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
     }),
     makeSimpleCommand({
       name: 'untimeout',
-      aliases: ['unmute'],
+      aliases: ['unmute', 'removemute'],
       category: 'Moderation',
       description: 'Remove a timeout',
       usage: 'untimeout <@member>',
@@ -11313,6 +11395,178 @@ ${clipText(entry.message, 160)}`).join('\n\n') : 'No sticky messages configured.
         })] });
       }
     }),
+
+    makeSimpleCommand({
+      name: 'bl',
+      aliases: ['blacklist', 'blacklistadd', 'staffblacklist'],
+      category: 'Moderation',
+      description: 'Blacklist a user for staff moderation: block commands and auto-ban on join',
+      usage: 'bl <@member|id> [reason]',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.BanMembers],
+      slash: {
+        root: 'mod',
+        sub: 'blacklist',
+        description: 'Blacklist a user for staff moderation',
+        options: [
+          { type: 'user', name: 'user', description: 'Target user', required: false },
+          { type: 'string', name: 'userid', description: 'User ID if the member is not here', required: false },
+          { type: 'string', name: 'reason', description: 'Reason', required: false }
+        ]
+      },
+      async execute(ctx) {
+        const targetMember = await ctx.getMember('user', 0);
+        const directUser = ctx.interaction ? ctx.interaction.options.getUser('user') : ctx.message?.mentions.users.first();
+        const rawId = (ctx.interaction ? ctx.interaction.options.getString('userid') : null) || ctx.args[0];
+        const fetchedUser = !targetMember && /^\d{17,20}$/.test(String(rawId || '')) ? await ctx.client.users.fetch(String(rawId)).catch(() => null) : null;
+        const targetUser = targetMember?.user || directUser || fetchedUser;
+        const userId = targetUser?.id || (/^\d{17,20}$/.test(String(rawId || '')) ? String(rawId) : null);
+        const reason = ctx.interaction
+          ? (ctx.interaction.options.getString('reason') || 'No reason.')
+          : (targetMember || directUser || fetchedUser ? ctx.args.slice(1).join(' ') : ctx.args.slice(1).join(' ')) || 'No reason.';
+        if (!userId) return ctx.invalidUsage(`Examples: \`${ctx.prefix}bl @member alt détecté\`, \`${ctx.prefix}bl 123456789012345678 raid alt\`.`);
+        if (targetMember && !ctx.canActOn(targetMember)) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
+          titleFr: 'Blacklist refusée',
+          titleEn: 'Blacklist blocked',
+          summary: 'You cannot moderate that member.',
+          tone: 'warning',
+          target: targetMember,
+          stateLines: buildBlacklistStateLines(ctx.guildConfig, { target: targetMember, moderator: ctx.user, reason }),
+          footerText: 'Neyora • blacklist blocked'
+        })] });
+
+        const existingEntry = ctx.guildConfig.moderation?.blacklist?.users?.[userId] || null;
+        const storedAt = Date.now();
+        ctx.store.updateGuild(ctx.guild.id, (guild) => {
+          guild.moderation = guild.moderation || { warnings: {}, blacklist: { users: {} } };
+          guild.moderation.blacklist = guild.moderation.blacklist || { users: {} };
+          guild.moderation.blacklist.users[userId] = {
+            id: userId,
+            tag: targetUser?.tag || existingEntry?.tag || `User ${userId}`,
+            username: targetUser?.username || existingEntry?.username || null,
+            by: ctx.user.id,
+            reason,
+            at: storedAt
+          };
+          return guild;
+        });
+
+        const immediateTarget = targetMember || targetUser || { id: userId, tag: targetUser?.tag || `User ${userId}`, username: targetUser?.username || `User ${userId}`, displayAvatarURL: () => null };
+        const banReason = `Staff blacklist • ${ctx.user.tag} • ${reason}`.slice(0, 512);
+        const bannedNow = await ctx.guild.members.ban(userId, { reason: banReason }).then(() => true).catch(() => false);
+
+        const logFields = [
+          { name: 'User', value: targetUser ? `${targetUser.tag || targetUser.username}` : `User ${userId}`, inline: true },
+          { name: 'User ID', value: `\`${userId}\``, inline: true },
+          { name: 'Staff', value: `${ctx.user}`, inline: true },
+          { name: 'Immediate ban', value: bannedNow ? 'yes' : 'no', inline: true },
+          { name: 'Reason', value: reason.slice(0, 1024), inline: false }
+        ];
+        await sendDetailedModerationLog(ctx, '⛔ Staff blacklist', `User ID \`${userId}\` was added to the staff blacklist.`, immediateTarget, logFields);
+        return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
+          titleFr: 'Blacklist staff mise à jour',
+          titleEn: 'Staff blacklist updated',
+          summary: bannedNow
+            ? `${targetUser ? targetUser.tag || targetUser.username : `User ${userId}`} was blacklisted and banned immediately.`
+            : `${targetUser ? targetUser.tag || targetUser.username : `User ${userId}`} was blacklisted. Commands will be blocked and the user will be auto-banned on join.`,
+          tone: 'success',
+          target: immediateTarget,
+          stateLines: buildBlacklistStateLines(ctx.guildConfig, {
+            target: immediateTarget,
+            moderator: ctx.user,
+            reason,
+            bannedNow,
+            alreadyBlacklisted: Boolean(existingEntry),
+            storedAt,
+            extra: [metricLine(uiText(ctx.guildConfig, 'User ID', 'User ID'), `\`${userId}\``)]
+          }),
+          nextLines: [`• \`${ctx.prefix}bllist\``, `• \`${ctx.prefix}unbl ${userId}\``],
+          footerText: 'Neyora • staff blacklist'
+        })] });
+      }
+    }),
+    makeSimpleCommand({
+      name: 'unbl',
+      aliases: ['unblacklist', 'blacklistremove'],
+      category: 'Moderation',
+      description: 'Remove a user from the staff blacklist',
+      usage: 'unbl <@member|id>',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.BanMembers],
+      slash: {
+        root: 'mod',
+        sub: 'unblacklist',
+        description: 'Remove a user from the staff blacklist',
+        options: [
+          { type: 'user', name: 'user', description: 'Target user', required: false },
+          { type: 'string', name: 'userid', description: 'User ID', required: false }
+        ]
+      },
+      async execute(ctx) {
+        const targetMember = await ctx.getMember('user', 0);
+        const directUser = ctx.interaction ? ctx.interaction.options.getUser('user') : ctx.message?.mentions.users.first();
+        const rawId = (ctx.interaction ? ctx.interaction.options.getString('userid') : null) || ctx.args[0];
+        const targetUser = targetMember?.user || directUser;
+        const userId = targetUser?.id || (/^\d{17,20}$/.test(String(rawId || '')) ? String(rawId) : null);
+        if (!userId) return ctx.invalidUsage(`Examples: \`${ctx.prefix}unbl @member\`, \`${ctx.prefix}unbl 123456789012345678\`.`);
+        const existingEntry = ctx.guildConfig.moderation?.blacklist?.users?.[userId] || null;
+        if (!existingEntry) return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
+          titleFr: 'Entrée absente',
+          titleEn: 'Entry not found',
+          summary: `User ID \`${userId}\` is not in the staff blacklist.`,
+          tone: 'warning',
+          target: targetUser || { id: userId, tag: `User ${userId}`, username: `User ${userId}`, displayAvatarURL: () => null },
+          stateLines: [metricLine(uiText(ctx.guildConfig, 'User ID', 'User ID'), `\`${userId}\``)],
+          footerText: 'Neyora • blacklist not found'
+        })] });
+
+        ctx.store.updateGuild(ctx.guild.id, (guild) => {
+          guild.moderation = guild.moderation || { warnings: {}, blacklist: { users: {} } };
+          guild.moderation.blacklist = guild.moderation.blacklist || { users: {} };
+          delete guild.moderation.blacklist.users[userId];
+          return guild;
+        });
+
+        const userLike = targetUser || { id: userId, tag: existingEntry.tag || `User ${userId}`, username: existingEntry.username || `User ${userId}`, displayAvatarURL: () => null };
+        const logFields = [
+          { name: 'User', value: existingEntry.tag || `User ${userId}`, inline: true },
+          { name: 'User ID', value: `\`${userId}\``, inline: true },
+          { name: 'Staff', value: `${ctx.user}`, inline: true },
+          { name: 'Original reason', value: clipText(String(existingEntry.reason || 'none'), 1024), inline: false }
+        ];
+        await sendDetailedModerationLog(ctx, '✅ Staff blacklist removed', `User ID \`${userId}\` was removed from the staff blacklist.`, userLike, logFields);
+        return ctx.reply({ embeds: [buildModerationActionEmbed(ctx.guildConfig, {
+          titleFr: 'Blacklist staff retirée',
+          titleEn: 'Staff blacklist removed',
+          summary: `${existingEntry.tag || `User ${userId}`} was removed from the staff blacklist.`,
+          tone: 'success',
+          target: userLike,
+          stateLines: buildBlacklistStateLines(ctx.guildConfig, {
+            target: userLike,
+            moderator: ctx.user,
+            reason: existingEntry.reason || null,
+            extra: [metricLine(uiText(ctx.guildConfig, 'User ID', 'User ID'), `\`${userId}\``)]
+          }),
+          nextLines: [`• \`${ctx.prefix}bllist\``, `• \`${ctx.prefix}unban ${userId}\``],
+          footerText: 'Neyora • blacklist removed'
+        })] });
+      }
+    }),
+    makeSimpleCommand({
+      name: 'bllist',
+      aliases: ['blacklistlist', 'staffblacklistlist'],
+      category: 'Moderation',
+      description: 'List the current staff blacklist entries',
+      usage: 'bllist',
+      guildOnly: true,
+      userPermissions: [PermissionFlagsBits.BanMembers],
+      slash: { root: 'mod', sub: 'blacklistlist', description: 'List the current staff blacklist entries' },
+      async execute(ctx) {
+        const entries = ctx.guildConfig.moderation?.blacklist?.users || {};
+        return ctx.reply({ embeds: buildBlacklistEmbeds(ctx, entries) });
+      }
+    }),
+
     makeSimpleCommand({
       name: 'nick',
       aliases: ['nickname'],

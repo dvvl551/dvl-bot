@@ -219,7 +219,14 @@ const PREFIX_SHORTCUT_MAP = {
   moderationtimeout: 'timeout',
   moderationban: 'ban',
   moderationkick: 'kick',
-  moderationclear: 'clear'
+  moderationclear: 'clear',
+  mute: 'timeout',
+  unmute: 'untimeout',
+  bl: 'bl',
+  unbl: 'unbl',
+  blacklist: 'bl',
+  blacklistlist: 'bllist',
+  bllist: 'bllist'
 };
 
 const FAMILY_SHORTCUT_MAP = {
@@ -3240,6 +3247,13 @@ async function runCommand(source, command) {
   if (command.ownerOnly && !ownerCheck(ctx.user.id)) {
     return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '👑 Owner only', 'This command is restricted to bot owners.')], deleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
   }
+  const blacklistEntry = ctx.guildConfig?.moderation?.blacklist?.users?.[ctx.user.id] || null;
+  if (ctx.guild && blacklistEntry && !ownerCheck(ctx.user.id)) {
+    return ctx.reply({
+      embeds: [baseEmbed(ctx.guildConfig, '⛔ Staff blacklist', `You are blocked from using bot commands in this server.\nReason: **${String(blacklistEntry.reason || 'No reason provided.').slice(0, 180)}**`)],
+      deleteAfter: TRANSIENT_SYSTEM_DELETE_MS
+    });
+  }
   if (ctx.guild && command.userPermissions?.length && !ctx.member.permissions.has(command.userPermissions)) {
     if (!hasCustomCommandAccess(ctx.member, command)) {
       return ctx.reply({ embeds: [baseEmbed(ctx.guildConfig, '🚫 Permissions', 'You do not have the required permissions for this command.')], deleteAfter: TRANSIENT_SYSTEM_DELETE_MS });
@@ -3901,6 +3915,20 @@ async function sendWelcomeDirectMessage(member) {
 client.on(Events.GuildMemberAdd, async (member) => {
 
   const config = getGuildConfig(member.guild.id);
+  const blacklistEntry = config.moderation?.blacklist?.users?.[member.user.id] || null;
+  if (blacklistEntry) {
+    await member.ban({ reason: `Staff blacklist • ${blacklistEntry.reason || 'blocked user'}`.slice(0, 512) }).catch(() => null);
+    await sendLog(member.guild, 'moderation', '⛔ Staff blacklist', `${member.user.tag} tried to join while blacklisted and was banned automatically.`, {
+      userId: member.user.id,
+      authorName: member.user.tag,
+      fields: [
+        { name: 'User', value: `${member}`, inline: true },
+        { name: 'User ID', value: `\`${member.user.id}\``, inline: true },
+        { name: 'Reason', value: String(blacklistEntry.reason || 'No reason.').slice(0, 1024), inline: false }
+      ]
+    });
+    return;
+  }
   const ageMinutes = (Date.now() - member.user.createdTimestamp) / 60_000;
   if (config.automod.raidMode?.enabled && ageMinutes < (config.automod.raidMode.joinAgeMinutes || 10080)) {
     await member.kick('Raid mode: account too new').catch(() => null);

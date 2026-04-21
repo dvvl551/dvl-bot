@@ -91,7 +91,10 @@ const DEFAULT_GUILD = {
     }
   },
   moderation: {
-    warnings: {}
+    warnings: {},
+    blacklist: {
+      users: {}
+    }
   },
   automod: {
     whitelistUserIds: [],

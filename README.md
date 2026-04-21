@@ -55,3 +55,14 @@ npm run dev
 - This zip is source-first, so run `npm install` after extracting
 - `+help +commande` opens a command card directly
 - `+find <mot-clé>` stays the fastest way to locate a feature
+
+- Staff blacklist flow added: `+bl`, `+unbl`, `+bllist` with safer moderation handling
+
+Extra moderation shortcuts:
+
+```
++mute @member 10m spam
++unmute @member
++bl @member alt détecté
++bllist
+```

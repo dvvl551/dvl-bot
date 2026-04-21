@@ -318,6 +318,14 @@ async function checkTikTokWatchers(client) {
         watcher.lastDisplayName = status.displayName || watcher.lastDisplayName || watcher.username;
         watcher.lastProfileUrl = status.finalUrl || `https://www.tiktok.com/@${watcher.username}`;
         watcher.lastVideoUrl = status.latestVideoUrl || watcher.lastVideoUrl || null;
+        watcher.avatarUrl = status.avatarUrl || watcher.avatarUrl || null;
+        watcher.verified = status.verified === true;
+        watcher.followerCount = status.followerCount ?? watcher.followerCount ?? null;
+        watcher.followingCount = status.followingCount ?? watcher.followingCount ?? null;
+        watcher.heartCount = status.heartCount ?? watcher.heartCount ?? null;
+        watcher.videoCount = status.videoCount ?? watcher.videoCount ?? null;
+        watcher.latestTitle = status.latestTitle || watcher.latestTitle || null;
+        watcher.coverUrl = status.coverUrl || watcher.coverUrl || null;
         watcher.lastError = null;
       } catch (error) {
         watcher.lastError = String(error.message || error);

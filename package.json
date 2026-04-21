@@ -1,6 +1,6 @@
 {
   "name": "neyora-bot-v75-global-safe-polish",
-  "version": "7.5.0",
+  "version": "7.5.1",
   "description": "Neyora Discord bot with a global polish pass, safer updates, better staff flow and improved TikTok views.",
   "main": "src/index.js",
   "type": "commonjs",
