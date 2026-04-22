@@ -755,10 +755,20 @@ function sanitizeActionRows(rows = [], options = {}) {
   const maxRows = Math.max(1, options.maxRows || 5);
   const maxComponentsPerRow = Math.max(1, options.maxComponentsPerRow || (options.isModal ? 1 : 5));
   const out = [];
+  const seenCustomIds = new Set();
   for (const row of Array.isArray(rows) ? rows : []) {
     if (!row) continue;
     const sourceComponents = Array.isArray(row.components) ? row.components : Array.isArray(row?.data?.components) ? row.data.components : [];
-    const sanitizedComponents = sourceComponents.map((component) => sanitizeComponentBuilder(component, options)).filter(Boolean);
+    const sanitizedComponents = sourceComponents
+      .map((component) => sanitizeComponentBuilder(component, options))
+      .filter(Boolean)
+      .filter((component) => {
+        const customId = component?.data?.custom_id;
+        if (!customId) return true;
+        if (seenCustomIds.has(customId)) return false;
+        seenCustomIds.add(customId);
+        return true;
+      });
     for (let index = 0; index < sanitizedComponents.length; index += maxComponentsPerRow) {
       if (out.length >= maxRows) break;
       const chunked = sanitizedComponents.slice(index, index + maxComponentsPerRow);

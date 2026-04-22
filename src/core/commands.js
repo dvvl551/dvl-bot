@@ -5926,7 +5926,7 @@ function createHelpEmbed(client, guildConfig, target = 'Home', page = 1) {
     const grouped = {};
     for (const command of commands) grouped[command.category] = (grouped[command.category] || 0) + 1;
     const visibleCategories = CATEGORY_ORDER.filter((name) => grouped[name]);
-    const pages = chunkLines(visibleCategories, 8);
+    const pages = chunkLines(visibleCategories, 10);
     const current = pages[safePage - 1] || [];
     embed
       .setTitle(uiText(guildConfig, '📂 Catégories', '📂 Categories'))
@@ -6032,7 +6032,41 @@ function createHelpComponents(current = 'Home', page = 1, totalPages = 1, guildC
       new ButtonBuilder().setCustomId('help:Setup:1').setLabel(uiText(guildConfig, '🧩 Setup', '🧩 Setup')).setStyle(current === 'Setup' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('help:Categories:1').setLabel(uiText(guildConfig, '📂 Catégories', '📂 Categories')).setStyle(current === 'Categories' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('help:All:1').setLabel(uiText(guildConfig, '📚 Toutes', '📚 All')).setStyle(current === 'All' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-    ),
+    )
+  ];
+
+  if (current === 'Categories') {
+    rows.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('help:start:1').setLabel(uiText(guildConfig, '🚀 Début', '🚀 Start')).setStyle(current === 'start' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:members:1').setLabel(uiText(guildConfig, '👥 Membres', '👥 Members')).setStyle(current === 'members' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('help:staff:1').setLabel('🛠️ Staff').setStyle(current === 'staff' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    ));
+
+    const visibleCategories = CATEGORY_ORDER.filter((category) => !['Home', 'Setup', 'All', 'Categories'].includes(category));
+    const totalCategoryPages = Math.max(1, Math.ceil(visibleCategories.length / 10));
+    const safePage = Math.min(Math.max(1, Number(page) || 1), totalCategoryPages);
+    const currentChunk = visibleCategories.slice((safePage - 1) * 10, safePage * 10);
+
+    if (visibleCategories.length > 10) {
+      rows.push(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.max(1, safePage - 1)}`).setLabel(uiText(guildConfig, '⬅️ Précédent', '⬅️ Prev')).setStyle(ButtonStyle.Secondary).setDisabled(safePage <= 1),
+        new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.min(totalCategoryPages, safePage + 1)}`).setLabel(uiText(guildConfig, 'Suivant ➡️', 'Next ➡️')).setStyle(ButtonStyle.Secondary).setDisabled(safePage >= totalCategoryPages)
+      ));
+    }
+
+    for (let i = 0; i < currentChunk.length; i += 5) {
+      const chunk = currentChunk.slice(i, i + 5);
+      rows.push(new ActionRowBuilder().addComponents(
+        ...chunk.map((category) => new ButtonBuilder()
+          .setCustomId(`help:${category}:1`)
+          .setLabel(`${CATEGORY_META[category]?.emoji || '•'} ${categoryLabelFor(guildConfig, category)}`)
+          .setStyle(ButtonStyle.Secondary))
+      ));
+    }
+    return rows;
+  }
+
+  rows.push(
     new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('help:start:1').setLabel(uiText(guildConfig, '🚀 Début', '🚀 Start')).setStyle(current === 'start' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('help:members:1').setLabel(uiText(guildConfig, '👥 Membres', '👥 Members')).setStyle(current === 'members' ? ButtonStyle.Primary : ButtonStyle.Secondary),
@@ -6047,30 +6081,7 @@ function createHelpComponents(current = 'Home', page = 1, totalPages = 1, guildC
       new ButtonBuilder().setCustomId('help:Moderation:1').setLabel(uiText(guildConfig, '🛡️ Modération', '🛡️ Moderation')).setStyle(current === 'Moderation' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('help:Security:1').setLabel(uiText(guildConfig, '🚨 Sécurité', '🚨 Security')).setStyle(current === 'Security' ? ButtonStyle.Primary : ButtonStyle.Secondary)
     )
-  ];
-
-  if (current === 'Categories') {
-    const visibleCategories = CATEGORY_ORDER.filter((category) => !['Home', 'Setup', 'All', 'Categories'].includes(category));
-    const totalCategoryPages = Math.max(1, Math.ceil(visibleCategories.length / 8));
-    const safePage = Math.min(Math.max(1, Number(page) || 1), totalCategoryPages);
-    const currentChunk = visibleCategories.slice((safePage - 1) * 8, safePage * 8);
-    if (visibleCategories.length > 8) {
-      rows.push(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.max(1, safePage - 1)}`).setLabel(uiText(guildConfig, '⬅️ Précédent', '⬅️ Prev')).setStyle(ButtonStyle.Secondary).setDisabled(safePage <= 1),
-        new ButtonBuilder().setCustomId(`helpnav:Categories:${Math.min(totalCategoryPages, safePage + 1)}`).setLabel(uiText(guildConfig, 'Suivant ➡️', 'Next ➡️')).setStyle(ButtonStyle.Secondary).setDisabled(safePage >= totalCategoryPages)
-      ));
-    }
-    for (let i = 0; i < currentChunk.length; i += 4) {
-      const chunk = currentChunk.slice(i, i + 4);
-      rows.push(new ActionRowBuilder().addComponents(
-        ...chunk.map((category) => new ButtonBuilder()
-          .setCustomId(`help:${category}:1`)
-          .setLabel(`${CATEGORY_META[category]?.emoji || '•'} ${categoryLabelFor(guildConfig, category)}`)
-          .setStyle(ButtonStyle.Secondary))
-      ));
-    }
-    return rows;
-  }
+  );
 
   if (current === 'Setup' && totalPages > 1) {
     rows.push(new ActionRowBuilder().addComponents(
